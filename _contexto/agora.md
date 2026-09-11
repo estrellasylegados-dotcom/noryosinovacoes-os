@@ -4,9 +4,11 @@
 ## Onde paramos
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia)
-com escopo, compliance e marca já documentados. Próximo passo é o Rafael alinhar com o marido
-dela (colega de trabalho) antes de apresentar a proposta formal — prazo ainda não combinado.
-Compliance jurídico avançou bastante (ver decisões 2026-09-11): risco de exclusividade
+com escopo, compliance e marca já documentados. Scaffold técnico do site já construído
+(`clientes/odontominas/site/`, Next.js + Tailwind, com `[PLACEHOLDER: ...]` explícito onde falta
+fato real) — falta só o conteúdo real da clínica. Próximo passo segue sendo o Rafael alinhar com
+o marido dela (colega de trabalho) antes de apresentar a proposta formal — prazo ainda não
+combinado. Compliance jurídico avançou bastante (ver decisões 2026-09-11): risco de exclusividade
 Mirante/Sicoob aceito conscientemente; falta confirmar com o contador se o MEI da esposa realmente
 comporta os serviços da Noryos.
 
@@ -17,6 +19,9 @@ comporta os serviços da Noryos.
   própria?) antes de cobrar qualquer coisa do 1º cliente que pagar tráfego pago (2026-09-11).
 - Alinhar com o marido da Ariadna o que vai ser oferecido, antes de apresentar a proposta pra ela
   (2026-09-11).
+- Depois que a proposta for aprovada: confirmar com a Ariadna os dados reais da clínica (nome+CRO
+  do responsável técnico, endereço, telefone, horário, serviços exatos, tom de voz) pra preencher
+  os placeholders do site (2026-09-11).
 - Confirmar se a responsável técnica da clínica de estética (2º piloto) é médica, biomédica ou
   esteticista — muda se aplica a Resolução CFM 2.336/2023 ou vigilância sanitária (2026-09-11).
 - Definir prazo realista de entrega da OdontoMinas, depois de alinhar com o marido da Ariadna
@@ -30,7 +35,7 @@ comporta os serviços da Noryos.
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas) com projeto aberto; sequência continua estética → psicologia
-  depois (decisão 2026-09-11).
+- Cliente-piloto #1 (OdontoMinas) com projeto aberto e scaffold do site já construído; sequência
+  continua estética → psicologia depois (decisão 2026-09-11).
 - Verificação do CNAE/MEI com o contador é o bloqueio mais crítico do momento — trava cobrar
   qualquer coisa, inclusive tráfego pago.

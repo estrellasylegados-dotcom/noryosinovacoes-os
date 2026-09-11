@@ -75,3 +75,9 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   Sicoob/Mirante segue como linha inegociável, independente disso. Por quê: checar formalmente o
   contrato/código de conduta teria custo de tempo desproporcional ao risco percebido; risco
   residual (cláusula de exclusividade escrita não lida) é conscientemente aceito.
+- **2026-09-11** (Rafael) [odontominas]: construir o scaffold técnico do site da OdontoMinas
+  agora, antes da proposta ser apresentada à Ariadna, usando `[PLACEHOLDER: ...]` explícito em
+  todo conteúdo que depende de fato real ainda não confirmado (nome+CRO do responsável técnico,
+  endereço, serviços exatos, tom de voz, hex da cor) — nunca inventado. Por quê: acelera a entrega
+  quando a proposta fechar, sem travar o trabalho técnico numa decisão de negócio que só o Rafael
+  resolve, e sem violar a Resolução CFO-196/2019 fabricando informação sobre uma clínica real.

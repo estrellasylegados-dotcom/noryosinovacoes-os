@@ -47,3 +47,20 @@ não revogada pela CFO-271/2025):
 Marca própria — ver `marca/design-guide.md`. Logo já existe (Ariadna mandou o arquivo); cores
 predominantes verde-petróleo escuro e branco, especialidade "Implantes e Ortodontia" no
 subtítulo da marca.
+
+## Material institucional recebido
+
+Fonte: WhatsApp, Rafael Viriato, colado na conversa em 11/09/2026 (dois textos que a própria
+clínica já usa em material institucional/redes — não é conteúdo final do site, é matéria-prima
+pra usar quando a proposta e o tom de voz forem fechados com a Ariadna).
+
+- **Prêmio Top Empresarial**, categoria Clínica Odontológica — segundo o texto, recebido desde
+  2014, todo ano.
+- **Tempo de atuação:** "há mais de 18 anos" (texto de "Quem Somos").
+- **Localização:** Brazlândia-DF (ainda sem endereço completo).
+- **Valores declarados pela clínica:** ética, transparência, excelência, confiança, inovação,
+  humanização, compromisso. Missão declarada: cuidar de sorrisos, bem-estar e autoestima.
+- **Atenção compliance (Resolução CFO-196/2019) antes de usar este texto no site:** o original
+  usa "referência em saúde bucal" e "profissionais especializados" — termos que podem soar
+  superlativo ou "especialista" sem RQE registrado no CFO; revisar a redação antes de publicar,
+  não copiar literalmente.
