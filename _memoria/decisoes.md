@@ -32,3 +32,6 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
 - **2026-09-10** (Rafael): Twenty CRM não ganhou conector MCP nesta rodada, fica marcado "não
   ligada" em `ferramentas.md`. Por quê: não existe conector pronto no catálogo do kit pra ele; o
   CRM segue em configuração manual (Fase 1).
+- **2026-09-11** (Rafael): o repositório do RatosOS (`noryosinovacoes-os`) fica separado do
+  repositório do site institucional (`noryosinovacoes`). Por quê: evitar misturar o histórico de
+  configuração do sistema com o pipeline de deploy de produção do site na Hostinger.

@@ -3,9 +3,9 @@
 
 ## Onde paramos
 
-Acabei de configurar o sistema com o `/setup` (2026-09-10), trazendo o contexto de um projeto
-anterior (outro kit, "MazyOS"): site institucional no ar, Diagnóstico Digital validado em produção,
-CRM Twenty em configuração. GitHub e Supabase (somente-leitura) já conectados por MCP.
+Sistema configurado (`/setup`, 2026-09-10) e sincronizado com o GitHub (`/syncar`, 2026-09-11) —
+repositório `noryosinovacoes-os`, separado do repositório do site. GitHub e Supabase
+(somente-leitura) conectados por MCP. Próximo passo natural: `/mapear`.
 
 ## Pendências
 
