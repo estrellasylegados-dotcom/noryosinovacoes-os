@@ -163,6 +163,7 @@ no fim", e a sessão nunca morre sem essa oferta. Não oferecer em sessão trivi
 - `.ratosos` · a versão do kit (uma linha). Não apague: é como a atualização sabe de onde você parte
 <!-- pastas de trabalho abaixo, criadas pelo /setup conforme o negócio -->
 - `clientes/` · uma pasta por cliente (o `/novo-projeto` cria)
+  - `clientes/odontominas/` · 1º cliente-piloto — clínica de implantes e ortodontia da Ariadna Pires
 - `propostas/` · propostas em andamento e enviadas
 - `briefings/` · briefings recebidos que ainda não viraram cliente
 - `projetos/` · projetos internos da própria Noryos (site institucional, CRM) — inclui o projeto

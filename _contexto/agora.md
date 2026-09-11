@@ -3,21 +3,23 @@
 
 ## Onde paramos
 
-Plano de ação da empresa em construção (2026-09-11): jurídico (MEI da esposa), oferta e preço, e
-estratégia de aquisição via rede pessoal fechados. Entrega (pilar 4) parcialmente desenhada — falta
-stack do site e prazo do primeiro cliente. Financeiro detalhado e automação ainda não abordados.
+1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia)
+com escopo, compliance e marca já documentados. Próximo passo é o Rafael alinhar com o marido
+dela (colega de trabalho) antes de apresentar a proposta formal — prazo ainda não combinado.
+Compliance jurídico avançou bastante (ver decisões 2026-09-11): risco de exclusividade
+Mirante/Sicoob aceito conscientemente; falta confirmar com o contador se o MEI da esposa realmente
+comporta os serviços da Noryos.
 
 ## Pendências
 
-- Incluir CNAEs de serviço (site, tráfego pago, GMN/consultoria) no MEI da esposa — antes de faturar
-  o 1º cliente (2026-09-11).
-- Checar código de conduta/compliance do Sicoob sobre atividade externa remunerada (2026-09-11).
-- Checar a resolução de publicidade dos conselhos de classe (CFO, CFP, e o que valer pra estética)
-  antes de rodar qualquer campanha ou peça pros 3 clientes-piloto (2026-09-11).
-- Definir o stack/template do site da Noryos, pra saber se dá pra reaproveitar nos sites de cliente
+- **Crítica:** confirmar com o contador se site/tráfego pago/publicidade cabem no MEI da esposa —
+  pesquisa aponta que não constam no Anexo XI (CGSN 140/2018); se não couber, decidir caminho (ME
+  própria?) antes de cobrar qualquer coisa do 1º cliente que pagar tráfego pago (2026-09-11).
+- Alinhar com o marido da Ariadna o que vai ser oferecido, antes de apresentar a proposta pra ela
   (2026-09-11).
-- Definir prazo realista de entrega do primeiro cliente (clínica odontológica) (2026-09-11).
-- Abrir `/novo-projeto` pra clínica odontológica (1º cliente-piloto) quando começar a execução
+- Confirmar se a responsável técnica da clínica de estética (2º piloto) é médica, biomédica ou
+  esteticista — muda se aplica a Resolução CFM 2.336/2023 ou vigilância sanitária (2026-09-11).
+- Definir prazo realista de entrega da OdontoMinas, depois de alinhar com o marido da Ariadna
   (2026-09-11).
 - Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida — rodou vazio em
   2026-09-11, empresa ainda em estruturação.
@@ -28,6 +30,7 @@ stack do site e prazo do primeiro cliente. Financeiro detalhado e automação ai
 
 ## Quente agora
 
-- Plano de estruturação da empresa: jurídico, oferta/preço e aquisição fechados; 3 clientes-piloto
-  definidos (odontologia → estética → psicologia, de graça, em sequência) — ver decisões
-  2026-09-11.
+- Cliente-piloto #1 (OdontoMinas) com projeto aberto; sequência continua estética → psicologia
+  depois (decisão 2026-09-11).
+- Verificação do CNAE/MEI com o contador é o bloqueio mais crítico do momento — trava cobrar
+  qualquer coisa, inclusive tráfego pago.

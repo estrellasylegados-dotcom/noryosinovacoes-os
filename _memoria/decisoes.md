@@ -68,3 +68,10 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   correspondente (CFO, CFP, e o que for aplicável em estética). Por quê: são profissões
   regulamentadas com restrição a promessa de resultado, antes/depois e depoimento sem autorização —
   ignorar isso pode gerar problema ético pro cliente, não só pra Noryos.
+- **2026-09-11** (Rafael): segue com a Noryos assumindo que não há restrição explícita de atividade
+  externa remunerada no vínculo com a Mirante Tecnologia (empresa que o emprega como terceirizado
+  alocado no Sicoob Confederação), com base em colegas de trabalho que já têm empresa própria sem
+  problema aparente. Confidencialidade sobre qualquer informação, sistema ou processo do
+  Sicoob/Mirante segue como linha inegociável, independente disso. Por quê: checar formalmente o
+  contrato/código de conduta teria custo de tempo desproporcional ao risco percebido; risco
+  residual (cláusula de exclusividade escrita não lida) é conscientemente aceito.

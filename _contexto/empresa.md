@@ -9,12 +9,14 @@ Posicionamento explícito: **não** é agência de marketing tradicional.
 **Perfil:** Agência founder-led — Rafael toca tudo sozinho, sem equipe ainda.
 **Atende clientes:** Público amplo de PME (pequenos negócios, profissionais liberais, prestadores
 de serviço, e-commerce). Ainda sem case fechado — nunca inventar prova social. 3 clientes-piloto
-mapeados via rede pessoal (odontologia, estética, psicologia — ver decisões 2026-09-11), atendidos
-de graça em troca de case. Nicho em odontologia em teste, ainda não confirmado oficialmente.
-**Equipe:** Rafael (execução técnica, fora do horário comercial — é CLT na Sicoob Confederação) e a
-esposa, que decidiu entrar formalmente na operação em 2026-09-11 como comercial/jurídico (usa o MEI
-dela, já existente, pra faturar a Noryos). Quando ela tiver rotina própria no sistema, o computador
-dela ganha uma origem própria.
+mapeados via rede pessoal (odontologia — OdontoMinas, de Ariadna Pires, projeto aberto em
+`clientes/odontominas/`; estética; psicologia — ver decisões 2026-09-11), atendidos de graça em
+troca de case. Nicho em odontologia em teste, ainda não confirmado oficialmente.
+**Equipe:** Rafael (execução técnica, fora do horário comercial — é CLT na Mirante Tecnologia,
+terceirizado alocado no Sicoob Confederação) e a esposa, que decidiu entrar formalmente na operação
+em 2026-09-11 como comercial/jurídico (usa o MEI dela, já existente, pra faturar a Noryos — a
+comportar os serviços da Noryos ainda depende de confirmação com o contador, ver `agora.md`).
+Quando ela tiver rotina própria no sistema, o computador dela ganha uma origem própria.
 **Principais entregas:** Sites institucionais/comerciais, automação, Google/Meta Ads, Google Meu
 Negócio, conteúdo e redes sociais, e a ferramenta própria de Diagnóstico Digital (qualificação de
 leads por scoring).
