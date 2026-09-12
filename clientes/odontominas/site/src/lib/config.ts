@@ -136,6 +136,7 @@ export const whatsappMessages = {
   implantes: "Olá! Vi a página de implantes da OdontoMinas e gostaria de avaliar meu caso.",
   ariadna: "Olá! Conheci a Dra. Ariadna pelo site da OdontoMinas e gostaria de agendar uma avaliação.",
   servicos: "Olá! Vi os tratamentos da OdontoMinas no site e gostaria de mais informações.",
+  protocolo: "Olá! Vim pelo site da OdontoMinas e gostaria de saber se o Protocolo Correct pode ser indicado para o meu caso.",
   contato: "Olá! Gostaria de falar com a OdontoMinas sobre uma consulta.",
   localizacao: "Olá! Vi a localização da OdontoMinas no site e gostaria de agendar uma avaliação.",
   footer: "Olá! Vim pelo site da OdontoMinas e gostaria de agendar uma avaliação.",

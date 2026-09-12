@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Manrope, Geist_Mono } from "next/font/google";
+import { Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -11,21 +11,15 @@ import { siteConfig } from "@/lib/config";
 import { dentistJsonLd, websiteJsonLd, jsonLdScript } from "@/lib/seo";
 
 /**
- * PLACEHOLDER: tipografia do site ainda não definida com a Ariadna (ver
- * marca/design-guide.md do cliente). Inter/Manrope usadas aqui só como
- * neutro técnico funcional, pra escala tipográfica (.t-display/.t-h2/...)
- * funcionar sem esperar a decisão de marca — trocar quando ela vier.
+ * Revisão de direção de arte 2026-09: uma família só (Manrope, variável,
+ * Google Fonts) pra corpo de texto e títulos — sans-serif editorial
+ * contemporânea, sem peso extra de uma segunda família (antes Inter+Manrope).
+ * Geist Mono continua só pros detalhes editoriais (labels, numeração).
  */
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
-  weight: ["500", "600", "700", "800"],
+  weight: "variable",
   display: "swap",
 });
 
@@ -63,7 +57,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable} ${geistMono.variable}`}>
+    <html lang="pt-BR" className={`${manrope.variable} ${geistMono.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <Analytics />
         <AnalyticsBinder />

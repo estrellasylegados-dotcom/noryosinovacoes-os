@@ -6,14 +6,16 @@ import { Icon } from "@/components/ui/Icon";
 import { PhotoPlaceholder } from "@/components/ui/PhotoPlaceholder";
 import { RatingStars } from "@/components/ui/RatingStars";
 import { StepList } from "@/components/ui/StepList";
-import { SectionReveal, Stagger, StaggerItem, Parallax } from "@/components/ui/motion";
+import { SectionReveal, Stagger, StaggerItem } from "@/components/ui/motion";
 import { FaqAccordion } from "@/components/FaqAccordion";
 import { WhatsappCTA } from "@/components/WhatsappCTA";
 import { ButtonLink } from "@/components/ui/Button";
+import { Hero } from "@/components/Hero";
+import { CorrectProtocol } from "@/components/CorrectProtocol";
 import { faq } from "@/content/faq";
 import { diferenciais } from "@/content/diferenciais";
 import { jornada } from "@/content/jornada";
-import { getPublicTratamentos, getDestaque } from "@/content/tratamentos";
+import { getPublicTratamentos } from "@/content/tratamentos";
 import { ariadna } from "@/content/equipe";
 import { siteConfig, getAnosDeAtuacao, getNotaDisplay, getGoogleMapsSearchUrl } from "@/lib/config";
 import { faqJsonLd, jsonLdScript } from "@/lib/seo";
@@ -25,54 +27,10 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   const tratamentos = getPublicTratamentos();
-  const destaque = getDestaque();
 
   return (
     <>
-      {/* HERO ---------------------------------------------------------- */}
-      <section className="hero-bleed relative overflow-hidden border-b border-[var(--hairline)] pb-20 pt-[calc(var(--header-h)+64px)] sm:pb-24">
-        <Container className="grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
-          <SectionReveal anim="fade-up">
-            <SectionLabel>Odontologia em Brazlândia — Implantes e Ortodontia</SectionLabel>
-            <h1 className="t-display max-w-xl">
-              Implantes e ortodontia com planejamento individual, em Brazlândia.
-            </h1>
-            <p className="mt-6 t-lead max-w-lg">
-              A OdontoMinas atua em Brazlândia-DF desde {siteConfig.anoFundacao}, sob responsabilidade
-              da {ariadna.nomeExibicao} ({ariadna.cro}), com avaliação clínica própria para cada tratamento.
-            </p>
-
-            <div className="mt-7 flex items-center gap-3">
-              <RatingStars />
-              <p className="text-sm text-[var(--color-text-muted)]">
-                <strong className="text-[var(--color-text)]">{getNotaDisplay()}</strong> no Google ·{" "}
-                <a href={getGoogleMapsSearchUrl()} target="_blank" rel="noopener noreferrer" className="underline decoration-[var(--hairline-strong)] underline-offset-4 hover:text-[var(--color-text)]">
-                  mais de {siteConfig.avaliacoes.total} avaliações
-                </a>
-              </p>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-4">
-              <WhatsappCTA origem="hero" withArrow>
-                Agendar uma avaliação
-              </WhatsappCTA>
-              <ButtonLink href="/servicos" variant="secondary">
-                Conhecer tratamentos
-              </ButtonLink>
-            </div>
-          </SectionReveal>
-
-          <SectionReveal anim="fade-left" delay={100}>
-            <Parallax strength={14}>
-              <PhotoPlaceholder
-                aspect="aspect-[4/5]"
-                label="Brazlândia-DF"
-                icon={<Icon name="tooth" size={72} strokeWidth={1} />}
-              />
-            </Parallax>
-          </SectionReveal>
-        </Container>
-      </section>
+      <Hero />
 
       {/* TRATAMENTOS ----------------------------------------------------- */}
       <section className="section">
@@ -111,24 +69,8 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* DESTAQUE IMPLANTES ------------------------------------------------ */}
-      <section id="implantes" className="section surface-1 border-y border-[var(--hairline)]">
-        <Container className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <SectionReveal anim="fade-right">
-            <PhotoPlaceholder aspect="aspect-[5/4]" icon={<Icon name="tooth" size={64} strokeWidth={1} />} />
-          </SectionReveal>
-          <SectionReveal anim="fade-left" delay={80}>
-            <SectionLabel>Implantodontia</SectionLabel>
-            <h2 className="t-h2">Volte a sorrir e mastigar com mais segurança.</h2>
-            <p className="mt-5 text-[var(--color-text-muted)]">{destaque.descricao}</p>
-            <div className="mt-7">
-              <WhatsappCTA origem="implantes" withArrow>
-                Quero avaliar meu caso
-              </WhatsappCTA>
-            </div>
-          </SectionReveal>
-        </Container>
-      </section>
+      {/* PROTOCOLO CORRECT FULL ARCH ---------------------------------------- */}
+      <CorrectProtocol />
 
       {/* DRA. ARIADNA (prévia) -------------------------------------------- */}
       <section className="section">
@@ -146,7 +88,9 @@ export default function HomePage() {
             <p className="mt-2 text-sm text-[var(--color-text-dim)]">
               {ariadna.profissao} — {ariadna.cro}
             </p>
-            <p className="mt-5 max-w-lg text-[var(--color-text-muted)]">{ariadna.resumo}</p>
+            <p className="mt-5 max-w-lg text-[var(--color-text-muted)]">
+              Experiência técnica com um olhar individual para cada reabilitação. {ariadna.resumo}
+            </p>
             <ButtonLink href="/sobre#ariadna" variant="ghost" className="mt-6 !px-0" withArrow>
               Conhecer a trajetória
             </ButtonLink>

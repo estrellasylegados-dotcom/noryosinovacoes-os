@@ -8,10 +8,11 @@ const base =
   "group/btn inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] px-6 py-3.5 text-sm font-semibold tracking-tight transition-[transform,background-color,border-color,color,filter] duration-200 ease-[var(--ease-premium)] focus-visible:outline-2 disabled:opacity-50 disabled:pointer-events-none";
 
 const variants: Record<Variant, string> = {
+  // Hover mais escuro (nunca "brightness" — clareava a cor da marca em vez de aprofundar). Deslocamento de 1px só, nada além disso.
   primary:
-    "bg-[var(--color-cyan)] text-[var(--color-ink)] shadow-[0_10px_30px_-12px_rgba(23,138,138,0.5)] hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0",
+    "bg-[var(--color-cyan)] text-[var(--color-ink)] shadow-[0_10px_30px_-12px_rgba(23,138,138,0.5)] hover:bg-[var(--color-cyan-hover)] hover:-translate-y-px active:translate-y-0",
   secondary:
-    "border border-[var(--hairline-strong)] text-[var(--color-text)] hover:border-[var(--color-cyan)] hover:text-[var(--color-cyan)] hover:-translate-y-0.5 active:translate-y-0",
+    "border border-[var(--hairline-strong)] text-[var(--color-text)] hover:border-[var(--color-cyan)] hover:text-[var(--color-cyan)] hover:-translate-y-px active:translate-y-0",
   ghost:
     "text-[var(--color-text)] underline decoration-[var(--hairline-strong)] underline-offset-4 hover:decoration-[var(--color-cyan)] hover:text-[var(--color-cyan)]",
 };

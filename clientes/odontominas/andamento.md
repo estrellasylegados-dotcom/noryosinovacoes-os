@@ -1,14 +1,20 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-11)
+## Onde está (2026-09-12)
 
 Pasta criada. Escopo e compliance mapeados. O site em `site/` deixou de ser scaffold técnico e
-virou um redesign editorial completo (ver "Feito" abaixo) — rodando localmente em
-`http://localhost:3000`, testado, com build de produção limpo. Hospedagem decidida pra Cloudflare
-Pages (`output: "export"`), no lugar do padrão Hostinger herdado do site institucional. Próximo
-passo de negócio continua o mesmo: Rafael conversar com o marido da Ariadna (colega de trabalho
-dele) pra alinhar a oferta antes de apresentar a proposta formal pra ela — prazo ainda não
-combinado.
+virou um redesign editorial completo, com uma revisão de direção de arte e uma seção nova,
+"Protocolo Correct Full Arch" (ver "Feito" abaixo) — hospedagem decidida pra Cloudflare Pages
+(`output: "export"`), no lugar do padrão Hostinger herdado do site institucional.
+
+Nota sobre a entrada de 2026-09-12: foi feita numa sessão que fechou a janela sem rodar
+`/atualizar`; reconstruída a partir do git diff (não commitado) e dos comentários no próprio
+código, não de relato do Rafael. `typecheck`/`lint`/`next build` revalidados limpos, mas **nada
+commitado nem sincronizado ainda** — proteger com `/syncar` antes de seguir mexendo no site.
+
+Próximo passo de negócio continua o mesmo: Rafael conversar com o marido da Ariadna (colega de
+trabalho dele) pra alinhar a oferta antes de apresentar a proposta formal pra ela — prazo ainda
+não combinado.
 
 ## Pendências
 
@@ -68,3 +74,14 @@ combinado.
     (sem placeholder visível, formatação pt-BR correta, favicon real aplicado). Não testado em
     navegador de verdade (sem ferramenta de screenshot neste ambiente) — só via HTML renderizado e
     smoke test HTTP no dev server.
+- 2026-09-12 (reconstruído de sessão que fechou a janela sem salvar — ver nota em "Onde está"):
+  revisão de direção de arte do site (paleta de texto mais azulada, degradê de assinatura de 3
+  tons, tipografia unificada em Manrope, motion de entrada mais discreto, hover do botão primário
+  escurecendo em vez de clarear) e seção nova "Protocolo Correct Full Arch": `Hero.tsx` extraído
+  com o placeholder antigo trocado por um diagrama SVG comparativo interativo
+  (`CorrectTransformation.tsx`, slider manual + loop automático que respeita
+  `prefers-reduced-motion`), seção dedicada com benefícios/jornada/FAQ próprios
+  (`CorrectProtocol.tsx`, substituindo o antigo bloco genérico "Destaque Implantes"), copy em
+  `content/protocolo.ts` sob os mesmos limites de compliance do CFO (nunca equiparar a "All-on-4",
+  nunca afirmar quantidade fixa de implantes, carga imediata ou tratamento no mesmo dia). Validado:
+  `typecheck`/`lint`/`next build` limpos. Não commitado ainda.

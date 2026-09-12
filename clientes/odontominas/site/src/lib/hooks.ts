@@ -51,6 +51,26 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(
 }
 
 /**
+ * true quando o usuário pediu menos movimento. Usado pra desligar loops
+ * automáticos (a transformação do Protocolo Correct, o parallax) sem
+ * esconder o conteúdo — arrastar o slider manualmente continua disponível
+ * mesmo com reduced-motion ativo (é o usuário pedindo, não a página impondo).
+ */
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  return reduced;
+}
+
+/**
  * Parallax de scroll — desloca o elemento no eixo Y conforme ele cruza a
  * viewport (drift sutil). `strength` = amplitude total em px. Desligado em
  * reduced-motion. rAF só enquanto visível. Uso pontual: arte do hero.

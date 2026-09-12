@@ -19,20 +19,27 @@
   --color-surface-raised: #ffffff;
 
   /* --- Linhas --- */
-  --color-border: rgba(13, 38, 38, 0.1);
-  --color-border-strong: rgba(13, 38, 38, 0.2);
-  --hairline: rgba(13, 38, 38, 0.1);
-  --hairline-strong: rgba(13, 38, 38, 0.2);
+  --color-border: rgba(24, 45, 48, 0.1);
+  --color-border-strong: rgba(24, 45, 48, 0.2);
+  --hairline: rgba(24, 45, 48, 0.1);
+  --hairline-strong: rgba(24, 45, 48, 0.2);
 
-  /* --- Texto --- */
-  --color-text: #0f2727;
-  --color-text-muted: #4b6363;
-  --color-text-dim: #7c9494;
+  /* --- Texto ---
+     Grafite profundo com leve tendência ao azul-petróleo (não preto puro) —
+     revisão de direção de arte 2026-09: o antigo #0f2727 lia como preto
+     chapado em títulos grandes. */
+  --color-text: #1e3236;
+  --color-text-muted: #4c6467;
+  --color-text-dim: #7c9294;
 
   /* --- Acentos --- */
-  /* PLACEHOLDER: hex ainda não amostrado a conta-gotas — ver marca/design-guide.md */
+  /* Base amostrada da logo (design-guide.md: #178A8A–#1B9494). */
   --color-cyan: #178a8a;
   --color-cyan-soft: #4fb6b1;
+  --color-cyan-hover: #0e6f6f;         /* hover do botão primário — mais escuro, não mais claro */
+  --color-teal-900: #0b5b5c;           /* petróleo profundo — ponta escura do degradê de assinatura */
+  --color-aqua-50: #f1faf9;            /* lavagem de fundo extremamente clara — painel do Protocolo Correct */
+  --color-tooth: #eaf6f4;              /* ilustração da transformação — nunca branco artificial */
   /* Design-guide pede "duas cores só" — em vez de um verde separado, um
      segundo tom dentro da mesma família teal (mantém o mecanismo de
      gradiente de 2 pontos sem introduzir uma terceira cor na marca). */
@@ -40,9 +47,14 @@
   --color-green-soft: #6cc9be;
   --color-whatsapp: #25d366;          /* cor oficial da marca WhatsApp, não da OdontoMinas */
 
+  /* Degradê de assinatura — só para palavra-chave do título e detalhes
+     pontuais (nunca seção inteira). Três tons dentro da mesma família teal:
+     elegante, não neon, não "empresa de tecnologia". */
+  --gradient-brand: linear-gradient(100deg, var(--color-teal-900) 0%, var(--color-cyan) 48%, var(--color-green-soft) 100%);
+
   /* --- Tipografia --- */
   --font-display: var(--font-manrope);
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-geist-mono);
 
   /* --- Radius --- */
@@ -116,6 +128,20 @@ h1, h2, h3, h4 {
   letter-spacing: -0.03em;
   font-weight: 600;
 }
+/* Título do hero da home — composição própria, distinta de .t-display (usado
+   nas páginas internas). Mais contida (evita o efeito "chapado" do título
+   grande) e com line-height mais fechado, na faixa 0.95–1.08 pedida. */
+.hero-title {
+  font-family: var(--font-display), sans-serif;
+  /* Teto mais contido que o antigo 4.4rem: em telas largas, "planejamento"
+     sozinho numa linha (word-per-line) é o sintoma de título grande demais
+     pra coluna — visto no teste em 1440px. */
+  font-size: clamp(2.5rem, 1.4rem + 3.4vw, 3.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: var(--color-text);
+}
 .t-h2 {
   font-family: var(--font-display), sans-serif;
   font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.9rem);
@@ -146,9 +172,9 @@ h1, h2, h3, h4 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Palavra-chave do hero: gradiente ciano→verde (não arco-íris) ----------- */
+/* Palavra-chave do hero: degradê de assinatura (não arco-íris) ------------ */
 .accent-gradient {
-  background: linear-gradient(100deg, var(--color-cyan) 0%, var(--color-green) 100%);
+  background: var(--gradient-brand);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -215,15 +241,18 @@ main {
     clip-path var(--dur-4) var(--ease-premium) var(--anim-delay);
   will-change: opacity, transform;
 }
-[data-anim="fade-up"]    { opacity: 0; transform: translateY(32px); }
+/* Entradas discretas (revisão de direção de arte 2026-09): 14–20px de
+   deslocamento, nunca os 24–32px anteriores — motion como assinatura sutil,
+   não como efeito. */
+[data-anim="fade-up"]    { opacity: 0; transform: translateY(18px); }
 [data-anim="fade"]       { opacity: 0; }
-[data-anim="fade-left"]  { opacity: 0; transform: translateX(28px); }
-[data-anim="fade-right"] { opacity: 0; transform: translateX(-28px); }
-[data-anim="scale-in"]   { opacity: 0; transform: scale(0.965); }
+[data-anim="fade-left"]  { opacity: 0; transform: translateX(20px); }
+[data-anim="fade-right"] { opacity: 0; transform: translateX(-20px); }
+[data-anim="scale-in"]   { opacity: 0; transform: scale(0.98); }
 [data-anim="slide-reveal"] {
   opacity: 0;
   clip-path: inset(0 0 100% 0);
-  transform: translateY(24px);
+  transform: translateY(16px);
 }
 [data-anim].is-in {
   opacity: 1;
@@ -290,6 +319,59 @@ main {
 }
 @media (hover: hover) {
   .group\/btn:hover .btn-arrow { transform: translateX(3px); }
+}
+
+/* ======================================================================
+   PROTOCOLO CORRECT — painel da transformação conceitual (§9–§13)
+   Simulação ilustrativa, não fotografia — ver CorrectTransformation.tsx.
+   ====================================================================== */
+.correct-visual {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--hairline);
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in oklab, var(--color-cyan) 10%, transparent), transparent 65%),
+    var(--color-aqua-50);
+}
+
+/* Slider de comparação — trilho/thumb próprios, nada do estilo padrão do
+   navegador. Rótulos ficam no HTML ao redor (nunca "antes/depois"). */
+.compare-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hairline-strong);
+  outline: none;
+}
+.compare-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-cyan);
+  border: 3px solid var(--color-surface-1);
+  box-shadow: 0 2px 10px -2px rgba(11, 91, 92, 0.45);
+  cursor: grab;
+  transition: transform var(--dur-1) var(--ease-premium);
+}
+.compare-slider:hover::-webkit-slider-thumb { transform: scale(1.08); }
+.compare-slider:active::-webkit-slider-thumb { cursor: grabbing; }
+.compare-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-cyan);
+  border: 3px solid var(--color-surface-1);
+  box-shadow: 0 2px 10px -2px rgba(11, 91, 92, 0.45);
+  cursor: grab;
+}
+.compare-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--hairline-strong);
 }
 
 /* ======================================================================
