@@ -9,10 +9,10 @@ import { siteConfig } from "@/lib/config";
 export function FloatingWhatsapp() {
   return (
     <a
-      href={getWhatsappLink()}
+      href={getWhatsappLink("float")}
       target="_blank"
       rel="noopener noreferrer"
-      data-analytics-event={analyticsEvents.clickWhatsapp}
+      data-analytics-event={analyticsEvents.whatsapp("float")}
       aria-label={`Conversar com a ${siteConfig.shortName} no WhatsApp`}
       className="group fixed bottom-5 right-5 z-40 flex items-center gap-2.5 rounded-full border border-[var(--hairline-strong)] bg-[var(--color-surface-raised)]/90 py-2.5 pl-2.5 pr-3 text-sm font-medium text-[var(--color-text)] shadow-[var(--elev-2)] backdrop-blur-md transition-transform duration-200 hover:-translate-y-0.5 sm:bottom-6 sm:right-6"
     >

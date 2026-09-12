@@ -63,6 +63,8 @@ Regras gerais que já valem por ser saúde regulamentada (Resolução CFO-196/20
   colorido — só o relevo do símbolo e do texto sobre a parede. Só preview no chat até agora, sem
   arquivo salvo; referência de como a marca aparece no ponto físico (útil pras fotos do Google Meu
   Negócio), pendente pedir o arquivo se for útil.
+- **Favicon:** `marca/favicon/favicon.png` (1254×1254, quadrado) — aplicado em
+  `site/src/app/icon.png`, é a partir dele que o Next.js gera o ícone de aba do site.
 
 ---
 

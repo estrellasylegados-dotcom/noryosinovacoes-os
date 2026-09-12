@@ -81,3 +81,9 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   endereço, serviços exatos, tom de voz, hex da cor) — nunca inventado. Por quê: acelera a entrega
   quando a proposta fechar, sem travar o trabalho técnico numa decisão de negócio que só o Rafael
   resolve, e sem violar a Resolução CFO-196/2019 fabricando informação sobre uma clínica real.
+- **2026-09-11** (Rafael) [odontominas]: hospedagem do site trocada pra Cloudflare Pages, com
+  build de export estático (`output: "export"`), no lugar do padrão Hostinger/Node herdado do
+  site institucional. Por quê: o site da OdontoMinas não tem nenhuma rota de servidor (sem API,
+  sem banco — contato só via link de WhatsApp), então hospedagem estática é suficiente e mais
+  simples; o site institucional (que tem API + Supabase + Resend) continua na Hostinger, pipeline
+  intocado.

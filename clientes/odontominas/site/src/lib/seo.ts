@@ -1,17 +1,39 @@
 import { siteConfig } from "./config";
 
-/** JSON-LD Organization — usado uma vez no layout raiz. */
-export function organizationJsonLd() {
+/** JSON-LD Dentist — entidade principal do site, usado uma vez no layout raiz. */
+export function dentistJsonLd() {
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "Dentist",
     name: siteConfig.name,
-    alternateName: siteConfig.shortName,
+    legalName: siteConfig.razaoSocial,
     url: siteConfig.url,
-    logo: `${siteConfig.url}/odontominas-logo.png`,
+    image: `${siteConfig.url}/odontominas-logo.png`,
+    telephone: siteConfig.telefoneFixo,
     email: siteConfig.email,
-    description: siteConfig.description,
-    areaServed: "BR",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: siteConfig.endereco.logradouro,
+      addressLocality: siteConfig.endereco.cidade,
+      addressRegion: siteConfig.endereco.uf,
+      postalCode: siteConfig.endereco.cep,
+      addressCountry: "BR",
+    },
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        opens: "08:00",
+        closes: "18:00",
+      },
+      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday"], opens: "08:00", closes: "12:00" },
+    ],
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: siteConfig.avaliacoes.nota,
+      reviewCount: siteConfig.avaliacoes.total,
+    },
+    areaServed: "Brazlândia, Brasília-DF",
   };
 }
 
@@ -26,7 +48,7 @@ export function websiteJsonLd() {
   };
 }
 
-/** JSON-LD Service — usado nas páginas de solução. */
+/** JSON-LD Service — usado por tratamento confirmado na página de Serviços. */
 export function serviceJsonLd(input: { nome: string; descricao: string; url: string }) {
   return {
     "@context": "https://schema.org",
@@ -35,11 +57,11 @@ export function serviceJsonLd(input: { nome: string; descricao: string; url: str
     description: input.descricao,
     url: input.url,
     provider: {
-      "@type": "Organization",
+      "@type": "Dentist",
       name: siteConfig.name,
       url: siteConfig.url,
     },
-    areaServed: "BR",
+    areaServed: "Brazlândia, Brasília-DF",
   };
 }
 

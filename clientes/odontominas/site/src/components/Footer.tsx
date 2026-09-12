@@ -1,8 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "./ui/Container";
-import { navegacaoFooter } from "@/content/navegacao";
-import { siteConfig, getWhatsappLink, whatsappDisplay, analyticsEvents } from "@/lib/config";
+import { navegacaoFooter, navegacaoLegal } from "@/content/navegacao";
+import { Icon } from "./ui/Icon";
+import {
+  siteConfig,
+  isFilled,
+  getWhatsappLink,
+  getTelLink,
+  analyticsEvents,
+} from "@/lib/config";
 
 export function Footer() {
   return (
@@ -43,48 +50,69 @@ export function Footer() {
           <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-text-dim)]">
             Contato
           </span>
-          <p className="mt-4 text-sm">
-            <a
-              href={getWhatsappLink()}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-analytics-event={analyticsEvents.clickWhatsapp}
-              className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
-            >
-              WhatsApp: {whatsappDisplay}
-            </a>
-          </p>
-          <p className="mt-2 text-sm">
-            <a href={`mailto:${siteConfig.email}`} className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">
-              {siteConfig.email}
-            </a>
-          </p>
+          <ul className="mt-4 grid gap-3 text-sm">
+            <li>
+              <a
+                href={getTelLink()}
+                data-analytics-event={analyticsEvents.phoneClick}
+                className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+              >
+                {siteConfig.telefoneFixo}
+              </a>
+            </li>
+            <li>
+              <a
+                href={getWhatsappLink("footer")}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-analytics-event={analyticsEvents.whatsapp("footer")}
+                className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+              >
+                WhatsApp
+              </a>
+            </li>
+            <li>
+              <a href={`mailto:${siteConfig.email}`} className="text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">
+                {siteConfig.email}
+              </a>
+            </li>
+          </ul>
         </div>
       </Container>
 
       {/*
         Faixa de compliance (Resolução CFO-196/2019): nome + CRO do
-        responsável técnico obrigatório em toda peça. Fica no Footer, que é
-        montado uma vez no layout raiz, pra cobrir 100% das páginas.
-        Visualmente destacada de propósito (não em cinza-claro ilegível) —
-        hoje é 100% placeholder e precisa ser óbvio pra quem revisar
-        internamente que ainda falta preencher com o dado real.
+        responsável técnico é obrigatório em toda peça, uma vez que o dado
+        exista de verdade. Até a Ariadna confirmar, a faixa não renderiza —
+        nunca expor `[PLACEHOLDER]` no HTML publicado (ver isFilled()).
       */}
-      <div className="border-t border-[var(--color-border-strong)] surface-1">
-        <Container className="py-4 text-center text-xs text-[var(--color-text)]">
-          <p>
-            Responsável técnico: <strong>{siteConfig.responsavelTecnico.nome}</strong> — CRO{" "}
-            {siteConfig.responsavelTecnico.cro}
-          </p>
-        </Container>
-      </div>
+      {isFilled(siteConfig.responsavelTecnico.nome) && (
+        <div className="border-t border-[var(--color-border-strong)] surface-1">
+          <Container className="py-4 text-center text-xs text-[var(--color-text)]">
+            <p>
+              Responsável técnico: <strong>{siteConfig.responsavelTecnico.nome}</strong> — CRO{" "}
+              {siteConfig.responsavelTecnico.cro}
+            </p>
+          </Container>
+        </div>
+      )}
 
       <div className="border-t border-[var(--hairline)]">
-        <Container className="flex flex-col gap-2 py-6 text-xs text-[var(--color-text-dim)] sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            © {new Date().getFullYear()} {siteConfig.name}
-          </p>
-          <p>{siteConfig.domain}</p>
+        <Container className="flex flex-col gap-3 py-6 text-xs text-[var(--color-text-dim)] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Icon name="check" size={12} className="hidden sm:block" />
+            <p>
+              {siteConfig.razaoSocial} — CNPJ {siteConfig.cnpj}
+            </p>
+          </div>
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-1">
+            {navegacaoLegal.map((item) => (
+              <Link key={item.href} href={item.href} className="hover:text-[var(--color-text)]">
+                {item.label}
+              </Link>
+            ))}
+            <span>© {new Date().getFullYear()} {siteConfig.name}</span>
+          </nav>
         </Container>
       </div>
     </footer>

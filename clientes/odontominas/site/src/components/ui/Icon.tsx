@@ -14,7 +14,10 @@ export type IconName =
   | "phone"
   | "tooth"
   | "shield"
-  | "calendar";
+  | "calendar"
+  | "crown"
+  | "sparkle"
+  | "star";
 
 const paths: Record<IconName, React.ReactNode> = {
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
@@ -46,6 +49,15 @@ const paths: Record<IconName, React.ReactNode> = {
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
     </>
+  ),
+  crown: (
+    <path d="M4 18h16M4 18l-1.5-9L8 12l4-7 4 7 5.5-3L20 18" />
+  ),
+  sparkle: (
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" />
+  ),
+  star: (
+    <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.7L12 3Z" />
   ),
 };
 

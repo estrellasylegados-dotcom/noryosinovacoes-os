@@ -1,7 +1,10 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/config";
 
-const routes = ["", "/sobre", "/servicos", "/contato"];
+// `output: "export"` exige rota estática explícita (não há servidor pra recalcular em runtime).
+export const dynamic = "force-static";
+
+const routes = ["", "/sobre", "/servicos", "/contato", "/politica-de-privacidade", "/termos-de-uso"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((route) => ({

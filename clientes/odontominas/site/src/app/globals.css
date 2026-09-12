@@ -202,46 +202,6 @@ main {
 .surface-1 { background-color: var(--color-surface-1); }
 .surface-2 { background-color: var(--color-surface-2); }
 
-/* Grid técnico + máscara — decorativo, baixa opacidade ------------------- */
-.tech-grid {
-  position: relative;
-  isolation: isolate;
-}
-.tech-grid::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(13, 38, 38, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(13, 38, 38, 0.05) 1px, transparent 1px);
-  background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(ellipse 78% 62% at 50% 30%, black 30%, transparent 78%);
-  mask-image: radial-gradient(ellipse 78% 62% at 50% 30%, black 30%, transparent 78%);
-}
-
-/* Luz ciano localizada — usar com moderação ---------------------------------- */
-.glow-cyan::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(520px 360px at var(--glow-x, 50%) var(--glow-y, 0%), rgba(23, 138, 138, 0.12), transparent 70%);
-}
-
-/* Ruído fino -------------------------------------------------------------- */
-.noise::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.35;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
-}
-
 /* ======================================================================
    MOTION SYSTEM  —  padrões nomeados, nada de número solto nos componentes.
    Estado inicial via [data-anim], ativado quando .is-in é adicionado
@@ -282,173 +242,11 @@ main {
 }
 
 /* Legado: <Reveal> continua funcionando nas páginas internas */
-.reveal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity var(--dur-3) var(--ease-premium), transform var(--dur-3) var(--ease-premium);
-  will-change: opacity, transform;
-}
-.reveal.is-visible { opacity: 1; transform: none; }
-
-/* Entrada do hero no load (sem esperar scroll) --------------------------- */
-@keyframes hero-rise {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.hero-rise {
-  opacity: 0;
-  animation: hero-rise 0.8s var(--ease-premium) forwards;
-  animation-delay: var(--rise-delay, 0ms);
-}
-
-/* Linhas SVG que se desenham ------------------------------------------------ */
-.draw-line {
-  stroke-dasharray: var(--len, 400);
-  stroke-dashoffset: var(--len, 400);
-  transition: stroke-dashoffset var(--dur-4) var(--ease-soft) var(--draw-delay, 0ms);
-}
-.is-in .draw-line,
-.draw-line.is-in { stroke-dashoffset: 0; }
-
-/* Pulso que viaja por uma conexão --------------------------------------- */
-@keyframes flow-dash {
-  from { stroke-dashoffset: var(--flow-len, 240); }
-  to   { stroke-dashoffset: 0; }
-}
-.flow-line {
-  animation: flow-dash 3.4s linear infinite;
-  animation-delay: var(--flow-delay, 0ms);
-}
-@keyframes node-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50%      { opacity: 1; transform: scale(1.18); }
-}
-.node-pulse {
-  animation: node-pulse 3s var(--ease-soft) infinite;
-  animation-delay: var(--pulse-delay, 0ms);
-  transform-origin: center;
-  transform-box: fill-box;
-}
-
-/* Barra que preenche (diagnóstico) ------------------------------------------ */
-.fill-bar {
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform var(--dur-4) var(--ease-soft) var(--fill-delay, 0ms);
-}
-.is-in .fill-bar { transform: scaleX(1); }
-
 /* ======================================================================
-   MOVIMENTO AMBIENTE  —  contínuo e sutil, só em pontos estratégicos.
-   Tudo desligado em prefers-reduced-motion.
+   SUPERFÍCIES
    ====================================================================== */
 
-/* Drift lento de uma luz de fundo (hero / CTA final) */
-@keyframes ambient-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(12px, -9px, 0) scale(1.07); }
-}
-.ambient-drift {
-  animation: ambient-drift 16s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}
-
-/* Flutuação vertical mínima (nós, chips decorativos) */
-@keyframes ambient-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-.ambient-float {
-  animation: ambient-float 5s var(--ease-soft) infinite;
-  animation-delay: var(--float-delay, 0ms);
-}
-
-/* Brilho que varre (barras do diagnóstico, "processando") */
-@keyframes sheen {
-  0%   { transform: translateX(-120%); }
-  60%  { transform: translateX(120%); }
-  100% { transform: translateX(120%); }
-}
-.sheen-track {
-  position: relative;
-  overflow: hidden;
-}
-.sheen-track::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
-  animation: sheen 4.5s ease-in-out infinite;
-  animation-delay: var(--sheen-delay, 0ms);
-  pointer-events: none;
-}
-
-/* Ponto "ao vivo" pulsando (chrome de janelas) */
-@keyframes live-blink {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(47, 175, 139, 0.5); }
-  70%      { opacity: 0.6; box-shadow: 0 0 0 5px rgba(47, 175, 139, 0); }
-}
-.live-dot {
-  animation: live-blink 2.4s ease-in-out infinite;
-}
-
-/* Pulso que percorre um trilho horizontal (fluxo do sistema) */
-@keyframes rail-run-x {
-  0%   { left: 0%; opacity: 0; }
-  8%   { opacity: 1; }
-  92%  { opacity: 1; }
-  100% { left: 100%; opacity: 0; }
-}
-.rail-runner {
-  animation: rail-run-x 5s linear infinite;
-}
-@keyframes rail-run-y {
-  0%   { top: 0%; opacity: 0; }
-  8%   { opacity: 1; }
-  92%  { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
-.rail-runner-y {
-  animation: rail-run-y 5s linear infinite;
-}
-
-/* ======================================================================
-   SUPERFÍCIES INTERATIVAS
-   ====================================================================== */
-
-/* Card com spotlight que acompanha o mouse (desktop) -------------------- */
-.spotlight-card {
-  position: relative;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--hairline);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 40%),
-    var(--color-surface-2);
-  box-shadow: var(--elev-1);
-  transition: border-color var(--dur-1) var(--ease-premium), transform var(--dur-1) var(--ease-premium), box-shadow var(--dur-2) var(--ease-premium);
-}
-.spotlight-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--dur-2) var(--ease-premium);
-  background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgba(23, 138, 138, 0.10), transparent 60%);
-}
-@media (hover: hover) {
-  .spotlight-card:hover {
-    border-color: var(--hairline-strong);
-    transform: translateY(-3px);
-    box-shadow: var(--elev-2);
-  }
-  .spotlight-card:hover::before { opacity: 1; }
-}
-
-/* Card estático simples (sem mouse tracking) --------------------------------- */
+/* Card/painel estático — hairline + sombra discreta, sem gimmick de mouse ---- */
 .panel {
   border-radius: var(--radius-lg);
   border: 1px solid var(--hairline);
@@ -498,12 +296,11 @@ main {
    REDUCED MOTION
    ====================================================================== */
 /*
-  Regra (§19/§26): reduzir movimento NÃO é apagar a página. Mantém o que não
-  causa desconforto vestibular — o fade de entrada (sem deslocamento), o
-  header, as barras que preenchem, o count-up (que já pula pro valor final
-  via JS). Desliga o que é movimento de fato: parallax, loops de ambiente,
-  pulsos, brilho, barra de progresso. Só casa em `reduce` explícito — nunca
-  trata ausência/erro de matchMedia como reduce.
+  Regra (§27/§32 do briefing): reduzir movimento NÃO é apagar a página.
+  Mantém o que não causa desconforto vestibular — o fade de entrada (sem
+  deslocamento), o header. Desliga o que desloca ou roda: parallax, slide,
+  scale, barra de progresso. Só casa em `reduce` explícito — nunca trata
+  ausência/erro de matchMedia como reduce.
 */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -519,17 +316,5 @@ main {
     transform: none !important;
     clip-path: none !important;
   }
-  .reveal {
-    transition: opacity var(--dur-2) var(--ease-premium) !important;
-    transform: none !important;
-  }
-  .hero-rise { animation: none !important; opacity: 1 !important; }
-  .draw-line { stroke-dashoffset: 0 !important; transition: none !important; }
-  .fill-bar { transform: scaleX(1) !important; transition: none !important; }
-  /* movimento contínuo / decorativo: desligado */
-  .flow-line, .node-pulse, .rail-runner, .rail-runner-y, .ambient-drift,
-  .ambient-float, .sheen-track::after, .live-dot { animation: none !important; }
-  .spotlight-card, .spotlight-card:hover { transform: none !important; }
-  .spotlight-card::before { display: none; }
   .scroll-progress { display: none; }
 }

@@ -5,9 +5,10 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { FloatingWhatsapp } from "@/components/FloatingWhatsapp";
 import { Analytics } from "@/components/Analytics";
+import { AnalyticsBinder } from "@/components/AnalyticsBinder";
 import { ScrollProgress } from "@/components/ui/ScrollProgress";
 import { siteConfig } from "@/lib/config";
-import { organizationJsonLd, websiteJsonLd, jsonLdScript } from "@/lib/seo";
+import { dentistJsonLd, websiteJsonLd, jsonLdScript } from "@/lib/seo";
 
 /**
  * PLACEHOLDER: tipografia do site ainda não definida com a Ariadna (ver
@@ -65,11 +66,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="pt-BR" className={`${inter.variable} ${manrope.variable} ${geistMono.variable}`}>
       <body className="flex min-h-screen flex-col antialiased">
         <Analytics />
+        <AnalyticsBinder />
         {/* Sem JS, o motion system não adiciona `.is-in` — garante conteúdo visível. */}
         <noscript>
-          <style>{`[data-anim],.reveal{opacity:1!important;transform:none!important;clip-path:none!important}`}</style>
+          <style>{`[data-anim]{opacity:1!important;transform:none!important;clip-path:none!important}`}</style>
         </noscript>
-        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(organizationJsonLd())} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(dentistJsonLd())} />
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(websiteJsonLd())} />
         <a
           href="#conteudo"

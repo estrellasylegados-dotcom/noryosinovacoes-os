@@ -23,7 +23,7 @@ export function ContactForm() {
     ]
       .filter(Boolean)
       .join(" ");
-    window.open(getWhatsappLink(texto), "_blank", "noopener,noreferrer");
+    window.open(getWhatsappLink("contato", texto), "_blank", "noopener,noreferrer");
   }
 
   return (

@@ -10,6 +10,7 @@
 |---|---|---|---|---|
 | GitHub | código do site, PRs, issues, histórico de commits | MCP (`GITHUB_PERSONAL_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
 | Supabase | banco de dados do Diagnóstico Digital (leads, scoring) | MCP, somente-leitura (`SUPABASE_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
+| Cloudflare | hospedagem de sites (Pages) — 1º uso: site da OdontoMinas | só você, no dashboard, sem MCP conectado | não ligada | 2026-09-11 |
 | Twenty CRM | ficha do cliente, pipeline comercial | só você, na mão (Cloud Pro, trial — Fase 1 em configuração) | não ligada | 2026-09-10 |
 | Mensagem com cliente | — | — | não ligada | 2026-09-10 |
 | Tarefa e prazo | — | — | não ligada | 2026-09-10 |

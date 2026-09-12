@@ -69,8 +69,8 @@ export function Header() {
         </nav>
 
         <div className="hidden md:block">
-          <WhatsappCTA variant="primary" className="!px-5 !py-2.5 text-sm">
-            Conversar
+          <WhatsappCTA origem="header" variant="primary" className="!px-5 !py-2.5 text-sm">
+            Agendar avaliação
           </WhatsappCTA>
         </div>
 
@@ -104,8 +104,8 @@ export function Header() {
             </Link>
           ))}
           <div className="mt-6">
-            <WhatsappCTA variant="primary" className="w-full">
-              Conversar sobre uma avaliação
+            <WhatsappCTA origem="header" variant="primary" className="w-full">
+              Agendar uma avaliação
             </WhatsappCTA>
           </div>
         </Container>

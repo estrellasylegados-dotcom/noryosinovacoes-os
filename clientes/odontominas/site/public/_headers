@@ -1,0 +1,29 @@
+# Cabeçalhos do Cloudflare Pages — equivalente ao antigo headers() do
+# next.config.mjs, que não tem efeito com output: "export" (não há servidor
+# Next em runtime pra aplicá-lo; a CDN é quem serve os arquivos estáticos).
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/*.html
+  Cache-Control: public, max-age=0, s-maxage=300, must-revalidate
+
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.jpg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.jpeg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.webp
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.avif
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.svg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/*.ico
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
