@@ -5,21 +5,18 @@
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia).
 Site em redesign editorial completo, com revisão de direção de arte e nova seção "Protocolo
-Correct Full Arch" (detalhe em `clientes/odontominas/andamento.md`) — typecheck/lint/build
-limpos, mas **ainda não commitado nem sincronizado**: uma sessão fechou a janela sem rodar
-`/atualizar`, o trabalho foi recuperado via git diff nesta sessão (2026-09-12). Hospedagem
-decidida pra Cloudflare Pages; deploy de fato ainda não feito. Próximo passo de negócio segue o
-mesmo: Rafael alinhar com o marido da Ariadna antes da proposta formal — prazo ainda não
-combinado. Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente;
-falta confirmar com o contador se o MEI da esposa comporta os serviços da Noryos.
+Correct Full Arch" (detalhe em `clientes/odontominas/andamento.md`), commitado, sincronizado e
+**no ar em produção**: Cloudflare Pages, https://odontominas.pages.dev/, deploy automático a cada
+push na `main` (2026-09-12). Próximo passo de negócio segue o mesmo: Rafael alinhar com o marido
+da Ariadna antes da proposta formal — prazo ainda não combinado. Compliance jurídico: risco de
+exclusividade Mirante/Sicoob aceito conscientemente; falta confirmar com o contador se o MEI da
+esposa comporta os serviços da Noryos.
 
 ## Pendências
 
 - **Crítica:** confirmar com o contador se site/tráfego pago/publicidade cabem no MEI da esposa —
   pesquisa aponta que não constam no Anexo XI (CGSN 140/2018); se não couber, decidir caminho (ME
   própria?) antes de cobrar qualquer coisa do 1º cliente que pagar tráfego pago (2026-09-11).
-- Commitar e sincronizar o trabalho recuperado do site OdontoMinas antes de seguir mexendo nele —
-  evita perder de novo se a sessão cair (2026-09-12).
 - Alinhar com o marido da Ariadna o que vai ser oferecido, antes de apresentar a proposta pra ela
   (2026-09-11).
 - Depois que a proposta for aprovada, confirmar com a Ariadna o que falta (lista completa em
@@ -36,8 +33,7 @@ falta confirmar com o contador se o MEI da esposa comporta os serviços da Noryo
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): feature "Protocolo Correct" e revisão visual prontas e
-  validadas, faltando só commit/sync — depois disso volta o alinhamento comercial com o marido da
-  Ariadna.
+- Cliente-piloto #1 (OdontoMinas): site no ar em produção (Cloudflare Pages); volta o
+  alinhamento comercial com o marido da Ariadna antes da proposta formal.
 - Verificação do CNAE/MEI com o contador é o bloqueio mais crítico do momento — trava cobrar
   qualquer coisa, inclusive tráfego pago.

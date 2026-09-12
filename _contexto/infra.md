@@ -13,3 +13,4 @@
 | Email transacional | Resend | domínio noryosinovacoes.com.br verificado | Rafael | notificação interna do Diagnóstico Digital |
 | Anti-bot | Cloudflare Turnstile | — | Rafael | obrigatório no `POST /api/diagnostico` |
 | CRM comercial | Twenty CRM (Cloud Pro, trial 30 dias) | `noryos.twenty.com` (workspace ainda não criado) | Rafael | Fase 1 aprovada, runbook pronto |
+| Site OdontoMinas (cliente-piloto) | Cloudflare Pages | https://odontominas.pages.dev/ | Rafael; deploy automático a cada push na `main` do repo `noryosinovacoes-os` (root `clientes/odontominas/site`) | Domínio próprio ainda não existe — subdomínio gratuito por enquanto |

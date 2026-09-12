@@ -4,13 +4,11 @@
 
 Pasta criada. Escopo e compliance mapeados. O site em `site/` deixou de ser scaffold técnico e
 virou um redesign editorial completo, com uma revisão de direção de arte e uma seção nova,
-"Protocolo Correct Full Arch" (ver "Feito" abaixo) — hospedagem decidida pra Cloudflare Pages
-(`output: "export"`), no lugar do padrão Hostinger herdado do site institucional.
-
-Nota sobre a entrada de 2026-09-12: foi feita numa sessão que fechou a janela sem rodar
-`/atualizar`; reconstruída a partir do git diff (não commitado) e dos comentários no próprio
-código, não de relato do Rafael. `typecheck`/`lint`/`next build` revalidados limpos, mas **nada
-commitado nem sincronizado ainda** — proteger com `/syncar` antes de seguir mexendo no site.
+"Protocolo Correct Full Arch" (ver "Feito" abaixo). **No ar em produção**: Cloudflare Pages,
+https://odontominas.pages.dev/ — repositório `noryosinovacoes-os`, root `clientes/odontominas/site`,
+build `npm run build` → `out`, deploy automático a cada push na `main` (conectado por Rafael no
+dashboard, confirmado carregando certo, com a seção do Protocolo Correct visível). Domínio próprio
+ainda não existe — segue pendência abaixo.
 
 Próximo passo de negócio continua o mesmo: Rafael conversar com o marido da Ariadna (colega de
 trabalho dele) pra alinhar a oferta antes de apresentar a proposta formal pra ela — prazo ainda
@@ -84,4 +82,9 @@ não combinado.
   (`CorrectProtocol.tsx`, substituindo o antigo bloco genérico "Destaque Implantes"), copy em
   `content/protocolo.ts` sob os mesmos limites de compliance do CFO (nunca equiparar a "All-on-4",
   nunca afirmar quantidade fixa de implantes, carga imediata ou tratamento no mesmo dia). Validado:
-  `typecheck`/`lint`/`next build` limpos. Não commitado ainda.
+  `typecheck`/`lint`/`next build` limpos, commitado e sincronizado no GitHub.
+- 2026-09-12: primeiro deploy de produção. Rafael conectou o repositório à Cloudflare Pages pelo
+  dashboard (root `clientes/odontominas/site`, build `npm run build`, saída `out`, deploy
+  automático a cada push na `main`). Site confirmado no ar em https://odontominas.pages.dev/, com
+  a seção do Protocolo Correct carregando. Ainda no subdomínio gratuito — domínio próprio é
+  pendência separada.
