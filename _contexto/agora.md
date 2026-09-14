@@ -17,6 +17,12 @@ esposa comporta os serviços da Noryos.
 - **Crítica:** confirmar com o contador se site/tráfego pago/publicidade cabem no MEI da esposa —
   pesquisa aponta que não constam no Anexo XI (CGSN 140/2018); se não couber, decidir caminho (ME
   própria?) antes de cobrar qualquer coisa do 1º cliente que pagar tráfego pago (2026-09-11).
+- Se a resposta acima for "não cabe": estruturar CNPJ próprio da Noryos (ME, Simples Nacional).
+  Pesquisa comparou contabilidades online — recomendação: Contajá (abertura grátis em 24h, a
+  partir de R$137/mês, melhor reputação no Reclame Aqui) ou Contabilidade.com como alternativa
+  equivalente; Contabilizei e Agilize ficaram atrás em preço/reputação pro perfil atual. Ao
+  contratar, confirmar CNAE (7311-4/00 e/ou 7319-0/03) e simular Fator R (Anexo III x V) antes de
+  fechar (2026-09-14).
 - Alinhar com o marido da Ariadna o que vai ser oferecido, antes de apresentar a proposta pra ela
   (2026-09-11).
 - Depois que a proposta for aprovada, confirmar com a Ariadna o que falta (lista completa em
