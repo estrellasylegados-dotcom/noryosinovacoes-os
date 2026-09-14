@@ -87,3 +87,14 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   sem banco — contato só via link de WhatsApp), então hospedagem estática é suficiente e mais
   simples; o site institucional (que tem API + Supabase + Resend) continua na Hostinger, pipeline
   intocado.
+- **2026-09-14** (Rafael): pausa o setup de qualquer CRM (Twenty incluído) até o piloto #1
+  (OdontoMinas) fechar comercialmente; os 3 pilotos seguem rastreados pelo `andamento.md` de cada
+  pasta. Por quê: volume atual (3 leads-piloto, 0 cliente pago) não justifica o esforço de
+  configuração; os gargalos reais de agora são jurídico (MEI da esposa) e comercial (alinhar com o
+  marido da Ariadna), não ferramenta. Quando o piloto #1 fechar, liga Fase 1 do Twenty junto com os
+  módulos de captação ativa do Kaptar — mesmo gatilho: deal flow real.
+- **2026-09-14** (Rafael): Kaptar liberado só pra aba "Buscar" (mapeamento de nicho, baixo volume)
+  por ora; Campanha, Automação e WhatsApp (S-zap) ficam pausados até três condições: contador
+  confirmar que o MEI da esposa comporta os serviços, workspace do Twenty existir, e o piloto #1
+  fechado servir de prova social. Por quê: sem case fechado nem CRM de destino, outbound frio
+  converte mal e arrisca fechar cliente antes de poder faturar direito.

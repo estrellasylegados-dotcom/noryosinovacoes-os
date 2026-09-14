@@ -28,8 +28,9 @@ esposa comporta os serviços da Noryos.
   2026-09-11, empresa ainda em estruturação.
 - Ligar o projeto existente do site/CRM via `/novo-projeto link`, sem mover o código nem quebrar o
   deploy da Hostinger (2026-09-10).
-- Fase 1 do CRM Twenty: criar o workspace (`noryos.twenty.com`) e rodar o import piloto do Kaptar +
-  teste de pipeline ponta a ponta (2026-09-10).
+- Fase 1 do CRM Twenty (criar o workspace `noryos.twenty.com`, import piloto do Kaptar, teste de
+  pipeline ponta a ponta) **pausada até o piloto #1 (OdontoMinas) fechar comercialmente**
+  (2026-09-14, substitui a pendência solta de 2026-09-10).
 
 ## Quente agora
 
@@ -37,3 +38,6 @@ esposa comporta os serviços da Noryos.
   alinhamento comercial com o marido da Ariadna antes da proposta formal.
 - Verificação do CNAE/MEI com o contador é o bloqueio mais crítico do momento — trava cobrar
   qualquer coisa, inclusive tráfego pago.
+- Kaptar (app instalado, ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo
+  volume; Campanha, Automação e WhatsApp pausados até MEI confirmado + Twenty ativo + piloto #1
+  fechado (2026-09-14).

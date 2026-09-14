@@ -11,7 +11,8 @@
 | GitHub | código do site, PRs, issues, histórico de commits | MCP (`GITHUB_PERSONAL_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
 | Supabase | banco de dados do Diagnóstico Digital (leads, scoring) | MCP, somente-leitura (`SUPABASE_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
 | Cloudflare | hospedagem de sites (Pages) — 1º uso: site da OdontoMinas, no ar | só você, no dashboard (deploy automático via Git); sem MCP/API conectado aqui | não ligada (deploy roda sozinho; eu não gerencio o projeto) | 2026-09-12 |
-| Twenty CRM | ficha do cliente, pipeline comercial | só você, na mão (Cloud Pro, trial — Fase 1 em configuração) | não ligada | 2026-09-10 |
+| Twenty CRM | ficha do cliente, pipeline comercial | só você, na mão (Cloud Pro, trial — Fase 1 pausada até fechar o piloto #1) | não ligada | 2026-09-10 |
+| Kaptar | prospecção de leads (busca por nicho/área; enriquecimento por IA); Campanha, Automação e WhatsApp existem no app mas pausados por decisão | só você, no app desktop (Electron, local, dados em `AppData\Roaming\Kaptar`; sem MCP/API conectado aqui) | ligada (uso restrito: só a aba Buscar por ora) | 2026-09-14 |
 | Mensagem com cliente | — | — | não ligada | 2026-09-10 |
 | Tarefa e prazo | — | — | não ligada | 2026-09-10 |
 | Email | — | — | não ligada | 2026-09-10 |
