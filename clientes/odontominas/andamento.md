@@ -1,5 +1,41 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, Chat ao Vivo + Relatórios + Conexão/dark mode)
+
+CRM: 4 commits nesta sessão, a pedido do Rafael (prints da RoiZap, ferramenta que ele usa em outro
+negócio, como referência de layout — adaptado ao que o sistema realmente tem, sem copiar
+funcionalidade que não existe aqui). Todos deployados no Railway e validados contra Supabase/
+Evolution de produção antes de cada deploy.
+
+- **Chat ao Vivo** (`1e6cbfb`, migração `v6_chat.sql`): a seção que o plano técnico previu de fora
+  do V1 ("visibilidade + ação leve", sem thread nem envio) — agora é inbox de verdade. Lista +
+  thread + resposta real pelo painel (`src/lib/chat.ts`, `enviarRespostaChat` espelha o padrão de
+  `reativacao.ts`). Abas Todos/Não lidas/Concluídos (reaproveita status do funil)/Atribuídos/
+  Arquivadas, prioridade, etiquetas livres, busca, "Nova conversa". De propósito sem Grupos/CSAT/
+  Instâncias/Análise IA — não existem no sistema.
+- **Relatórios** (mesmo commit): "Resumo Executivo" virou dashboard — período (hoje/7/15/30/90d),
+  cards, 4 gráficos SVG, abas Visão Geral/Equipe/Leads. Equipe saiu do menu (virou aba); `/equipe`
+  continua existindo.
+- **Ajustes visuais** (`c2e102f`): Leads esfriando antes dos gráficos; sem linhas de grade.
+- **Dark mode + barra superior + Conexão** (`7df49a3`, migração `v7_apelido_instancia.sql`): tema
+  claro/escuro funcional em todo o painel via variável CSS do Tailwind v4 (não `dark:` por tela).
+  Barra no topo: tema → notificações (não lidas + esfriando) → nome de quem logou. Conexão do
+  WhatsApp mostra nome de perfil real (Evolution API) na sidebar e na página, ganhou visual mais
+  rico e apelido interno editável (nunca mexe no perfil real). Chat ao Vivo: filtros viraram ícones
+  com popover (eram `<select>`); divisor arrastável entre lista e conversa.
+- **Contador de não lidas + Desconectar** (`3c48a5c`, migração `v8_contador_nao_lidas.sql`): badge
+  com número de mensagens de verdade (era só booleano). Botão "Desconectar" no rodapé da Conexão
+  (`DELETE /instance/logout`), com confirmação em modal — não testado ao vivo de propósito
+  (derrubaria o WhatsApp de teste em uso).
+- Validado: typecheck/lint/testes (130)/build limpos em cada commit; conferência contra produção
+  (sessão mintada localmente, mesmo `SESSAO_SECRET` do `.env.local`) antes e depois de cada deploy.
+  Rafael rodou as migrações v6/v7/v8 entre um commit e outro.
+- Achado técnico: a máquina ficou com 0,2GB livres de RAM (7 processos `next dev` órfãos de
+  sessões anteriores, mesmas portas 3000-3006) e um build travou por falta de memória — encerrados
+  todos, build voltou a funcionar. Lição: `TaskStop` não mata sempre o processo filho no Windows,
+  sempre confirmar pela porta.
+- Enviado ao GitHub via `/syncar` na mesma sessão (ver commit de sync).
+
 ## Onde está (2026-09-15, V1 do painel — menu, login por atendente, Equipe, Conexão)
 
 CRM: **pacote de melhorias na V1 do painel completo e em produção de verdade** — menu lateral em

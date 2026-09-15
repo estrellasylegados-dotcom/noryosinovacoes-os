@@ -167,3 +167,32 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   resposta) na tela nova Equipe — sem identidade individual não dá pra atribuir quem atendeu o quê;
   a troca também resolve, de brinde, a pendência antiga de tirar as senhas temporárias de
   desenvolvimento de produção antes de expor o painel pra equipe real.
+- **2026-09-15** (Rafael) [odontominas]: Chat ao Vivo construído agora, indo além do escopo do V1
+  ("visibilidade + ação leve", sem thread nem envio pelo painel) — inbox real (lista + thread +
+  resposta), inspirado na ferramenta RoiZap que o Rafael usa em outro negócio. De propósito, sem
+  Grupos (o webhook já filtra mensagem de grupo, não existe esse dado aqui), CSAT (não existe
+  pesquisa de satisfação no sistema), "Instâncias" (1 clínica = 1 WhatsApp, não agrega nada) nem
+  "Análise IA" (não existe essa funcionalidade). "Concluído" reaproveita os status já resolvidos do
+  funil (`respondido`/`agendado`/`perdido`) em vez de um campo novo, pra não ter dois conceitos de
+  "resolvido" divergindo. Contador de mensagens não lidas é a contagem de verdade por conversa
+  (incrementada pelo webhook), não só um booleano "tem não lida" — o Rafael pediu explicitamente
+  depois de ver a diferença num print da RoiZap.
+- **2026-09-15** (Rafael) [odontominas]: "Resumo Executivo" virou "Relatórios" — dashboard com
+  filtro de período, cards e gráficos, no estilo do "Painel Principal" da RoiZap. A tela Equipe
+  (antes item próprio no menu) virou uma aba dentro de Relatórios; a página `/equipe` continua
+  existindo, só saiu do menu lateral. Por quê: o Rafael pediu explicitamente pra reorganizar nesse
+  formato, comparando com a ferramenta de referência.
+- **2026-09-15** (Rafael) [odontominas]: dark mode funcional em todo o painel do CRM, construído
+  sobrescrevendo em `globals.css` as variáveis CSS que o Tailwind v4 já gera pra cada cor usada no
+  app, em vez de espalhar a classe `dark:` em cada uma das ~20 telas. Por quê: era o jeito de menor
+  risco/esforço de cobrir o painel inteiro de uma vez (confirmado o nome exato de cada variável no
+  CSS compilado antes de escrever, não foi suposição) — e o Rafael confirmou que queria "funcional
+  em tudo", não só o ícone do botão.
+- **2026-09-15** (Rafael) [odontominas]: a Conexão do WhatsApp ganhou um apelido interno editável
+  (`clinicas.apelido_instancia`) e um botão "Desconectar" de verdade (chama a Evolution API,
+  `DELETE /instance/logout`), ambos comparando com o rodapé de ações da RoiZap. Por quê: o "editar
+  nome" é só rótulo local pro CRM — o Rafael confirmou explicitamente que não queria mexer no
+  perfil real do WhatsApp. "Desconectar" foi pedido depois de eu ter deixado de fora por padrão
+  (ação real, derruba a sessão até escanear QR novo) — mantido com confirmação em modal antes de
+  executar, e sem os outros ícones da RoiZap (anunciar, agendar, excluir) que não têm
+  funcionalidade real por trás neste sistema.

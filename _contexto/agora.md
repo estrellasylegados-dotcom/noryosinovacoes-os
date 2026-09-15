@@ -11,10 +11,12 @@ conceito pra depois oferecer aos contatos do marido com outros dentistas (detalh
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
 demonstração ao vivo pro marido, não um documento formal. Fases 1-5 do CRM (painel, ficha,
-resumo, reativação automática) em produção. **V1 do painel incrementada e em produção de verdade
-(2026-09-15)** (a pedido do Rafael, "a Ariadna precisa ser impactada já na V1"): menu lateral,
-login individual por atendente, tela Equipe (atendimento por secretária), tela Conexão (status do
-WhatsApp + QR) — validado com login real de produção. Próximo passo: Fase 6 (demo pro marido).
+resumo, reativação automática) + V1 do painel (menu, login por atendente, Equipe, Conexão) em
+produção. **CRM ganhou Chat ao Vivo, Relatórios e dark mode em produção de verdade (2026-09-15)**
+(a pedido do Rafael, inspirado na RoiZap): inbox real com envio pelo painel, contador de mensagens
+não lidas, dashboard de relatórios com gráficos, tema claro/escuro em todo o painel, Conexão do
+WhatsApp com apelido interno e desconectar — detalhe completo em
+`clientes/odontominas/andamento.md`. Próximo passo: Fase 6 (demo pro marido).
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -43,10 +45,10 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 + V1 do painel (menu, login por
-  atendente, Equipe, Conexão) tudo validado em produção de verdade. Fase 6 (demo pro marido) é o
-  próximo passo. Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se
-  apaga ou mantém.
+- Cliente-piloto #1 (OdontoMinas): site no ar, CRM com Chat ao Vivo + Relatórios + dark mode +
+  Conexão redesenhada, tudo validado em produção de verdade. Fase 6 (demo pro marido) é o próximo
+  passo. Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou
+  mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).
