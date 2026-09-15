@@ -26,7 +26,7 @@ export type ModeloIA = {
 };
 
 export const CATALOGO_MODELOS: ModeloIA[] = [
-  { provider: "google", id: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash-Lite", gratis: true, envVar: "GOOGLE_API_KEY" },
+  { provider: "google", id: "gemini-flash-lite-latest", label: "Gemini Flash-Lite", gratis: true, envVar: "GOOGLE_API_KEY" },
   { provider: "groq", id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)", gratis: true, envVar: "GROQ_API_KEY" },
   { provider: "openai", id: "gpt-4o-mini", label: "GPT-4o mini", gratis: false, envVar: "OPENAI_API_KEY" },
   { provider: "anthropic", id: "claude-haiku-4-5", label: "Claude Haiku 4.5", gratis: false, envVar: "ANTHROPIC_API_KEY" },

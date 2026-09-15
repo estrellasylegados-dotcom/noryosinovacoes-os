@@ -16,7 +16,7 @@ function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
     ativo: true,
     etiquetaGatilhoId: "etiqueta-1",
     provider: "google",
-    modelo: "gemini-2.5-flash-lite",
+    modelo: "gemini-flash-lite-latest",
     promptSistema: "",
     temperatura: 0.7,
     maxTokens: 700,
