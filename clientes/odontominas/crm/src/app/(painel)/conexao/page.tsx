@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarQrCode, buscarStatusConexao } from "@/lib/evolution-status";
+import { buscarApelidoInstancia, getClinicaId } from "@/lib/clinica";
 import { formatDataHora, formatTelefone } from "@/lib/tempo";
+import { RodapeInstancia } from "@/components/RodapeInstancia";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +25,12 @@ export default async function ConexaoPage() {
     redirect("/");
   }
 
-  const status = await buscarStatusConexao();
-  const qr = status.conectado ? null : await buscarQrCode();
+  const [status, clinicaId] = await Promise.all([buscarStatusConexao(), getClinicaId()]);
+  const [qr, apelido] = await Promise.all([
+    status.conectado ? Promise.resolve(null) : buscarQrCode(),
+    clinicaId ? buscarApelidoInstancia(clinicaId) : Promise.resolve(null),
+  ]);
+  const nomeExibido = apelido || status.nome;
 
   return (
     <main className="px-4 py-8 sm:px-8">
@@ -43,7 +49,7 @@ export default async function ConexaoPage() {
                 <img src={status.foto} alt="" className="h-12 w-12 rounded-full object-cover" />
               ) : (
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-700 text-sm font-semibold text-white">
-                  {iniciais(status.nome)}
+                  {iniciais(nomeExibido)}
                 </div>
               )}
               <span
@@ -53,7 +59,7 @@ export default async function ConexaoPage() {
               />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-neutral-900">{status.nome || "WhatsApp"}</p>
+              <p className="truncate text-sm font-semibold text-neutral-900">{nomeExibido || "WhatsApp"}</p>
               {status.numero && <p className="truncate text-xs text-neutral-500">{formatTelefone(status.numero)}</p>}
             </div>
           </div>
@@ -77,8 +83,14 @@ export default async function ConexaoPage() {
             )}
           </div>
 
-          {(status.criadaEm || status.numero) && (
+          {(status.criadaEm || status.numero || status.nome) && (
             <dl className="mt-4 space-y-1.5 border-t border-neutral-100 pt-4 text-sm">
+              {status.nome && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-neutral-500">Nome de perfil (WhatsApp)</dt>
+                  <dd className="font-medium text-neutral-900">{status.nome}</dd>
+                </div>
+              )}
               {status.numero && (
                 <div className="flex justify-between gap-2">
                   <dt className="text-neutral-500">Número</dt>
@@ -93,6 +105,8 @@ export default async function ConexaoPage() {
               )}
             </dl>
           )}
+
+          <RodapeInstancia apelidoAtual={apelido} />
 
           {!status.conectado && qr?.qrDataUrl && (
             <div className="mt-5 flex flex-col items-center gap-3 border-t border-neutral-100 pt-5">

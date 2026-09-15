@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import type { Atendente } from "@/lib/atendentes";
 import {
   contarAbasChat,
@@ -16,13 +16,16 @@ import { formatHoraCurta, formatTelefone } from "@/lib/tempo";
 
 const INTERVALO_LISTA_MS = 8000;
 const INTERVALO_THREAD_MS = 4000;
+const CHAVE_LARGURA_LISTA = "chat-largura-lista";
+const LARGURA_MIN = 280;
+const LARGURA_MAX = 560;
+const LARGURA_PADRAO = 360;
 
-const ABAS: { valor: AbaChat; label: string }[] = [
-  { valor: "todos", label: "Todos" },
-  { valor: "nao_lidas", label: "Não lidas" },
-  { valor: "concluidos", label: "Concluídos" },
-  { valor: "atribuidos", label: "Atribuídos" },
-  { valor: "arquivadas", label: "Arquivadas" },
+const ABAS_PRINCIPAIS: { valor: Exclude<AbaChat, "arquivadas">; label: string; Icone: () => ReactNode }[] = [
+  { valor: "todos", label: "Todos", Icone: IconeTodos },
+  { valor: "nao_lidas", label: "Não lidas", Icone: IconeEnvelope },
+  { valor: "concluidos", label: "Concluídos", Icone: IconeCheckCirculo },
+  { valor: "atribuidos", label: "Atribuídos", Icone: IconePessoa },
 ];
 
 const CORES_AVATAR = ["bg-teal-600", "bg-blue-600", "bg-violet-600", "bg-rose-600", "bg-amber-600", "bg-emerald-600"];
@@ -94,6 +97,9 @@ export function ChatAoVivo({
   const [novoNomeEtiqueta, setNovoNomeEtiqueta] = useState("");
 
   const fimDaThreadRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const arrastandoRef = useRef(false);
+  const [larguraLista, setLarguraLista] = useState(LARGURA_PADRAO);
 
   const contagens = useMemo(() => contarAbasChat(conversas, atendenteAtualId), [conversas, atendenteAtualId]);
   const conversasFiltradas = useMemo(
@@ -148,6 +154,45 @@ export function ChatAoVivo({
   useEffect(() => {
     fimDaThreadRef.current?.scrollIntoView({ block: "end" });
   }, [mensagens, selecionadaId]);
+
+  // Largura da lista à esquerda é arrastável (a pedido do Rafael, "tela estática" ->
+  // ajustável) — carrega o valor salvo uma vez, só no cliente (evita divergir do SSR).
+  useEffect(() => {
+    const salva = localStorage.getItem(CHAVE_LARGURA_LISTA);
+    const numero = salva ? parseInt(salva, 10) : NaN;
+    if (!Number.isNaN(numero)) setLarguraLista(Math.min(LARGURA_MAX, Math.max(LARGURA_MIN, numero)));
+  }, []);
+
+  useEffect(() => {
+    function mover(e: MouseEvent) {
+      if (!arrastandoRef.current || !containerRef.current) return;
+      const inicioX = containerRef.current.getBoundingClientRect().left;
+      setLarguraLista(Math.min(LARGURA_MAX, Math.max(LARGURA_MIN, e.clientX - inicioX)));
+    }
+    function soltar() {
+      if (!arrastandoRef.current) return;
+      arrastandoRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      setLarguraLista((atual) => {
+        localStorage.setItem(CHAVE_LARGURA_LISTA, String(atual));
+        return atual;
+      });
+    }
+    document.addEventListener("mousemove", mover);
+    document.addEventListener("mouseup", soltar);
+    return () => {
+      document.removeEventListener("mousemove", mover);
+      document.removeEventListener("mouseup", soltar);
+    };
+  }, []);
+
+  function iniciarArraste(e: ReactMouseEvent) {
+    e.preventDefault();
+    arrastandoRef.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
 
   function selecionarConversa(c: ConversaChat) {
     setSelecionadaId(c.id);
@@ -236,9 +281,10 @@ export function ChatAoVivo({
   }
 
   return (
-    <div className="flex h-[calc(100vh-1px)] min-h-0 sm:h-screen">
+    <div ref={containerRef} className="flex h-[calc(100vh-1px)] min-h-0 sm:h-screen">
       <section
-        className={`flex w-full min-w-0 flex-col border-r border-neutral-200 bg-white sm:w-[360px] sm:shrink-0 ${
+        style={{ "--largura-lista": `${larguraLista}px` } as { [key: string]: string }}
+        className={`flex w-full min-w-0 flex-col border-r border-neutral-200 bg-white sm:w-[var(--largura-lista)] sm:shrink-0 ${
           selecionadaId ? "hidden sm:flex" : "flex"
         }`}
       >
@@ -267,46 +313,34 @@ export function ChatAoVivo({
           />
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-b border-neutral-200 px-4 py-3">
-          {ABAS.map((item) => (
-            <button
-              key={item.valor}
-              type="button"
-              onClick={() => setAba(item.valor)}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                aba === item.valor ? "bg-teal-700 text-white" : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-              }`}
+        <div className="flex items-center gap-1 border-b border-neutral-200 px-3 py-2">
+          {ABAS_PRINCIPAIS.map(({ valor, label, Icone }) => (
+            <BotaoIconeAba
+              key={valor}
+              label={label}
+              ativo={aba === valor}
+              contagem={contagens[valor]}
+              onClick={() => setAba(valor)}
             >
-              {item.label} <span className="opacity-70">{contagens[item.valor === "arquivadas" ? "arquivadas" : item.valor]}</span>
-            </button>
+              <Icone />
+            </BotaoIconeAba>
           ))}
-        </div>
 
-        <div className="flex gap-2 border-b border-neutral-200 px-4 py-2">
-          <select
-            value={filtroPrioridade}
-            onChange={(e) => setFiltroPrioridade(e.target.value as Prioridade | "")}
-            className="flex-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs text-neutral-600 outline-none"
-          >
-            <option value="">Toda prioridade</option>
-            {PRIORIDADE_ORDEM.map((p) => (
-              <option key={p} value={p}>
-                {PRIORIDADE_CONFIG[p].label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filtroEtiquetaId}
-            onChange={(e) => setFiltroEtiquetaId(e.target.value)}
-            className="flex-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs text-neutral-600 outline-none"
-          >
-            <option value="">Toda etiqueta</option>
-            {etiquetas.map((et) => (
-              <option key={et.id} value={et.id}>
-                {et.nome}
-              </option>
-            ))}
-          </select>
+          <div className="mx-1 h-6 w-px shrink-0 bg-neutral-200" />
+
+          <FiltroPrioridadeBotao valor={filtroPrioridade} onChange={setFiltroPrioridade} />
+          <FiltroEtiquetaBotao etiquetas={etiquetas} valor={filtroEtiquetaId} onChange={setFiltroEtiquetaId} />
+
+          <div className="ml-auto flex items-center gap-1">
+            <BotaoIconeAba
+              label="Arquivadas"
+              ativo={aba === "arquivadas"}
+              contagem={contagens.arquivadas}
+              onClick={() => setAba(aba === "arquivadas" ? "todos" : "arquivadas")}
+            >
+              <IconeArquivo />
+            </BotaoIconeAba>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -356,6 +390,12 @@ export function ChatAoVivo({
           ))}
         </div>
       </section>
+
+      <div
+        onMouseDown={iniciarArraste}
+        title="Arrastar pra redimensionar"
+        className="hidden w-1.5 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-teal-200 active:bg-teal-400 sm:block"
+      />
 
       <section className={`min-h-0 min-w-0 flex-1 flex-col bg-neutral-50 ${selecionadaId ? "flex" : "hidden sm:flex"}`}>
         {!selecionada ? (
@@ -557,6 +597,258 @@ function otimista(patch: Record<string, unknown>, atendentes: Atendente[]) {
     extra.atribuidoANome = atendentes.find((a) => a.id === patch.atribuidoAId)?.nome ?? null;
   }
   return extra;
+}
+
+/** Botão de ícone com contador — usado nas abas e em Arquivadas, mesma cara da RoiZap (ícone + número, não texto). */
+function BotaoIconeAba({
+  label,
+  ativo,
+  contagem,
+  onClick,
+  children,
+}: {
+  label: string;
+  ativo: boolean;
+  contagem: number;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      onClick={onClick}
+      className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+        ativo ? "bg-teal-700 text-white" : "text-neutral-500 hover:bg-neutral-100"
+      }`}
+    >
+      {children}
+      {contagem > 0 && (
+        <span
+          className={`absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold ${
+            ativo ? "bg-white text-teal-700" : "bg-red-500 text-white"
+          }`}
+        >
+          {contagem > 99 ? "99+" : contagem}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Hook mínimo de popover (fecha ao clicar fora) — usado nos 2 filtros abaixo, não vale abstrair mais que isto por só 2 usos. */
+function usePopoverFechavel<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => {
+    if (!aberto) return;
+    function fechar(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", fechar);
+    return () => document.removeEventListener("mousedown", fechar);
+  }, [aberto]);
+
+  return { ref, aberto, setAberto };
+}
+
+function FiltroPrioridadeBotao({
+  valor,
+  onChange,
+}: {
+  valor: Prioridade | "";
+  onChange: (v: Prioridade | "") => void;
+}) {
+  const { ref, aberto, setAberto } = usePopoverFechavel<HTMLDivElement>();
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Filtrar por prioridade"
+        onClick={() => setAberto((v) => !v)}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          valor ? "bg-teal-50 text-teal-700" : "text-neutral-500 hover:bg-neutral-100"
+        }`}
+      >
+        <IconeBandeira />
+      </button>
+      {aberto && (
+        <div className="absolute left-0 top-11 z-20 w-52 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg">
+          <p className="mb-1 px-2 pt-1 text-xs font-medium text-neutral-500">Filtrar por prioridade</p>
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setAberto(false);
+            }}
+            className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${!valor ? "bg-neutral-100" : "hover:bg-neutral-50"}`}
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+            Toda prioridade
+          </button>
+          {PRIORIDADE_ORDEM.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => {
+                onChange(valor === p ? "" : p);
+                setAberto(false);
+              }}
+              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${valor === p ? "bg-teal-50" : "hover:bg-neutral-50"}`}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${PRIORIDADE_CONFIG[p].corPonto}`} />
+              {PRIORIDADE_CONFIG[p].label}
+              {valor === p && (
+                <span className="ml-auto text-teal-700">
+                  <IconeCheckMini />
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FiltroEtiquetaBotao({
+  etiquetas,
+  valor,
+  onChange,
+}: {
+  etiquetas: Etiqueta[];
+  valor: string;
+  onChange: (v: string) => void;
+}) {
+  const { ref, aberto, setAberto } = usePopoverFechavel<HTMLDivElement>();
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        title="Filtrar por etiquetas"
+        onClick={() => setAberto((v) => !v)}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          valor ? "bg-teal-50 text-teal-700" : "text-neutral-500 hover:bg-neutral-100"
+        }`}
+      >
+        <IconeEtiqueta />
+      </button>
+      {aberto && (
+        <div className="absolute left-0 top-11 z-20 w-56 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg">
+          <p className="mb-1 px-2 pt-1 text-xs font-medium text-neutral-500">Filtrar por etiquetas</p>
+          {etiquetas.length === 0 ? (
+            <p className="px-2 py-2 text-xs text-neutral-400">Nenhuma etiqueta criada ainda.</p>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("");
+                  setAberto(false);
+                }}
+                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${!valor ? "bg-neutral-100" : "hover:bg-neutral-50"}`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+                Toda etiqueta
+              </button>
+              {etiquetas.map((et) => (
+                <button
+                  key={et.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(valor === et.id ? "" : et.id);
+                    setAberto(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${valor === et.id ? "bg-teal-50" : "hover:bg-neutral-50"}`}
+                >
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: et.cor }} />
+                  <span className="truncate">{et.nome}</span>
+                  {valor === et.id && (
+                    <span className="ml-auto shrink-0 text-teal-700">
+                      <IconeCheckMini />
+                    </span>
+                  )}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IconeTodos() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 20l1.1-5.4A8.5 8.5 0 1 1 21 11.5Z" />
+    </svg>
+  );
+}
+
+function IconeEnvelope() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
+function IconeCheckCirculo() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+    </svg>
+  );
+}
+
+function IconePessoa() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+    </svg>
+  );
+}
+
+function IconeArquivo() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="4" width="18" height="5" rx="1" />
+      <path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4" />
+    </svg>
+  );
+}
+
+function IconeBandeira() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M5 21V4" />
+      <path d="M5 4h13l-3 4 3 4H5" />
+    </svg>
+  );
+}
+
+function IconeEtiqueta() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12.6 3.5 20 4l.5 7.4-9.1 9.1a1.5 1.5 0 0 1-2.1 0L3.5 14.7a1.5 1.5 0 0 1 0-2.1Z" />
+      <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconeCheckMini() {
+  return (
+    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5}>
+      <path d="m5 12.5 4.5 4.5L19 7" />
+    </svg>
+  );
 }
 
 function NovaConversaModal({ onFechar, onCriada }: { onFechar: () => void; onCriada: (conversaId: string) => void }) {

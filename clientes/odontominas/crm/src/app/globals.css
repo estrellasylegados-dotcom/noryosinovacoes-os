@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/**
+ * Dark mode (2026-09-15, a pedido do Rafael): em vez de espalhar `dark:` em
+ * ~20 telas, sobrescreve aqui as variáveis CSS que o Tailwind v4 já gera pra
+ * cada cor usada no app (`--color-neutral-50`, `--color-white`, etc. — o
+ * v4 expõe a paleta inteira como custom property, é assim que a própria
+ * documentação recomenda temear). Toda classe `bg-neutral-50`/`text-teal-700`/
+ * `ring-red-600` etc. já espalhada pelo código passa a responder ao tema
+ * sozinha, sem precisar editar cada componente. A classe `.dark` na tag
+ * `<html>` é ligada pelo ThemeToggle (localStorage) — não é
+ * `prefers-color-scheme` automático, é escolha da pessoa, com um script
+ * pequeno em `layout.tsx` que aplica a classe antes do 1º paint (sem
+ * flash). Confirmado o nome exato de cada variável no CSS compilado antes
+ * de escrever isto (não foi chute).
+ */
+.dark {
+  --color-white: #1e1e1e;
+  --color-black: #000000;
+
+  --color-neutral-50: #121212;
+  --color-neutral-100: #262626;
+  --color-neutral-200: #3a3a3a;
+  --color-neutral-300: #4d4d4d;
+  --color-neutral-400: #8a8a8a;
+  --color-neutral-500: #a3a3a3;
+  --color-neutral-600: #b8b8b8;
+  --color-neutral-700: #d4d4d4;
+  --color-neutral-800: #e5e5e5;
+  --color-neutral-900: #f5f5f5;
+
+  --color-teal-50: #0d2c29;
+  --color-teal-100: #99f6e4;
+  --color-teal-600: #2dd4bf;
+  --color-teal-700: #14b8a6;
+  --color-teal-800: #5eead4;
+
+  --color-red-50: #450a0a;
+  --color-red-300: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+
+  --color-amber-50: #451a03;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+
+  --color-emerald-50: #052e16;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+
+  --color-blue-50: #172554;
+  --color-blue-600: #60a5fa;
+  --color-blue-700: #93c5fd;
+
+  --color-orange-50: #431407;
+  --color-orange-500: #f97316;
+  --color-orange-600: #fb923c;
+  --color-orange-700: #fdba74;
+
+  --color-violet-600: #a78bfa;
+  --color-rose-600: #fb7185;
+
+  /* Séries dos gráficos (src/components/relatorios/BarChart.tsx) — passos
+     escuros já validados pela skill de dataviz (references/palette.md),
+     não é chute. */
+  --chart-series-a: #3987e5;
+  --chart-series-b: #d95926;
+}
+
+:root {
+  --chart-series-a: #2a78d6;
+  --chart-series-b: #eb6834;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-900);
   font-family: Arial, Helvetica, sans-serif;
 }

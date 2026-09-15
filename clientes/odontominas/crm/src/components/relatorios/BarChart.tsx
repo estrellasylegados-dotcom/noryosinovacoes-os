@@ -2,13 +2,16 @@
  * Gráfico de barras (1 ou 2 séries) em SVG puro — zero dependência nova,
  * mesmo padrão já usado no resto do CRM. Cores validadas pra acessibilidade
  * (contraste + separação por daltonismo) via a skill de dataviz: slot 1 azul
- * `#2a78d6`, slot 2 laranja `#eb6834` — ordem fixa em todo gráfico do painel,
- * nunca trocada por gráfico (ver skill: "assign categorical hues in fixed
- * order, never cycled").
+ * `#2a78d6`/`#3987e5` (claro/escuro), slot 2 laranja `#eb6834`/`#d95926` —
+ * ordem fixa em todo gráfico do painel, nunca trocada por gráfico (ver
+ * skill: "assign categorical hues in fixed order, never cycled"). Os
+ * valores de verdade ficam em `--chart-series-a`/`-b` (globals.css, com o
+ * par escuro validado à parte pra dark mode) — os nomes aqui só apontam
+ * pra lá, pra não duplicar a cor em dois lugares.
  */
 
-export const COR_SERIE_A = "#2a78d6";
-export const COR_SERIE_B = "#eb6834";
+export const COR_SERIE_A = "var(--chart-series-a)";
+export const COR_SERIE_B = "var(--chart-series-b)";
 
 type Serie = { label: string; cor: string; valores: number[] };
 
@@ -75,7 +78,7 @@ export function BarChart({
                         width={Math.max(barraLargura, 4)}
                         height={Math.max(alturaBarra, 0)}
                         rx={3}
-                        fill={s.cor}
+                        style={{ fill: s.cor }}
                       >
                         <title>{`${cat} · ${s.label}: ${valor}`}</title>
                       </rect>

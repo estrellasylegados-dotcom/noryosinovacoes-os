@@ -43,3 +43,36 @@ export async function getClinicaId(): Promise<string | null> {
   cachedId = data.id as string;
   return cachedId;
 }
+
+/**
+ * Apelido interno da instância de WhatsApp (sidebar + página Conexão) —
+ * nunca é enviado pra Evolution API, é só rótulo local (migração
+ * 2026-09-15_v7_apelido_instancia.sql). null = ainda não definido, o app
+ * cai no profileName real do WhatsApp.
+ */
+export async function buscarApelidoInstancia(clinicaId: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.from("clinicas").select("apelido_instancia").eq("id", clinicaId).maybeSingle();
+  if (error || !data) return null;
+
+  return (data.apelido_instancia as string | null) ?? null;
+}
+
+export async function salvarApelidoInstancia(
+  clinicaId: string,
+  apelidoBruto: string
+): Promise<{ ok: boolean; error?: string }> {
+  const apelido = apelidoBruto.trim();
+  if (!apelido) return { ok: false, error: "nome_vazio" };
+  if (apelido.length > 60) return { ok: false, error: "nome_muito_longo" };
+
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const { error } = await supabase.from("clinicas").update({ apelido_instancia: apelido }).eq("id", clinicaId);
+  if (error) return { ok: false, error: "update_failed" };
+
+  return { ok: true };
+}

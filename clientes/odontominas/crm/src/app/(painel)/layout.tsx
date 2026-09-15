@@ -2,19 +2,24 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatusConexao } from "@/lib/evolution-status";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarApelidoInstancia, getClinicaId } from "@/lib/clinica";
 import { contarNaoLidas } from "@/lib/chat";
+import { buscarNotificacoes } from "@/lib/notificacoes";
 import { formatTelefone } from "@/lib/tempo";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LogoutButton } from "@/components/LogoutButton";
 import { SidebarNav } from "@/components/SidebarNav";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Notificacoes } from "@/components/Notificacoes";
 
 /**
  * Casca visual de todo o painel logado: menu lateral (nav + status de
- * conexão do WhatsApp + identidade de quem entrou), aplicada via route group
- * a todas as páginas protegidas (o middleware já barra sem sessão — este
- * redirect aqui é defesa em profundidade, um Server Component não confia
- * cegamente no header de quem chamou).
+ * conexão do WhatsApp + identidade de quem entrou) + barra superior (tema,
+ * notificações, nome de quem está logado — nessa ordem, a pedido do Rafael,
+ * inspirado na RoiZap). Aplicada via route group a todas as páginas
+ * protegidas (o middleware já barra sem sessão — este redirect aqui é
+ * defesa em profundidade, um Server Component não confia cegamente no
+ * header de quem chamou).
  */
 export default async function PainelLayout({ children }: { children: ReactNode }) {
   const [sessao, statusConexao] = await Promise.all([getSessaoAtual(), buscarStatusConexao()]);
@@ -22,7 +27,11 @@ export default async function PainelLayout({ children }: { children: ReactNode }
   if (!sessao) redirect("/login");
 
   const clinicaId = await getClinicaId();
-  const naoLidas = clinicaId ? await contarNaoLidas(clinicaId) : 0;
+  const [naoLidas, notificacoes, apelidoInstancia] = await Promise.all([
+    clinicaId ? contarNaoLidas(clinicaId) : Promise.resolve(0),
+    clinicaId ? buscarNotificacoes(clinicaId) : Promise.resolve([]),
+    clinicaId ? buscarApelidoInstancia(clinicaId) : Promise.resolve(null),
+  ]);
 
   return (
     <div className="min-h-screen bg-neutral-50 sm:flex">
@@ -50,7 +59,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-neutral-700">
                 {statusConexao.conectado
-                  ? statusConexao.nome || "WhatsApp conectado"
+                  ? apelidoInstancia || statusConexao.nome || "WhatsApp conectado"
                   : statusConexao.conectado === false
                     ? "WhatsApp desconectado"
                     : "WhatsApp — sem status"}
@@ -74,7 +83,14 @@ export default async function PainelLayout({ children }: { children: ReactNode }
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-end gap-1 border-b border-neutral-200 bg-white px-4 py-2 sm:px-6">
+          <ThemeToggle />
+          <Notificacoes inicial={notificacoes} />
+          <span className="ml-1 truncate text-sm font-medium text-neutral-700">{sessao.nome}</span>
+        </header>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </div>
   );
 }
