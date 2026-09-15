@@ -250,7 +250,7 @@ export async function POST(request: Request) {
       );
 
       if (deveIaResponder) {
-        const resultado = await responderComoAgente(clinicaId, conversaId as string, conteudo);
+        const resultado = await responderComoAgente(clinicaId, conversaId as string, conteudo, !pacienteExistente);
         if (!resultado.ok) {
           console.error("[webhook/evolution] agente_ia_failed", JSON.stringify({ conversaId, error: resultado.error ?? null }));
         }

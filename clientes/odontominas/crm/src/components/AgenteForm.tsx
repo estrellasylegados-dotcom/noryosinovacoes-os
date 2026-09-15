@@ -44,7 +44,23 @@ export function AgenteForm({
   const [qtdHistorico, setQtdHistorico] = useState(agente?.qtdHistorico ?? 10);
   const [pausarAoResponderHumano, setPausarAoResponderHumano] = useState(agente?.pausarAoResponderHumano ?? true);
   const [tempoPausaMin, setTempoPausaMin] = useState(agente?.tempoPausaMin ?? 480);
+
+  const [responderApenasHorario, setResponderApenasHorario] = useState(agente?.responderApenasHorario ?? false);
+  const [horarioInicio, setHorarioInicio] = useState(agente?.horarioInicio ?? "08:00");
+  const [horarioFim, setHorarioFim] = useState(agente?.horarioFim ?? "18:00");
+  const [maxCaracteresResposta, setMaxCaracteresResposta] = useState(agente?.maxCaracteresResposta ?? 0);
+  const [pausarAposConcluirFluxo, setPausarAposConcluirFluxo] = useState(agente?.pausarAposConcluirFluxo ?? false);
+  const [dividirEmMensagensCurtas, setDividirEmMensagensCurtas] = useState(agente?.dividirEmMensagensCurtas ?? false);
+
+  const [ativarTransferencia, setAtivarTransferencia] = useState(agente?.ativarTransferencia ?? false);
   const [mensagemTransferencia, setMensagemTransferencia] = useState(agente?.mensagemTransferencia ?? "");
+
+  const [notificarNumeros, setNotificarNumeros] = useState(agente?.notificarNumeros ?? "");
+  const [notificarPedidoHumano, setNotificarPedidoHumano] = useState(agente?.notificarPedidoHumano ?? true);
+  const [notificarFallback, setNotificarFallback] = useState(agente?.notificarFallback ?? false);
+  const [notificarIntencaoCompra, setNotificarIntencaoCompra] = useState(agente?.notificarIntencaoCompra ?? false);
+  const [notificarNovoLead, setNotificarNovoLead] = useState(agente?.notificarNovoLead ?? false);
+  const [mensagemNotificacao, setMensagemNotificacao] = useState(agente?.mensagemNotificacao ?? "");
 
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -92,6 +108,19 @@ export function AgenteForm({
       pausarAoResponderHumano,
       tempoPausaMin,
       mensagemTransferencia: mensagemTransferencia || null,
+      responderApenasHorario,
+      horarioInicio: responderApenasHorario ? horarioInicio : null,
+      horarioFim: responderApenasHorario ? horarioFim : null,
+      maxCaracteresResposta: maxCaracteresResposta > 0 ? maxCaracteresResposta : null,
+      pausarAposConcluirFluxo,
+      dividirEmMensagensCurtas,
+      ativarTransferencia,
+      notificarNumeros: notificarNumeros || null,
+      notificarPedidoHumano,
+      notificarFallback,
+      notificarIntencaoCompra,
+      notificarNovoLead,
+      mensagemNotificacao: mensagemNotificacao || null,
     };
 
     try {
@@ -211,6 +240,25 @@ export function AgenteForm({
             />
           </Campo>
         </div>
+
+        <div className="mt-4 border-t border-neutral-100 pt-4">
+          <Toggle
+            label="Responder somente em horário de atendimento"
+            descricao="Fora desse horário, o agente não responde — a mensagem fica visível no Chat ao Vivo pra tratar depois."
+            valor={responderApenasHorario}
+            onChange={setResponderApenasHorario}
+          />
+          {responderApenasHorario && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Campo label="Início">
+                <input type="time" value={horarioInicio} onChange={(e) => setHorarioInicio(e.target.value)} className={campoClasses} />
+              </Campo>
+              <Campo label="Fim">
+                <input type="time" value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} className={campoClasses} />
+              </Campo>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5">
@@ -264,15 +312,117 @@ export function AgenteForm({
             </Campo>
           )}
 
-          <Campo label="Mensagem de transferência (opcional)">
+          <Toggle
+            label="Pausar agente após concluir o atendimento"
+            descricao="Quando a conversa chega a Respondido, Agendado ou Perdido, o agente para de escutar essa conversa até a etiqueta ser aplicada de novo."
+            valor={pausarAposConcluirFluxo}
+            onChange={setPausarAposConcluirFluxo}
+          />
+
+          <Campo label="Tamanho máximo da resposta (caracteres, 0 = sem limite)">
+            <input
+              type="number"
+              min={0}
+              value={maxCaracteresResposta}
+              onChange={(e) => setMaxCaracteresResposta(Number(e.target.value))}
+              className={`${campoClasses} max-w-[10rem]`}
+            />
+          </Campo>
+
+          <Toggle
+            label="Dividir resposta em mensagens curtas"
+            descricao="Em vez de mandar um bloco só, parte a resposta em até algumas bolhas (o campo 'Máximo de mensagens por resposta' acima define quantas)."
+            valor={dividirEmMensagensCurtas}
+            onChange={setDividirEmMensagensCurtas}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-neutral-900">Transferência para Humano</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          Se o paciente pedir explicitamente pra falar com uma pessoa (palavras como
+          &quot;atendente&quot;, &quot;humano&quot;, &quot;recepcionista&quot;), o agente para de
+          responder essa conversa e manda a mensagem abaixo em vez de chamar a IA.
+        </p>
+        <Toggle
+          label="Ativar transferência"
+          descricao="A IA identifica o pedido do cliente e entrega a conversa"
+          valor={ativarTransferencia}
+          onChange={setAtivarTransferencia}
+        />
+        {ativarTransferencia && (
+          <div className="mt-3">
+            <Campo label="Mensagem de transferência">
+              <textarea
+                value={mensagemTransferencia}
+                onChange={(e) => setMensagemTransferencia(e.target.value)}
+                rows={2}
+                placeholder="Ex.: Já te encaminho pra nossa equipe, um momento 🙏"
+                className={campoClasses}
+              />
+            </Campo>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-neutral-900">Avisar Membro da Equipe</h2>
+        <p className="mb-3 text-xs text-neutral-500">
+          Manda uma notificação via WhatsApp pra um número interno quando alguma das situações
+          abaixo acontecer.
+        </p>
+        <Campo label="Números para notificação (separados por vírgula)">
+          <input
+            type="text"
+            value={notificarNumeros}
+            onChange={(e) => setNotificarNumeros(e.target.value)}
+            placeholder="5561999990000, 5561988880000"
+            className={campoClasses}
+          />
+        </Campo>
+
+        <div className="mt-4 space-y-4">
+          <Toggle
+            label="Pedido de atendimento humano"
+            descricao="Quando o cliente pede pra falar com humano, ou ativa a Transferência acima."
+            valor={notificarPedidoHumano}
+            onChange={setNotificarPedidoHumano}
+          />
+          <Toggle
+            label="IA não sabe responder (fallback)"
+            descricao="A própria IA não conseguiu gerar uma resposta."
+            valor={notificarFallback}
+            onChange={setNotificarFallback}
+          />
+          <Toggle
+            label="Intenção de agendar / comprar"
+            descricao="Detecta intenção clara de agendar consulta ou saber preço pelo contexto da mensagem."
+            valor={notificarIntencaoCompra}
+            onChange={setNotificarIntencaoCompra}
+          />
+          <Toggle
+            label="Primeiro contato de novo lead"
+            descricao="Dispara apenas na primeira mensagem de um contato novo."
+            valor={notificarNovoLead}
+            onChange={setNotificarNovoLead}
+          />
+        </div>
+
+        <div className="mt-4">
+          <Campo label="Mensagem de notificação">
             <textarea
-              value={mensagemTransferencia}
-              onChange={(e) => setMensagemTransferencia(e.target.value)}
-              rows={2}
-              placeholder="Ex.: Já te encaminho pra nossa equipe, um momento 🙏"
+              value={mensagemNotificacao}
+              onChange={(e) => setMensagemNotificacao(e.target.value)}
+              rows={3}
+              placeholder={"🔔 {motivo}\n👤 {nome}\n📱 {telefone}\n💬 \"{resumo}\""}
               className={campoClasses}
             />
           </Campo>
+          <p className="mt-1 text-xs text-neutral-400">
+            Variáveis disponíveis: <code>{"{motivo}"}</code>, <code>{"{nome}"}</code>,{" "}
+            <code>{"{telefone}"}</code>, <code>{"{resumo}"}</code>
+          </p>
         </div>
       </section>
 

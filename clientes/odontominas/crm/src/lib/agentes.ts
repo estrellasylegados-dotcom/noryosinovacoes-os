@@ -1,8 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { decidirTransicaoWebhook } from "@/lib/funil";
-import { isStatusValido, type StatusConversa } from "@/lib/status";
+import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } from "@/lib/ia-provedores";
+import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@/lib/agentes-notificacoes";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -16,12 +17,13 @@ import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } 
  * orquestração — mesmo formato de reativacao.ts (ler Supabase → gerar →
  * enviar → gravar), chamada pelo webhook quando `deveResponder` diz sim.
  *
- * `max_mensagens_resposta` existe no schema mas ainda não parte a resposta
- * em várias bolhas do WhatsApp (fica pra quando isso virar prioridade —
- * mesmo espírito de `consultas` na Fase 4: campo pronto, comportamento
- * depois). `mensagem_transferencia` também é só armazenado por enquanto —
- * detectar intenção de "quero falar com humano" no texto do paciente é
- * lógica nova, fora do V1.
+ * Fase 2A (a pedido do Rafael, depois de comparar com o print completo da
+ * RoiZap de novo): horário de atendimento, tamanho máximo da resposta,
+ * dividir em mensagens curtas, pausar após concluir o fluxo, transferência
+ * pra humano real (detecção por palavra-chave — src/lib/agentes-notificacoes.ts
+ * — não por IA, fica determinístico e testável) e "Avisar Membro da Equipe"
+ * (a rede de segurança: notifica um número interno em 4 situações). Buffer
+ * de mensagens fica pra Fase 2B, é a única mudança de arquitetura do grupo.
  */
 
 export type AgenteIA = {
@@ -42,6 +44,19 @@ export type AgenteIA = {
   pausarAoResponderHumano: boolean;
   tempoPausaMin: number;
   mensagemTransferencia: string | null;
+  responderApenasHorario: boolean;
+  horarioInicio: string | null;
+  horarioFim: string | null;
+  maxCaracteresResposta: number | null;
+  pausarAposConcluirFluxo: boolean;
+  dividirEmMensagensCurtas: boolean;
+  ativarTransferencia: boolean;
+  notificarNumeros: string | null;
+  notificarPedidoHumano: boolean;
+  notificarFallback: boolean;
+  notificarIntencaoCompra: boolean;
+  notificarNovoLead: boolean;
+  mensagemNotificacao: string | null;
 };
 
 export type DadosAgente = {
@@ -59,10 +74,24 @@ export type DadosAgente = {
   pausarAoResponderHumano?: boolean;
   tempoPausaMin?: number;
   mensagemTransferencia?: string | null;
+  responderApenasHorario?: boolean;
+  horarioInicio?: string | null;
+  horarioFim?: string | null;
+  maxCaracteresResposta?: number | null;
+  pausarAposConcluirFluxo?: boolean;
+  dividirEmMensagensCurtas?: boolean;
+  ativarTransferencia?: boolean;
+  notificarNumeros?: string | null;
+  notificarPedidoHumano?: boolean;
+  notificarFallback?: boolean;
+  notificarIntencaoCompra?: boolean;
+  notificarNovoLead?: boolean;
+  mensagemNotificacao?: string | null;
 };
 
 const SELECT_AGENTE =
-  "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia";
+  "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
+  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAgente(row: any): AgenteIA {
@@ -84,6 +113,19 @@ function mapAgente(row: any): AgenteIA {
     pausarAoResponderHumano: row.pausar_ao_responder_humano,
     tempoPausaMin: row.tempo_pausa_min,
     mensagemTransferencia: row.mensagem_transferencia ?? null,
+    responderApenasHorario: row.responder_apenas_horario ?? false,
+    horarioInicio: row.horario_inicio ?? null,
+    horarioFim: row.horario_fim ?? null,
+    maxCaracteresResposta: row.max_caracteres_resposta ?? null,
+    pausarAposConcluirFluxo: row.pausar_apos_concluir_fluxo ?? false,
+    dividirEmMensagensCurtas: row.dividir_em_mensagens_curtas ?? false,
+    ativarTransferencia: row.ativar_transferencia ?? false,
+    notificarNumeros: row.notificar_numeros ?? null,
+    notificarPedidoHumano: row.notificar_pedido_humano ?? true,
+    notificarFallback: row.notificar_fallback ?? false,
+    notificarIntencaoCompra: row.notificar_intencao_compra ?? false,
+    notificarNovoLead: row.notificar_novo_lead ?? false,
+    mensagemNotificacao: row.mensagem_notificacao ?? null,
   };
 }
 
@@ -110,6 +152,19 @@ function payloadDados(dados: DadosAgente) {
     pausar_ao_responder_humano: dados.pausarAoResponderHumano ?? true,
     tempo_pausa_min: dados.tempoPausaMin ?? 480,
     mensagem_transferencia: dados.mensagemTransferencia?.trim() || null,
+    responder_apenas_horario: dados.responderApenasHorario ?? false,
+    horario_inicio: dados.horarioInicio || null,
+    horario_fim: dados.horarioFim || null,
+    max_caracteres_resposta: dados.maxCaracteresResposta ?? null,
+    pausar_apos_concluir_fluxo: dados.pausarAposConcluirFluxo ?? false,
+    dividir_em_mensagens_curtas: dados.dividirEmMensagensCurtas ?? false,
+    ativar_transferencia: dados.ativarTransferencia ?? false,
+    notificar_numeros: dados.notificarNumeros?.trim() || null,
+    notificar_pedido_humano: dados.notificarPedidoHumano ?? true,
+    notificar_fallback: dados.notificarFallback ?? false,
+    notificar_intencao_compra: dados.notificarIntencaoCompra ?? false,
+    notificar_novo_lead: dados.notificarNovoLead ?? false,
+    mensagem_notificacao: dados.mensagemNotificacao?.trim() || null,
   };
 }
 
@@ -188,6 +243,19 @@ export async function atualizarAgente(
     pausarAoResponderHumano: dados.pausarAoResponderHumano ?? atual.pausarAoResponderHumano,
     tempoPausaMin: dados.tempoPausaMin ?? atual.tempoPausaMin,
     mensagemTransferencia: dados.mensagemTransferencia !== undefined ? dados.mensagemTransferencia : atual.mensagemTransferencia,
+    responderApenasHorario: dados.responderApenasHorario ?? atual.responderApenasHorario,
+    horarioInicio: dados.horarioInicio !== undefined ? dados.horarioInicio : atual.horarioInicio,
+    horarioFim: dados.horarioFim !== undefined ? dados.horarioFim : atual.horarioFim,
+    maxCaracteresResposta: dados.maxCaracteresResposta !== undefined ? dados.maxCaracteresResposta : atual.maxCaracteresResposta,
+    pausarAposConcluirFluxo: dados.pausarAposConcluirFluxo ?? atual.pausarAposConcluirFluxo,
+    dividirEmMensagensCurtas: dados.dividirEmMensagensCurtas ?? atual.dividirEmMensagensCurtas,
+    ativarTransferencia: dados.ativarTransferencia ?? atual.ativarTransferencia,
+    notificarNumeros: dados.notificarNumeros !== undefined ? dados.notificarNumeros : atual.notificarNumeros,
+    notificarPedidoHumano: dados.notificarPedidoHumano ?? atual.notificarPedidoHumano,
+    notificarFallback: dados.notificarFallback ?? atual.notificarFallback,
+    notificarIntencaoCompra: dados.notificarIntencaoCompra ?? atual.notificarIntencaoCompra,
+    notificarNovoLead: dados.notificarNovoLead ?? atual.notificarNovoLead,
+    mensagemNotificacao: dados.mensagemNotificacao !== undefined ? dados.mensagemNotificacao : atual.mensagemNotificacao,
   };
 
   const erroValidacao = validarDados(mesclado);
@@ -261,6 +329,19 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
     pausarAoResponderHumano: original.pausarAoResponderHumano,
     tempoPausaMin: original.tempoPausaMin,
     mensagemTransferencia: original.mensagemTransferencia,
+    responderApenasHorario: original.responderApenasHorario,
+    horarioInicio: original.horarioInicio,
+    horarioFim: original.horarioFim,
+    maxCaracteresResposta: original.maxCaracteresResposta,
+    pausarAposConcluirFluxo: original.pausarAposConcluirFluxo,
+    dividirEmMensagensCurtas: original.dividirEmMensagensCurtas,
+    ativarTransferencia: original.ativarTransferencia,
+    notificarNumeros: original.notificarNumeros,
+    notificarPedidoHumano: original.notificarPedidoHumano,
+    notificarFallback: original.notificarFallback,
+    notificarIntencaoCompra: original.notificarIntencaoCompra,
+    notificarNovoLead: original.notificarNovoLead,
+    mensagemNotificacao: original.mensagemNotificacao,
   });
 }
 
@@ -284,6 +365,43 @@ export function deveResponder(
   if (!conversa.agenteAtivoId) return false;
   if (conversa.agentePausadoAte && new Date(conversa.agentePausadoAte).getTime() > agora.getTime()) return false;
   return true;
+}
+
+/** Hora atual em "HH:MM", fuso fixo de Brasília — mesmo padrão de `formatHoraCurta` em tempo.ts. */
+export function horaAtualBrasilia(agora: Date): string {
+  return agora.toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/** Sem horário configurado, o agente responde a qualquer hora (comportamento de hoje). */
+export function dentroDoHorario(horaAtual: string, inicio: string | null, fim: string | null): boolean {
+  if (!inicio || !fim) return true;
+  return horaAtual >= inicio && horaAtual < fim;
+}
+
+/**
+ * Divide o texto em até `maxBlocos` mensagens curtas (parágrafo, ou frase se
+ * não tiver parágrafo) — "Comportamento conversacional"/"máximo de
+ * mensagens por resposta" do print de referência. Blocos que sobrarem além
+ * do teto voltam a ser juntados no último bloco, nunca cortados.
+ */
+export function dividirMensagem(texto: string, maxBlocos: number): string[] {
+  const limite = Math.max(1, maxBlocos);
+  const porParagrafo = texto
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  const blocos = porParagrafo.length > 1 ? porParagrafo : texto.split(/(?<=[.!?])\s+/).map((b) => b.trim()).filter(Boolean);
+
+  if (blocos.length <= limite) return blocos.length > 0 ? blocos : [texto.trim()];
+
+  const inicio = blocos.slice(0, limite - 1);
+  const resto = blocos.slice(limite - 1).join(" ");
+  return [...inicio, resto];
 }
 
 /**
@@ -312,23 +430,112 @@ export async function pausarAgenteSeConfigurado(clinicaId: string, conversaId: s
   }
 }
 
+const MENSAGEM_TRANSFERENCIA_PADRAO = "Já vou te encaminhar pra nossa equipe, um momento 🙏";
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Manda um ou mais blocos de texto em sequência (mesma conversa) e grava
+ * cada um como mensagem gerada pelo agente. Só a 1ª falha de envio derruba o
+ * resultado — bolha seguinte que falhar só fica logada (o essencial, a
+ * resposta, já saiu).
+ */
+async function enviarBlocos(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  clinicaId: string,
+  conversaId: string,
+  telefone: string,
+  blocos: string[],
+  agenteId: string
+): Promise<{ ok: boolean; error?: string }> {
+  for (let i = 0; i < blocos.length; i++) {
+    if (i > 0) await esperar(1200);
+
+    const envio = await enviarMensagemWhatsapp(telefone, blocos[i]);
+    if (!envio.ok) {
+      console.error("[agentes] envio_failed", JSON.stringify({ conversaId, bloco: i, error: envio.error ?? null }));
+      if (i === 0) return { ok: false, error: envio.error ?? "envio_falhou" };
+      continue;
+    }
+
+    const { error: mensagemError } = await supabase.from("mensagens").insert({
+      clinica_id: clinicaId,
+      conversa_id: conversaId,
+      direcao: "enviada",
+      tipo: "texto",
+      conteudo: blocos[i],
+      evolution_message_id: envio.mensagemId ?? null,
+      timestamp_whatsapp: new Date().toISOString(),
+      gerada_por_agente_id: agenteId,
+    });
+    // unique(evolution_message_id): o webhook pode espelhar o eco da Evolution antes deste insert — idempotência, não erro.
+    if (mensagemError && mensagemError.code !== "23505") {
+      console.error("[agentes] insert_mensagem_failed", JSON.stringify({ conversaId, bloco: i, code: mensagemError.code ?? null }));
+    }
+  }
+
+  return { ok: true };
+}
+
+/** Avança o funil como se a clínica tivesse respondido (fromMe=true) — mesma regra de decidirTransicaoWebhook. */
+async function atualizarFunilAposResposta(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServerClient>>,
+  clinicaId: string,
+  conversaId: string,
+  statusAtual: StatusConversa,
+  motivoEvento: string,
+  limparAgenteSeConcluido: boolean
+) {
+  const agora = new Date().toISOString();
+  const decisao = decidirTransicaoWebhook(statusAtual, true);
+  const concluiu = STATUS_RESOLVIDOS.includes(decisao.statusNovo);
+
+  await supabase
+    .from("conversas")
+    .update({
+      ultima_mensagem_em: agora,
+      updated_at: agora,
+      status: decisao.statusNovo,
+      nao_lida: false,
+      mensagens_nao_lidas: 0,
+      ...(limparAgenteSeConcluido && concluiu ? { agente_ativo_id: null } : {}),
+    })
+    .eq("id", conversaId);
+
+  if (decisao.evento) {
+    await supabase.from("eventos_funil").insert({
+      clinica_id: clinicaId,
+      conversa_id: conversaId,
+      status_anterior: decisao.evento.statusAnterior,
+      status_novo: decisao.evento.statusNovo,
+      motivo: motivoEvento,
+    });
+  }
+}
+
 /**
  * Orquestração chamada pelo webhook quando `deveResponder` diz sim: busca o
  * agente e o histórico, gera a resposta e manda pelo WhatsApp — mesmo
  * formato de reativacao.ts (ler → gerar/enviar → gravar), sempre isolada em
  * try/catch por quem chama (uma falha aqui nunca pode derrubar o webhook).
+ *
+ * `isNovoPaciente` vem do webhook (`!pacienteExistente`, já calculado ali) —
+ * só usado pra decidir se dispara a notificação de "novo lead".
  */
 export async function responderComoAgente(
   clinicaId: string,
   conversaId: string,
-  mensagemRecebida: string
+  mensagemRecebida: string,
+  isNovoPaciente: boolean
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
 
   const { data: conversa } = await supabase
     .from("conversas")
-    .select("id, telefone, status, agente_ativo_id")
+    .select("id, telefone, status, agente_ativo_id, pacientes(nome)")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -336,6 +543,34 @@ export async function responderComoAgente(
 
   const agente = await buscarAgente(clinicaId, conversa.agente_ativo_id as string);
   if (!agente || !agente.ativo) return { ok: false, error: "agente_inativo" };
+
+  const telefone = conversa.telefone as string;
+  const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";
+  const pacienteBruto = conversa.pacientes as { nome: string | null } | { nome: string | null }[] | null;
+  const pacienteNome = (Array.isArray(pacienteBruto) ? pacienteBruto[0]?.nome : pacienteBruto?.nome) ?? null;
+  const notifParams = { pacienteNome, telefone, resumo: mensagemRecebida };
+
+  if (isNovoPaciente && agente.notificarNovoLead) {
+    await notificarEquipe(agente, "novo_lead", notifParams);
+  }
+
+  // Pedido de transferência: detecção por palavra-chave (determinística, sem
+  // depender de a IA "entender" e sem parsing de marcador entre 5 provedores
+  // diferentes) — se ligado, a IA nem é chamada, o humano assume na hora.
+  if (agente.ativarTransferencia && detectarPedidoHumano(mensagemRecebida)) {
+    const texto = agente.mensagemTransferencia?.trim() || MENSAGEM_TRANSFERENCIA_PADRAO;
+    const envio = await enviarBlocos(supabase, clinicaId, conversaId, telefone, [texto], agente.id);
+    if (!envio.ok) return envio;
+
+    await supabase.from("conversas").update({ agente_ativo_id: null }).eq("id", conversaId).eq("clinica_id", clinicaId);
+    await atualizarFunilAposResposta(supabase, clinicaId, conversaId, statusAtual, "transferencia_para_humano", false);
+    await notificarEquipe(agente, "pedido_humano", notifParams);
+    return { ok: true };
+  }
+
+  if (agente.responderApenasHorario && !dentroDoHorario(horaAtualBrasilia(new Date()), agente.horarioInicio, agente.horarioFim)) {
+    return { ok: true };
+  }
 
   const modelo = buscarModelo(agente.provider, agente.modelo);
   if (!modelo) return { ok: false, error: "modelo_indisponivel" };
@@ -365,54 +600,32 @@ export async function responderComoAgente(
 
   if (!resposta.ok || !resposta.texto) {
     console.error("[agentes] gerar_resposta_failed", JSON.stringify({ conversaId, error: resposta.error ?? null }));
+    if (agente.notificarFallback) await notificarEquipe(agente, "fallback", notifParams);
     return { ok: false, error: resposta.error ?? "gerar_falhou" };
   }
 
-  const envio = await enviarMensagemWhatsapp(conversa.telefone as string, resposta.texto);
-  if (!envio.ok) {
-    console.error("[agentes] envio_failed", JSON.stringify({ conversaId, error: envio.error ?? null }));
-    return { ok: false, error: envio.error ?? "envio_falhou" };
+  if (agente.notificarIntencaoCompra && detectarIntencaoCompra(mensagemRecebida)) {
+    await notificarEquipe(agente, "intencao_compra", notifParams);
   }
 
-  const agora = new Date().toISOString();
-  const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";
-  const decisao = decidirTransicaoWebhook(statusAtual, true);
-
-  await supabase
-    .from("conversas")
-    .update({
-      ultima_mensagem_em: agora,
-      updated_at: agora,
-      status: decisao.statusNovo,
-      nao_lida: false,
-      mensagens_nao_lidas: 0,
-    })
-    .eq("id", conversaId);
-
-  if (decisao.evento) {
-    await supabase.from("eventos_funil").insert({
-      clinica_id: clinicaId,
-      conversa_id: conversaId,
-      status_anterior: decisao.evento.statusAnterior,
-      status_novo: decisao.evento.statusNovo,
-      motivo: "resposta_automatica_ia",
-    });
+  let textoFinal = resposta.texto;
+  if (agente.maxCaracteresResposta && textoFinal.length > agente.maxCaracteresResposta) {
+    textoFinal = textoFinal.slice(0, agente.maxCaracteresResposta).trim();
   }
 
-  const { error: mensagemError } = await supabase.from("mensagens").insert({
-    clinica_id: clinicaId,
-    conversa_id: conversaId,
-    direcao: "enviada",
-    tipo: "texto",
-    conteudo: resposta.texto,
-    evolution_message_id: envio.mensagemId ?? null,
-    timestamp_whatsapp: agora,
-    gerada_por_agente_id: agente.id,
-  });
-  // unique(evolution_message_id): o webhook pode espelhar o eco da Evolution antes deste insert — idempotência, não erro.
-  if (mensagemError && mensagemError.code !== "23505") {
-    console.error("[agentes] insert_mensagem_failed", JSON.stringify({ conversaId, code: mensagemError.code ?? null }));
-  }
+  const blocos = agente.dividirEmMensagensCurtas ? dividirMensagem(textoFinal, agente.maxMensagensResposta) : [textoFinal];
+
+  const envio = await enviarBlocos(supabase, clinicaId, conversaId, telefone, blocos, agente.id);
+  if (!envio.ok) return envio;
+
+  await atualizarFunilAposResposta(
+    supabase,
+    clinicaId,
+    conversaId,
+    statusAtual,
+    "resposta_automatica_ia",
+    agente.pausarAposConcluirFluxo
+  );
 
   return { ok: true };
 }
