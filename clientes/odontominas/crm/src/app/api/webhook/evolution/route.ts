@@ -57,6 +57,7 @@ export async function POST(request: Request) {
   // batendo os dois valores contra o payload real.
   const validKeys = [process.env.EVOLUTION_API_KEY, process.env.EVOLUTION_INSTANCE_TOKEN].filter(Boolean);
   if (validKeys.length === 0 || !validKeys.includes(body.apikey)) {
+    console.error("[webhook/evolution] unauthorized", JSON.stringify({ instance: body.instance ?? null }));
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
