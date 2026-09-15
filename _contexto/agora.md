@@ -10,19 +10,14 @@ de graça (site + CRM de captação + tráfego pago, verba de mídia por conta d
 conceito pra depois oferecer aos contatos do marido com outros dentistas (detalhe em
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
-demonstração ao vivo pro marido, não um documento formal. Fase 3 do CRM (painel de atendimento)
-completa e validada de ponta a ponta, em produção (2026-09-15): lista de conversas, status, tempo
-até 1ª resposta com destaque de atraso, painel agora protegido por login (remendo mínimo — 2
-perfis, admin/atendente, sem permissão diferenciada ainda). Compliance jurídico: risco de
-exclusividade Mirante/Sicoob aceito conscientemente. Revisão técnica em 2026-09-15: 2 bugs reais
-corrigidos no funil de atendimento, login com rate limit, 71 testes automatizados novos (detalhe
-em `clientes/odontominas/andamento.md`) — código pronto, falta aplicar em produção.
+demonstração ao vivo pro marido, não um documento formal. Fase 3 do CRM (painel de atendimento) e
+a revisão técnica que a seguiu (2 bugs corrigidos no funil, login com rate limit, 71 testes) estão
+em produção desde 2026-09-15. **Fase 4 completa e em produção (2026-09-15)**: ficha de paciente e
+resumo executivo, com alerta de leads esfriando (detalhe em `clientes/odontominas/andamento.md`).
+Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Aplicar em produção os ajustes da revisão técnica de 2026-09-15: rodar a migração
-  `2026-09-15_v2_aguardando_desde.sql` no SQL Editor do Supabase e fazer `railway up` (corrige o
-  funil de atendimento e endurece o login) — nada disso está em produção ainda.
 - Trocar as senhas temporárias do painel do CRM (`dev-admin-temp`/`dev-atendente-temp`, hoje em
   produção no Railway por decisão consciente do Rafael) antes de expor o painel pra equipe real da
   clínica; RBAC completo por perfil (permissão diferenciada) fica pra depois que o piloto validar
@@ -48,9 +43,9 @@ em `clientes/odontominas/andamento.md`) — código pronto, falta aplicar em pro
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, painel de atendimento (Fase 3) validado em produção;
-  Fase 4 (ficha de paciente + resumo executivo) é o próximo passo — demonstrar funcionando é a
-  "proposta" pro marido/Ariadna.
+- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 4 (ficha de paciente + resumo
+  executivo) validado em produção; Fase 5 (1 automação de destaque) é o próximo passo — demonstrar
+  funcionando é a "proposta" pro marido/Ariadna.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

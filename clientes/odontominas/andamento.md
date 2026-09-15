@@ -1,5 +1,12 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, Fase 4)
+
+CRM: pendência da revisão técnica fechada (migração `aguardando_desde` rodada, `railway up` feito
+e validado em produção) e **Fase 4 completa e em produção**: ficha de paciente
+(`/pacientes/[id]`) + resumo executivo (`/resumo`, com alerta de leads esfriando). Detalhe
+completo em "Feito" abaixo. Próximo passo é a Fase 5 (1 automação de destaque).
+
 ## Onde está (2026-09-15, revisão técnica)
 
 Revisão técnica aprofundada das Fases 1-3 do CRM, a pedido do Rafael. 2 bugs reais corrigidos no
@@ -61,15 +68,16 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status
   (novo/respondido/aguardando/agendado/perdido), tempo até a 1ª resposta. Validada em produção
   (2026-09-15) — ver "Feito".
-- [ ] Fase 4 — ficha de paciente + resumo executivo (dashboard simples).
+- [x] Aplicar em produção a revisão técnica de 2026-09-15: migração
+  `2026-09-15_v2_aguardando_desde.sql` rodada no SQL Editor do Supabase e `railway up` feito
+  (corrige o funil de atendimento e endurece o login) — ver "Feito".
+- [x] Fase 4 — ficha de paciente + resumo executivo (dashboard simples). Completa e em produção
+  (2026-09-15) — ver "Feito".
 - [ ] Fase 5 — 1 automação de destaque (lembrete de consulta ou reativação de paciente inativo).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
   o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
   (2026-09-15).
-- [ ] Aplicar em produção a revisão técnica de 2026-09-15: rodar
-  `crm/supabase/migrations/2026-09-15_v2_aguardando_desde.sql` no SQL Editor do Supabase e fazer
-  `railway up` (corrige o funil de atendimento e endurece o login — ver "Feito").
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -260,3 +268,30 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     código servido; correção exige Next.js v16 (major breaking) — registrado, não urgente.
   - **Nada disso está em produção ainda**: falta rodar a migração no SQL Editor e fazer
     `railway up`. Nada foi commitado nem enviado ao GitHub nesta sessão.
+- 2026-09-15: pendência de produção da revisão técnica fechada — migração
+  `2026-09-15_v2_aguardando_desde.sql` rodada no SQL Editor do Supabase, `railway up` feito e
+  validado (webhook 200, login 200, painel redireciona 307 sem sessão).
+- 2026-09-15: **Fase 4 completa e validada em produção.** Ficha de paciente
+  (`crm/src/app/pacientes/[id]/page.tsx`): dados de contato, status atual do funil, jornada
+  (histórico de transições de `eventos_funil`) e histórico de mensagens em bolhas de chat —
+  buscada por `paciente_id` (relação 1:1 com conversa, telefone é único por clínica nas duas
+  tabelas). Resumo executivo (`crm/src/app/resumo/page.tsx`): contagens por status, tempo médio
+  até 1ª resposta (só conta conversas que de fato viraram `respondido`/`agendado`) e lista de leads
+  esfriando (em aberto há mais de `LIMITE_ESPERA_MS`, 30min) — o alerta que `contexto.md` já
+  previa que `eventos_funil`/`aguardando_desde` deveriam alimentar. Painel principal agora linka o
+  contato pra ficha (`crm/src/lib/conversas.ts` passou a expor `paciente_id`) e navega pro resumo.
+  - Lógica de agregação extraída pura em `calcularResumo` (`crm/src/lib/resumo.ts`), testável sem
+    Supabase — mesmo padrão de `funil.ts`. 4 testes novos, 75 no total; `typecheck`, `lint` e
+    `next build` limpos.
+  - Tabela `consultas` (agendamentos) ficou de fora da Fase 4 de propósito: nada no código escreve
+    nela ainda (nem o webhook, nem o painel) — mostrar uma seção sempre vazia na ficha não
+    agregaria nada agora. Ela deve entrar quando a Fase 5 (lembrete de consulta) precisar.
+  - Validado ao vivo: com aprovação do Rafael, semeado um paciente/conversa/mensagens sintéticos
+    direto no Supabase de produção (via REST, service role key) pra ver a ficha renderizada de
+    verdade — nome, telefone, as duas mensagens (recebida/enviada), jornada "Novo → Respondido", e
+    o resumo calculando o tempo médio certo (5min). Dado apagado logo em seguida.
+  - **Achado técnico**: nem o CLI local do Supabase (logado numa conta que só enxerga o projeto
+    `noryos-inovacoes`, não o `odontominas-crm`) nem o MCP local `supabase-crm` (citado como
+    "ligado" numa sessão anterior) apareceram disponíveis nesta sessão — hoje só o SQL Editor
+    manual funciona pra escrever neste banco. Corrigido em `ferramentas.md` da raiz.
+  - Commitado (`29d4187`) e deployado no Railway (`railway up`).
