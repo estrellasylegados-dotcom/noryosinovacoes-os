@@ -212,3 +212,14 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   superlativo). Por quê: é a primeira peça do CRM que gera texto solto pra um paciente real sem
   revisão humana antes de sair — a segurança fica garantida pelo estado inicial do sistema, não por
   um aviso que dependeria de alguém lembrar de configurar.
+- **2026-09-15** (Rafael) [odontominas]: escopo da Fase 2 dos Agentes de IA (o resto do print da
+  RoiZap que a Fase 1 tinha deixado de fora) dividido em 3 blocos, não construído tudo de uma vez.
+  Fase 2A (horário de atendimento, transferência pra humano real, "Avisar Membro da Equipe", itens
+  rápidos): construída na hora. Fase 2B (Buffer de mensagens): logo em seguida, isolada por ser a
+  única mudança de arquitetura de verdade do grupo. Fase 2C (transcrição de áudio, leitura de
+  imagem/documento, mensagens interativas, "digitando...", follow-up automático, e a IA agir
+  sozinha no CRM): decide depois que o piloto rodar com paciente de verdade. Por quê: o critério
+  não foi dificuldade técnica, foi valor de negócio — o que dá confiança pra ligar o agente de vez
+  é a rede de segurança (avisar a equipe + ceder pra humano quando a IA não sabe), não
+  funcionalidade extra; a peça mais arriscada (IA mexendo sozinha no CRM) fica pro fim de propósito,
+  só depois de tudo o resto validado com uso real.

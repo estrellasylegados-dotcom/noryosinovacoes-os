@@ -1,12 +1,16 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-15, Agentes de IA)
+## Onde está (2026-09-15, Agentes de IA — Fase 1 + Fase 2A em produção)
 
-CRM: seção "Agentes de IA" construída (prints da RoiZap de referência, mesmo critério das seções
-anteriores — adaptado ao que o sistema tem). **Ainda não commitado, não deployado, migração `v9`
-ainda não rodada** — ficou pronto e validado localmente (typecheck/lint/145 testes/build limpos +
-smoke test de leitura contra produção com sessão mintada), esperando o Rafael rodar a migração e
-configurar uma chave de IA. Detalhe completo em "Feito" abaixo.
+CRM: Fase 1 (schema, CRUD, 5 provedores, gatilho por etiqueta) e Fase 2A (horário de atendimento,
+transferência pra humano real, "Avisar Membro da Equipe", pausar após concluir o fluxo, dividir em
+mensagens curtas) **em produção de verdade** — migrações v9 e v10 rodadas, commits `394468e` e
+`adf4ece`, deploys Railway `7fd66e45` e `3e803bb3`, ambos sucesso. Rafael achou a Fase 1 curta
+demais comparado ao print de referência da RoiZap; pediu análise completa, aprovou escopo em 3
+blocos (decisão em `_memoria/decisoes.md`). **Chave do Gemini configurada** (Railway + local,
+redeploy confirmado sucesso) — a IA já funciona de ponta a ponta, falta só criar e ativar um
+agente de verdade (nenhum existe no banco ainda). Fase 2B (Buffer de mensagens) planejada, ainda
+não construída. Detalhe completo em "Feito" abaixo.
 
 ## Onde está (2026-09-15, Chat ao Vivo + Relatórios + Conexão/dark mode)
 
@@ -143,9 +147,11 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   produção — ver "Feito". Trocar usuário/senha das 3 contas de demo
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
   demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
-- [ ] Agentes de IA: rodar a migração `2026-09-15_v9_agentes_ia.sql` no SQL Editor do Supabase e
-  configurar pelo menos 1 chave de IA (`GOOGLE_API_KEY`/`GROQ_API_KEY` são grátis) — sem isso a
-  seção existe na tela mas não responde ninguém de verdade (2026-09-15).
+- [ ] Agentes de IA: criar e ativar o 1º agente de teste (chave do Gemini já configurada em
+  Railway + local, redeploy confirmado — falta só o agente existir no banco) (2026-09-15).
+- [ ] Agentes de IA — Fase 2B (Buffer de mensagens): construir quando der — plano já aprovado
+  (arquitetura de debounce por coluna + poll no processo, não timer em memória), migração separada
+  `v11` (2026-09-15).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
@@ -497,7 +503,7 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     `prompt_sistema`, temperatura/max_tokens, histórico, pausa, transferência) + colunas novas
     `conversas.agente_ativo_id`/`agente_pausado_ate` e `mensagens.gerada_por_agente_id` + grant pro
     `service_role` na mesma migração (mesmo bug de sempre neste Supabase, sem default privileges).
-    **Ainda não rodada em produção.**
+    Rodada em produção, commitada (`394468e`) e deployada no Railway (`7fd66e45`, sucesso).
   - `src/lib/ia-provedores.ts` (novo): 5 provedores via `fetch` puro, sem SDK — Gemini e Claude com
     formato próprio, OpenAI/Groq/DeepSeek reaproveitando a mesma função "chat completions"
     OpenAI-compatível. `modelosDisponiveis()` só lista o que tem env var de chave setada; timeout
@@ -525,6 +531,36 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     (só leitura) contra Supabase/Evolution de produção, sessão mintada admin e atendente: páginas
     carregam, gate de admin redireciona de verdade, sidebar esconde certo pra atendente, tela não
     quebra sem nenhuma chave de IA configurada.
-  - **Nada commitado, nada deployado.** Faltam: Rafael rodar a migração v9 no SQL Editor (sem
-    acesso MCP nem CLI a este projeto Supabase nesta sessão — mesma limitação já documentada em
-    `_contexto/ferramentas.md`) e configurar ao menos uma chave de IA.
+  - Commitado (`394468e`) e deployado no Railway (`7fd66e45`, sucesso) depois que o Rafael rodou a
+    migração v9 no SQL Editor (sem acesso MCP nem CLI a este projeto Supabase nesta sessão — mesma
+    limitação já documentada em `_contexto/ferramentas.md`). Falta configurar ao menos uma chave de
+    IA pra responder de verdade.
+- 2026-09-15: **Agentes de IA — Fase 2A** (horário de atendimento, transferência real, "Avisar
+  Membro da Equipe", pausar após concluir fluxo, dividir em mensagens curtas). Rafael comparou a
+  Fase 1 com o print completo da RoiZap de novo e achou curta demais; pediu análise seção por
+  seção do que faz sentido numa clínica de instância única, e aprovou a recomendação em 3 blocos
+  por valor/risco de negócio — decisão completa em `_memoria/decisoes.md`. Planejado formalmente
+  (`EnterPlanMode`) de novo, dado o tamanho.
+  - Migração `2026-09-15_v10_agentes_comportamento.sql`: 13 colunas novas em `agentes_ia` — mesma
+    tabela já existente, grant já valia (é por tabela, não por coluna).
+  - `src/lib/agentes-notificacoes.ts` (novo): `detectarPedidoHumano`/`detectarIntencaoCompra` por
+    palavra-chave (não por IA — decisão consciente, fica determinístico e testável em vez de
+    depender de parsing de marcador entre 5 provedores diferentes) + `notificarEquipe` (manda
+    WhatsApp pros números configurados, template com `{motivo}`/`{nome}`/`{telefone}`/`{resumo}`).
+  - `src/lib/agentes.ts`: `responderComoAgente` ganhou um 4º parâmetro (`isNovoPaciente`, o webhook
+    já calculava) e passou a checar, em ordem: notificar lead novo → pedido de transferência (pula
+    a IA inteira, manda a mensagem de transferência e libera `agente_ativo_id`) → horário de
+    atendimento → gerar resposta (com notificação de fallback se falhar) → intenção de compra →
+    truncar por tamanho máximo → dividir em blocos se configurado → pausar após concluir o fluxo se
+    o status virou resolvido. Duas funções puras novas testadas: `dentroDoHorario`,
+    `dividirMensagem`.
+  - UI (`AgenteForm.tsx`): 2 seções novas (Transferência para Humano, Avisar Membro da Equipe) +
+    campos novos nas seções existentes (Modelo de IA ganhou horário; Comportamento ganhou tamanho
+    máximo, dividir em mensagens curtas, pausar após concluir).
+  - Validado: `typecheck`/`lint`/`test` (176, 31 novos)/`next build` limpos; smoke test local (só
+    leitura) confirmando as seções novas renderizando sem chave de IA nenhuma configurada.
+  - Rafael rodou a migração v10 sozinho. Commitado (`adf4ece`) e deployado no Railway (`3e803bb3`,
+    sucesso). Falta configurar chave de IA (mesma pendência da Fase 1).
+  - Achado técnico: o loop de checagem de deploy que eu tinha deixado em segundo plano ficou preso
+    porque usava `python3`, que não existe nesta máquina — trocado por `awk`. Registrado no diário
+    pra próxima sessão não repetir.

@@ -16,18 +16,21 @@ produção. **CRM ganhou Chat ao Vivo, Relatórios e dark mode em produção de 
 (a pedido do Rafael, inspirado na RoiZap): inbox real com envio pelo painel, contador de mensagens
 não lidas, dashboard de relatórios com gráficos, tema claro/escuro em todo o painel, Conexão do
 WhatsApp com apelido interno e desconectar — detalhe completo em
-`clientes/odontominas/andamento.md`. **Agentes de IA construídos na mesma data**: sidebar com
-"Ferramentas" > "Agentes de IA", 5 provedores (Gemini/Groq grátis, GPT/Claude/DeepSeek pagos),
-resposta automática de verdade pelo WhatsApp quando uma etiqueta-gatilho é aplicada — pronto e
-validado localmente, mas **ainda não commitado, não deployado, e a migração `v9` não foi rodada**.
-Próximo passo: rodar a migração + configurar 1 chave de IA, depois Fase 6 (demo pro marido).
+`clientes/odontominas/andamento.md`. **Agentes de IA — Fase 1 e Fase 2A em produção de verdade
+(2026-09-15)**: sidebar com "Ferramentas" > "Agentes de IA", 5 provedores (Gemini/Groq grátis,
+GPT/Claude/DeepSeek pagos), gatilho por etiqueta, horário de atendimento, transferência pra humano
+real e "Avisar Membro da Equipe" (a rede de segurança). Rafael pediu escopo maior depois de
+comparar com o print de referência de novo; aprovou minha recomendação em 3 blocos — Fase 2A
+(pronta), Fase 2B (Buffer de mensagens, ainda não construída) e Fase 2C (decide depois do piloto
+rodar). Chave do Gemini configurada (Railway + local) — a IA já funciona de ponta a ponta, falta
+só criar e ativar um agente de verdade. Próximo passo: criar o 1º agente de teste, depois Fase 6
+(demo pro marido).
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Rodar a migração `2026-09-15_v9_agentes_ia.sql` do CRM da OdontoMinas no SQL Editor do Supabase
-  e configurar pelo menos 1 chave de IA (`GOOGLE_API_KEY` é grátis) antes do Agentes de IA
-  funcionar de verdade (2026-09-15).
+- Agentes de IA — Fase 2B (Buffer de mensagens): construir quando der, plano já aprovado
+  (2026-09-15).
 - Trocar usuário/senha das 3 contas de demo do painel do CRM
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
   demo (2026-09-15).
