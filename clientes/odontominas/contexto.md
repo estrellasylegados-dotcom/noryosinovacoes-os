@@ -12,15 +12,25 @@
 
 ## Escopo combinado
 
-- **Entrega de graça (cortesia em troca de case/indicação):** site institucional + Google Meu
-  Negócio.
-- **Cobrado à parte, desde o primeiro mês, se ela quiser:** tráfego pago (Google/Meta Ads).
+- **Entrega de graça (prova de conceito, não é mais só troca por case):** site institucional +
+  Google Meu Negócio + CRM de captação/relacionamento (leads, follow-up, reativação, agendamento —
+  não mexe na camada clínica/prontuário/financeiro do Controle Odonto, que a clínica já usa) +
+  tráfego pago (Google/Meta Ads). Gestão de tudo sem custo pra clínica; **verba de mídia (o
+  investimento em anúncio) é paga pela própria clínica**, à parte.
+- **Ordem de execução:** site + CRM primeiro; tráfego pago só entra depois que captação/follow-up
+  estiver validado.
+- **Por quê é tudo de graça:** o marido da Ariadna tem contatos com outros dentistas — depois que
+  a estrutura estiver rodando 100% na OdontoMinas, a mesma oferta vai pra esses contatos. A
+  OdontoMinas é a prova de conceito replicável, não um desconto pontual (decisão 2026-09-14,
+  alinhada em reunião de Rafael com o marido no mesmo dia — substitui o escopo de 2026-09-11: só
+  site+GMN grátis, tráfego cobrado à parte).
 - Execução em sequência com os outros 2 pilotos — não em paralelo (decisão 2026-09-11).
 
 ## Prazo
 
-Em aberto (2026-09-11). Próximo passo antes de qualquer proposta formal: Rafael alinha com o
-marido da Ariadna (colega de trabalho dele) o que vai ser oferecido, antes de apresentar pra ela.
+Em aberto (2026-09-14). Alinhamento com o marido da Ariadna sobre o que oferecer já aconteceu
+(reunião 14/09) — falta definir prazo de entrega e o critério de "100%"/pronto pra replicar (ver
+`andamento.md`) antes de apresentar a proposta formal pra ela.
 
 ## Stack do site
 

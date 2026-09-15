@@ -4,46 +4,43 @@
 ## Onde paramos
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia).
-Site em redesign editorial completo, com revisão de direção de arte e nova seção "Protocolo
-Correct Full Arch" (detalhe em `clientes/odontominas/andamento.md`), commitado, sincronizado e
-**no ar em produção**: Cloudflare Pages, https://odontominas.pages.dev/, deploy automático a cada
-push na `main` (2026-09-12). Próximo passo de negócio segue o mesmo: Rafael alinhar com o marido
-da Ariadna antes da proposta formal — prazo ainda não combinado. Compliance jurídico: risco de
-exclusividade Mirante/Sicoob aceito conscientemente; falta confirmar com o contador se o MEI da
-esposa comporta os serviços da Noryos.
+Site no ar em produção (Cloudflare Pages, https://odontominas.pages.dev/, deploy automático a cada
+push na `main`). Reunião de Rafael com o marido da Ariadna em 14/09 mudou o escopo: pacote completo
+de graça (site + CRM de captação + tráfego pago, verba de mídia por conta da clínica) — prova de
+conceito pra depois oferecer aos contatos do marido com outros dentistas (detalhe em
+`clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
+verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
+demonstração ao vivo pro marido, não um documento formal. Compliance jurídico: risco de
+exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- **Crítica:** confirmar com o contador se site/tráfego pago/publicidade cabem no MEI da esposa —
-  pesquisa aponta que não constam no Anexo XI (CGSN 140/2018); se não couber, decidir caminho (ME
-  própria?) antes de cobrar qualquer coisa do 1º cliente que pagar tráfego pago (2026-09-11).
-- Se a resposta acima for "não cabe": estruturar CNPJ próprio da Noryos (ME, Simples Nacional).
-  Pesquisa comparou contabilidades online — recomendação: Contajá (abertura grátis em 24h, a
-  partir de R$137/mês, melhor reputação no Reclame Aqui) ou Contabilidade.com como alternativa
-  equivalente; Contabilizei e Agilize ficaram atrás em preço/reputação pro perfil atual. Ao
-  contratar, confirmar CNAE (7311-4/00 e/ou 7319-0/03) e simular Fator R (Anexo III x V) antes de
-  fechar (2026-09-14).
-- Alinhar com o marido da Ariadna o que vai ser oferecido, antes de apresentar a proposta pra ela
-  (2026-09-11).
-- Depois que a proposta for aprovada, confirmar com a Ariadna o que falta (lista completa em
-  `clientes/odontominas/andamento.md`): WhatsApp oficial, responsável técnico da PJ, formação
-  2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais, domínio próprio (2026-09-11).
+- **Construir o CRM (captação/relacionamento) até estado demonstrável** — vira a atividade
+  principal do projeto OdontoMinas; site+tráfego pago ficam em segundo plano até isso rodar (ver
+  `clientes/odontominas/andamento.md`) (2026-09-14).
+- Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
+  técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
+  domínio próprio (2026-09-11).
+- CNAE/MEI da esposa não cobre tráfego pago/publicidade (confirmado, Anexo XI CGSN 140/2018) — não
+  trava cobrar o piloto #1 (é grátis), mas trava cobrar o próximo cliente odonto pagante. Caminho
+  recomendado: abrir CNPJ próprio da Noryos (ME, Simples Nacional, em nome da esposa), via Contajá
+  (abertura grátis 24h, a partir de R$137/mês) ou Contabilidade.com; confirmar CNAE de
+  desenvolvimento web + publicidade e simular Fator R (Anexo III x V) antes de fechar (2026-09-14).
 - Confirmar se a responsável técnica da clínica de estética (2º piloto) é médica, biomédica ou
   esteticista — muda se aplica a Resolução CFM 2.336/2023 ou vigilância sanitária (2026-09-11).
 - Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida — rodou vazio em
   2026-09-11, empresa ainda em estruturação.
 - Ligar o projeto existente do site/CRM via `/novo-projeto link`, sem mover o código nem quebrar o
   deploy da Hostinger (2026-09-10).
-- Fase 1 do CRM Twenty (criar o workspace `noryos.twenty.com`, import piloto do Kaptar, teste de
-  pipeline ponta a ponta) **pausada até o piloto #1 (OdontoMinas) fechar comercialmente**
-  (2026-09-14, substitui a pendência solta de 2026-09-10).
+- Fase 1 do CRM Twenty (comercial interno da Noryos, não confundir com o CRM da OdontoMinas)
+  **pausada até o CRM da OdontoMinas estar rodando ou o 1º cliente pagante do nicho fechar**
+  (2026-09-14, substitui o critério de 2026-09-10/14 — "piloto #1 fechar comercialmente" não se
+  aplica mais porque o piloto é gratuito).
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar em produção (Cloudflare Pages); volta o
-  alinhamento comercial com o marido da Ariadna antes da proposta formal.
-- Verificação do CNAE/MEI com o contador é o bloqueio mais crítico do momento — trava cobrar
-  qualquer coisa, inclusive tráfego pago.
-- Kaptar (app instalado, ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo
-  volume; Campanha, Automação e WhatsApp pausados até MEI confirmado + Twenty ativo + piloto #1
-  fechado (2026-09-14).
+- Cliente-piloto #1 (OdontoMinas): site no ar; CRM de captação é a prioridade nº1 agora —
+  demonstrar funcionando é a "proposta" pro marido/Ariadna.
+- CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
+- Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
+  pausado até Twenty ativo (2026-09-14).

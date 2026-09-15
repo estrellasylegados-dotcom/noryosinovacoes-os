@@ -98,3 +98,21 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   confirmar que o MEI da esposa comporta os serviços, workspace do Twenty existir, e o piloto #1
   fechado servir de prova social. Por quê: sem case fechado nem CRM de destino, outbound frio
   converte mal e arrisca fechar cliente antes de poder faturar direito.
+- **2026-09-14** (Rafael) [odontominas]: escopo do piloto #1 muda de "site+GMN grátis, tráfego
+  cobrado à parte" pra pacote completo de graça — site + CRM de captação + tráfego pago (verba de
+  mídia por conta da clínica, gestão sem custo). Por quê: reunião de Rafael com o marido da Ariadna
+  redefiniu o piloto como prova de conceito replicável — ele tem contatos com outros dentistas e
+  pretende indicar a mesma estrutura depois que rodar 100% na OdontoMinas; Ariadna só avança em
+  projeto que vê funcionando, então a "proposta" formal vira uma demonstração ao vivo do CRM, não
+  um documento.
+- **2026-09-14** (Rafael) [odontominas]: CRM vira a atividade principal do projeto, com escopo e
+  arquitetura definidos — camada de captação/relacionamento (atendimento, controle de clientes,
+  resumo executivo, conversar com cliente, acompanhar tráfego pago), sem mexer na camada
+  clínica/prontuário/financeiro do Controle Odonto; banco (Supabase, projeto próprio) com
+  `clinica_id` em tudo mas deploy isolado por clínica (não plataforma multi-tenant); WhatsApp via
+  Evolution API (self-hosted, não-oficial) hospedada na Railway nesta fase. Por quê: reconstruir a
+  camada clínica é risco legal alto (LGPD, retenção de prontuário) e fora da competência da Noryos;
+  solo/part-time não sustenta SaaS multi-tenant nem infra cara agora; Railway dá velocidade até a
+  demo, migração pra VPS+Coolify fica pra quando replicar em várias clínicas pagando. Reaproveita
+  por referência o scoring e a disciplina de persistência do Diagnóstico Digital (não o Kaptar,
+  terceiro fechado sem API — checado e descartado).

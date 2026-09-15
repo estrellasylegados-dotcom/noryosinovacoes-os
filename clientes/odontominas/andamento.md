@@ -10,16 +10,66 @@ build `npm run build` → `out`, deploy automático a cada push na `main` (conec
 dashboard, confirmado carregando certo, com a seção do Protocolo Correct visível). Domínio próprio
 ainda não existe — segue pendência abaixo.
 
-Próximo passo de negócio continua o mesmo: Rafael conversar com o marido da Ariadna (colega de
-trabalho dele) pra alinhar a oferta antes de apresentar a proposta formal pra ela — prazo ainda
-não combinado.
+Reunião de Rafael com o marido da Ariadna aconteceu em 14/09: escopo do piloto mudou de "site+GMN
+grátis, tráfego cobrado à parte" pra pacote completo de graça — site + CRM de captação + tráfego
+pago (verba de mídia por conta da clínica) — pensado como prova de conceito replicável pros
+contatos dele com outros dentistas (detalhe em `contexto.md`). **A "proposta" não vai ser um
+documento**: Ariadna só avança em projeto que vê funcionando, então o plano combinado com o marido
+é demonstrar o CRM rodando — a demonstração É a proposta. Por isso o CRM virou a atividade
+principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo plano até lá.
 
 ## Pendências
 
 **Negócio**
-- [ ] Alinhar com o marido da Ariadna o que vai ser oferecido, antes de falar com ela.
-- [ ] Apresentar a proposta pra Ariadna (site + GMN de graça, tráfego pago à parte).
-- [ ] Definir prazo de entrega com ela.
+- [ ] Ter o CRM num estado demonstrável e marcar a demonstração com o marido (e depois, se ele
+  validar, com a Ariadna) — isso substitui "apresentar proposta formal" (2026-09-14).
+- [ ] Definir prazo de entrega com ela (depende da demonstração acontecer primeiro).
+- [ ] Definir o critério de "100%"/pronto pra replicar — o que precisa estar rodando antes de
+  oferecer a mesma estrutura pros contatos do marido com outros dentistas (2026-09-14).
+
+**CRM — atividade principal do projeto agora (2026-09-14)**
+- [ ] Confirmar com a clínica se o incômodo real com o Controle Odonto é custo da assinatura ou
+  falta de automação — decide se dá pra só simplificar módulos em vez de construir substituto
+  completo (o CRM não mexe na camada clínica/prontuário/financeiro dele, só na de
+  captação/relacionamento).
+- [ ] Fase 1 — infra: projeto Supabase novo (separado do Diagnóstico Digital) + Evolution API no
+  Railway (template oficial), conectado no número de teste do Rafael, não o da clínica.
+- [ ] Fase 2 — espelhamento: mensagem recebida/enviada grava em `conversas`/`mensagens`, sem tela
+  ainda, só validar que o dado chega certo.
+- [ ] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status
+  (novo/respondido/aguardando/agendado/perdido), tempo até a 1ª resposta.
+- [ ] Fase 4 — ficha de paciente + resumo executivo (dashboard simples).
+- [ ] Fase 5 — 1 automação de destaque (lembrete de consulta ou reativação de paciente inativo).
+- [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
+
+## Plano técnico do CRM (2026-09-14)
+
+- **Código:** `clientes/odontominas/crm/` (Next.js 15 + TypeScript + Tailwind, UI kit reaproveitado
+  por referência do `site/` — mesmo padrão de sempre, não é submodule nem dependência entre
+  projetos).
+- **Banco:** Supabase novo, dedicado a este CRM — dado de paciente é mais sensível (LGPD) e é de
+  outra empresa, não mistura com o banco do Diagnóstico Digital. Toda tabela leva `clinica_id`
+  (arquitetura "path B": modelo de dado pronto pra multi-clínica, mas cada clínica roda numa
+  instância própria — não é plataforma multi-tenant compartilhada por ora).
+  Tabelas do V1: `clinicas`, `pacientes`, `conversas`, `mensagens`, `eventos_funil` (log de
+  mudança de status — alimenta o resumo executivo e o alerta de lead esfriando), `consultas`.
+- **WhatsApp:** Evolution API (self-hosted, conecta via QR, não exige migrar o número oficial da
+  clínica) — rota não-oficial consciente pro V1; migração pra API oficial da Meta fica pra quando
+  virar operação com vários clientes pagando.
+- **Hospedagem da Evolution API:** Railway (template oficial, deploy de um clique) — validado por
+  pesquisa como escolha certa **pra esta fase** (custo real esperado ~US$5-20/mês, não
+  necessariamente o piso de US$5; há relatos de instabilidade recente, tolerável em fase de
+  teste/demo). Quando replicar pra várias clínicas pagando, reavaliar VPS (ex: Hostinger) +
+  Coolify — custo fixo por servidor em vez de consumo por instância, mais barato em escala.
+- **Reaproveitado do Diagnóstico Digital** (`projetos/Noryos-Inovacoes/site/src/lib/`, por
+  referência, não por dependência): padrão de scoring determinístico e versionado
+  (`diagnostico-scoring.ts`) adaptado pro funil de atendimento; disciplina de persistência
+  (`diagnostico-store.ts` — Supabase como driver principal, sem fallback silencioso em produção,
+  log de erro sem PII, migração sempre aditiva); `rate-limit.ts`/`turnstile.ts` se o CRM ganhar
+  formulário público; UI kit (`ui/`, `system/`) pra acelerar a interface.
+- **Fora do V1, de propósito:** camada clínica/prontuário (fica com o Controle Odonto), chat 2-way
+  completo dentro do CRM (v1 é visibilidade + ação leve), tráfego pago (entra só depois do CRM
+  validado).
 
 **Confirmar com a Ariadna antes de publicar de verdade** (tudo já centralizado em
 `site/src/lib/config.ts` / `site/src/content/`, nada solto no código):
@@ -88,3 +138,14 @@ não combinado.
   automático a cada push na `main`). Site confirmado no ar em https://odontominas.pages.dev/, com
   a seção do Protocolo Correct carregando. Ainda no subdomínio gratuito — domínio próprio é
   pendência separada.
+- 2026-09-14 (fonte: reunião presencial de Rafael com o marido da Ariadna, relatada no chat no
+  mesmo dia): escopo do piloto mudou. Deixa de ser "site+GMN grátis, tráfego cobrado à parte" e
+  vira pacote completo de graça — site + CRM de captação/relacionamento + tráfego pago (verba de
+  mídia por conta da clínica, gestão sem custo) — pensado como prova de conceito replicável: o
+  marido tem contatos com outros dentistas e pretende indicar a mesma estrutura depois que rodar
+  100% na OdontoMinas. Ordem de execução definida: site + CRM primeiro, tráfego pago entra depois
+  que captação/follow-up estiver validado. Ver escopo completo em `contexto.md`.
+- 2026-09-14: plano técnico do CRM fechado (stack, banco, arquitetura, hospedagem da Evolution API,
+  o que reaproveitar do Diagnóstico Digital, fases de construção até a demo) — ver "Plano técnico
+  do CRM" acima. Rafael confirmou número de WhatsApp separado pra teste (não o da clínica) e
+  Railway como hospedagem da Evolution API pra esta fase.
