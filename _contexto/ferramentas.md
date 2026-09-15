@@ -10,11 +10,11 @@
 |---|---|---|---|---|
 | GitHub | código do site, PRs, issues, histórico de commits | MCP (`GITHUB_PERSONAL_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
 | Supabase | banco de dados do Diagnóstico Digital (leads, scoring) | MCP, somente-leitura (`SUPABASE_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
-| Supabase (CRM OdontoMinas) | banco do CRM da OdontoMinas (projeto `odontominas-crm`, separado do Diagnóstico Digital) | MCP HTTP, escopo do projeto (`claude mcp add`), acesso completo (docs/account/database/debugging/development/functions/branching) — não é somente-leitura | configurada, falta autorizar (OAuth pendente — rodar `/mcp` numa sessão interativa) | 2026-09-15 |
+| Supabase (CRM OdontoMinas) | banco do CRM da OdontoMinas (projeto `odontominas-crm`, separado do Diagnóstico Digital) | MCP local (`supabase-crm`, token de acesso pessoal, escopo `local` fora do git) — acesso completo, não somente-leitura. O HTTP/OAuth em `.mcp.json` (`supabase-crm-odontominas`) segue travado em "Pending approval", sem causa identificada — não usar até resolver | ligada (via MCP local) | 2026-09-15 |
 | Cloudflare | hospedagem de sites (Pages) — 1º uso: site da OdontoMinas, no ar | só você, no dashboard (deploy automático via Git); sem MCP/API conectado aqui | não ligada (deploy roda sozinho; eu não gerencio o projeto) | 2026-09-12 |
 | Twenty CRM | ficha do cliente, pipeline comercial | só você, na mão (Cloud Pro, trial — Fase 1 pausada até fechar o piloto #1) | não ligada | 2026-09-10 |
 | Kaptar | prospecção de leads (busca por nicho/área; enriquecimento por IA); Campanha, Automação e WhatsApp existem no app mas pausados por decisão | só você, no app desktop (Electron, local, dados em `AppData\Roaming\Kaptar`; sem MCP/API conectado aqui) | ligada (uso restrito: só a aba Buscar por ora) | 2026-09-14 |
-| Railway | hospedagem da Evolution API (WhatsApp do CRM da OdontoMinas) | só você, no dashboard; sem MCP conectado aqui | ligada (uso só painel) | 2026-09-15 |
+| Railway | hospedagem da Evolution API e do CRM da OdontoMinas (mesmo projeto, `illustrious-perfection`) | CLI instalada e logada (`railway login`) + MCP local (`railway`, reaproveita a mesma sessão) — deploy do CRM ainda é manual via `railway up`, sem GitHub conectado | ligada (painel + CLI/MCP) | 2026-09-15 |
 | Evolution API | WhatsApp do CRM da OdontoMinas (instância `odontominas-teste`, número de teste, não o da clínica) | chamada HTTP direta (REST), chave em `clientes/odontominas/crm/.env.local` (`EVOLUTION_API_URL`/`EVOLUTION_API_KEY`, fora do git) | ligada | 2026-09-15 |
 | Mensagem com cliente | — | — | não ligada | 2026-09-10 |
 | Tarefa e prazo | — | — | não ligada | 2026-09-10 |

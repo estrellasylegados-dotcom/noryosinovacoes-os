@@ -1,5 +1,10 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15)
+
+CRM: Fase 2 (espelhamento) completa e validada de ponta a ponta. Detalhe completo em "Feito"
+abaixo. Próximo passo é a Fase 3 (painel de atendimento).
+
 ## Onde está (2026-09-12)
 
 Pasta criada. Escopo e compliance mapeados. O site em `site/` deixou de ser scaffold técnico e
@@ -38,8 +43,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Fase 1b — projeto Supabase novo criado (`odontominas-crm`, região Americas/São Paulo,
   RLS automático ligado em toda tabela nova, tabela não exposta por padrão). Chaves salvas e
   validadas em `crm/.env.local` (2026-09-15). **Fase 1 (infra) completa.**
-- [ ] Fase 2 — espelhamento: mensagem recebida/enviada grava em `conversas`/`mensagens`, sem tela
-  ainda, só validar que o dado chega certo.
+- [x] Fase 2 — espelhamento: mensagem recebida/enviada grava em `conversas`/`mensagens`, sem tela
+  ainda. Validada com WhatsApp real (2026-09-15) — ver "Feito".
 - [ ] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status
   (novo/respondido/aguardando/agendado/perdido), tempo até a 1ª resposta.
 - [ ] Fase 4 — ficha de paciente + resumo executivo (dashboard simples).
@@ -153,3 +158,28 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   o que reaproveitar do Diagnóstico Digital, fases de construção até a demo) — ver "Plano técnico
   do CRM" acima. Rafael confirmou número de WhatsApp separado pra teste (não o da clínica) e
   Railway como hospedagem da Evolution API pra esta fase.
+- 2026-09-15: **Fase 2 do CRM completa e validada de ponta a ponta.** Scaffold Next.js 15 +
+  TypeScript + Tailwind em `crm/`; migração V1 (`clinicas`, `pacientes`, `conversas`, `mensagens`,
+  `eventos_funil`, `consultas`, todas com `clinica_id`, RLS ligado, ver `crm/supabase/migrations/`);
+  webhook `/api/webhook/evolution` recebe `messages.upsert`, acha-ou-cria paciente/conversa por
+  telefone, avança status `novo→respondido` na 1ª resposta da clínica (logado em `eventos_funil`),
+  idempotência por `evolution_message_id`.
+  - Migração precisou de 2ª passada: o projeto Supabase não tinha default privileges no schema
+    `public` — toda tabela nova nascia sem `GRANT` pra `service_role` (RLS bypass e privilégio de
+    tabela são camadas diferentes no Postgres). Corrigido em `2026-09-15_v1_grants.sql`.
+  - Deploy no Railway, mesmo projeto da Evolution API (`illustrious-perfection`), serviço
+    `odontominas-crm`, domínio `odontominas-crm-production.up.railway.app`. **Sem auto-deploy do
+    GitHub ainda** — deploy é manual via `railway up` (CLI), não dispara sozinho em push na `main`
+    como o site.
+  - Bug real achado e corrigido: o endpoint validava a `apikey` do webhook contra a chave global da
+    Evolution API, mas ela ecoa o **token da instância** (UUID de 36 caracteres) nesse campo, não a
+    chave global (88 caracteres) — todo webhook real tomava 401 em silêncio. Corrigido aceitando as
+    duas (env nova `EVOLUTION_INSTANCE_TOKEN`).
+  - Validado com mensagem real de um segundo número (self-chat mostrou disparo de webhook
+    inconsistente via Baileys, não serve de teste confiável): paciente, conversa e mensagem
+    gravados certos, status avançou pra `respondido`. Dado de teste limpo do Supabase depois.
+  - MCP: Supabase (`supabase-crm-odontominas`, HTTP/OAuth) ficou em "Pending approval" mesmo após
+    3 aprovações numa sessão interativa separada — causa não identificada. Contornado com um MCP
+    local (`supabase-crm`) autenticado por token de acesso pessoal. Railway CLI instalada e logada
+    (`railway login --browserless`), MCP oficial configurado (`railway mcp install`). Os dois MCPs
+    novos só ficam disponíveis numa sessão futura desta máquina.

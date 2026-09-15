@@ -14,3 +14,5 @@
 | Anti-bot | Cloudflare Turnstile | — | Rafael | obrigatório no `POST /api/diagnostico` |
 | CRM comercial | Twenty CRM (Cloud Pro, trial 30 dias) | `noryos.twenty.com` (workspace ainda não criado) | Rafael | Fase 1 aprovada, runbook pronto |
 | Site OdontoMinas (cliente-piloto) | Cloudflare Pages | https://odontominas.pages.dev/ | Rafael; deploy automático a cada push na `main` do repo `noryosinovacoes-os` (root `clientes/odontominas/site`) | Domínio próprio ainda não existe — subdomínio gratuito por enquanto |
+| Banco de dados do CRM OdontoMinas | Supabase | projeto `odontominas-crm` (`exaluyarsphucotprwpi`) | Rafael; agente via MCP local (`supabase-crm`) | schema V1 aplicado 2026-09-15 (6 tabelas, RLS + grants pra `service_role`); separado do banco do Diagnóstico Digital |
+| CRM OdontoMinas (app) | Railway | https://odontominas-crm-production.up.railway.app | Rafael; agente via CLI (`railway up`) e MCP local (`railway`) | mesmo projeto Railway da Evolution API (`illustrious-perfection`, serviço `odontominas-crm`); deploy manual, sem auto-deploy do GitHub ainda |

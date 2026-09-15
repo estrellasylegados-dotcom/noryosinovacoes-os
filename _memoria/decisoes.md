@@ -116,3 +116,14 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   demo, migração pra VPS+Coolify fica pra quando replicar em várias clínicas pagando. Reaproveita
   por referência o scoring e a disciplina de persistência do Diagnóstico Digital (não o Kaptar,
   terceiro fechado sem API — checado e descartado).
+- **2026-09-15** (Rafael) [odontominas]: deploy do CRM (Fase 2) direto no Railway, no mesmo
+  projeto da Evolution API, em vez de um túnel temporário (cloudflared) só pra validar o webhook.
+  Por quê: Rafael quis evitar solução descartável e já deixar a Fase 2 validada numa arquitetura
+  próxima da definitiva, já que o Railway vai seguir hospedando o CRM nas próximas fases mesmo
+  assim.
+- **2026-09-15** (Rafael): integração de MCP (Supabase CRM e Railway) feita via login de CLI +
+  token de acesso pessoal (escopo local, fora do git) em vez do fluxo OAuth HTTP padrão. Por quê:
+  o servidor MCP HTTP do Supabase (`supabase-crm-odontominas`, `.mcp.json`) travou em "Pending
+  approval" mesmo depois de 3 aprovações numa sessão interativa separada, sem causa identificada;
+  o caminho por CLI (`railway login --browserless`, token pessoal do Supabase) funcionou de
+  primeira e não depende de aprovação assíncrona.
