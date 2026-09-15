@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { decidirTransicaoWebhook } from "@/lib/funil";
+import { pausarAgenteSeConfigurado } from "@/lib/agentes";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 
@@ -187,7 +188,7 @@ export async function enviarRespostaChat(
 
   const { data: conversa, error: erroConversa } = await supabase
     .from("conversas")
-    .select("id, telefone, status")
+    .select("id, telefone, status, agente_ativo_id")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -195,6 +196,11 @@ export async function enviarRespostaChat(
 
   const envio = await enviarMensagemWhatsapp(conversa.telefone as string, texto);
   if (!envio.ok) return { ok: false, error: envio.error ?? "envio_falhou" };
+
+  // Atendente respondeu na mão: se um agente de IA estiver escutando essa
+  // conversa e configurado pra pausar nesse caso, entra em espera — nunca
+  // bloqueia o envio em si se isso falhar.
+  await pausarAgenteSeConfigurado(clinicaId, conversaId, (conversa.agente_ativo_id as string | null) ?? null);
 
   const agora = new Date().toISOString();
   const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";

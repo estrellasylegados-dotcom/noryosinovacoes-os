@@ -196,3 +196,19 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   (ação real, derruba a sessão até escanear QR novo) — mantido com confirmação em modal antes de
   executar, e sem os outros ícones da RoiZap (anunciar, agendar, excluir) que não têm
   funcionalidade real por trás neste sistema.
+- **2026-09-15** (Rafael) [odontominas]: Agentes de IA (CRM) respondem o paciente de forma
+  **síncrona, dentro do próprio webhook** da Evolution API, em vez de fila/cron como a reativação
+  de paciente inativo. Por quê: o CRM roda num container Node persistente no Railway, não uma
+  função serverless com timeout curto — uma chamada de LLM de poucos segundos dentro do handler é
+  segura ali; fila/worker novo só se justificaria se o deploy fosse serverless. Gatilho de
+  ativação reaproveita o sistema de etiquetas já existente (uma etiqueta por agente), em vez de
+  criar um catálogo de tag novo. Provedores de IA (Gemini, Groq, GPT, Claude, DeepSeek) via `fetch`
+  puro sem SDK novo, chave de API por variável de ambiente no Railway — sem armazenamento
+  criptografado por clínica no Supabase, porque a arquitetura de hoje ("path B") já é uma instância
+  por clínica, sem precedente de segredo por-tenant no código; revisar se isso virar multi-clínica
+  de verdade.
+- **2026-09-15** (Rafael) [odontominas]: todo Agente de IA novo nasce Pausado (`ativo=false`) e o
+  prompt sugerido já embute as regras da Resolução CFO-196/2019 (sem promessa de resultado, sem
+  superlativo). Por quê: é a primeira peça do CRM que gera texto solto pra um paciente real sem
+  revisão humana antes de sair — a segurança fica garantida pelo estado inicial do sistema, não por
+  um aviso que dependeria de alguém lembrar de configurar.

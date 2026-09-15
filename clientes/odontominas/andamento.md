@@ -1,5 +1,13 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, Agentes de IA)
+
+CRM: seção "Agentes de IA" construída (prints da RoiZap de referência, mesmo critério das seções
+anteriores — adaptado ao que o sistema tem). **Ainda não commitado, não deployado, migração `v9`
+ainda não rodada** — ficou pronto e validado localmente (typecheck/lint/145 testes/build limpos +
+smoke test de leitura contra produção com sessão mintada), esperando o Rafael rodar a migração e
+configurar uma chave de IA. Detalhe completo em "Feito" abaixo.
+
 ## Onde está (2026-09-15, Chat ao Vivo + Relatórios + Conexão/dark mode)
 
 CRM: 4 commits nesta sessão, a pedido do Rafael (prints da RoiZap, ferramenta que ele usa em outro
@@ -135,6 +143,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   produção — ver "Feito". Trocar usuário/senha das 3 contas de demo
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
   demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
+- [ ] Agentes de IA: rodar a migração `2026-09-15_v9_agentes_ia.sql` no SQL Editor do Supabase e
+  configurar pelo menos 1 chave de IA (`GOOGLE_API_KEY`/`GROQ_API_KEY` são grátis) — sem isso a
+  seção existe na tela mas não responde ninguém de verdade (2026-09-15).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
@@ -477,3 +488,43 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     carrega com o menu novo. Rafael confirmou visualmente a tela pedindo usuário/senha e testou o
     login com sucesso.
   - Commitado e enviado ao GitHub via `/syncar` (a migração v5, commit `f61d583`).
+- 2026-09-15: **Agentes de IA construído** (prints da RoiZap de referência, adaptado ao que o
+  sistema tem — mesmo critério das seções anteriores). Entrou como planejado numa sessão de
+  planejamento formal (`EnterPlanMode`), com 3 agentes de exploração mapeando schema/grants, o
+  pipeline de webhook/envio e os padrões de UI/segredos antes de codar.
+  - Migração `crm/supabase/migrations/2026-09-15_v9_agentes_ia.sql`: tabela `agentes_ia`
+    (`clinica_id`, `ativo` nasce `false`, `etiqueta_gatilho_id`, `provider`/`modelo`,
+    `prompt_sistema`, temperatura/max_tokens, histórico, pausa, transferência) + colunas novas
+    `conversas.agente_ativo_id`/`agente_pausado_ate` e `mensagens.gerada_por_agente_id` + grant pro
+    `service_role` na mesma migração (mesmo bug de sempre neste Supabase, sem default privileges).
+    **Ainda não rodada em produção.**
+  - `src/lib/ia-provedores.ts` (novo): 5 provedores via `fetch` puro, sem SDK — Gemini e Claude com
+    formato próprio, OpenAI/Groq/DeepSeek reaproveitando a mesma função "chat completions"
+    OpenAI-compatível. `modelosDisponiveis()` só lista o que tem env var de chave setada; timeout
+    de 15s em toda chamada.
+  - `src/lib/agentes.ts` (novo): CRUD do agente; `decidirAtivarAgentePorEtiqueta`/`deveResponder`
+    puras e testadas (mesmo padrão de `funil.ts`); `responderComoAgente` é a orquestração (ler →
+    gerar → enviar → gravar), mesmo formato de `reativacao.ts`.
+  - 3 pontos de integração, sem duplicar lógica existente: `etiquetas.ts`
+    (`adicionarEtiquetaConversa`) ativa o agente quando a etiqueta-gatilho é aplicada; o webhook
+    (`api/webhook/evolution/route.ts`) chama `responderComoAgente` depois de persistir a mensagem
+    recebida, isolado em `try/catch` pra nunca derrubar o ack pra Evolution; `chat.ts`
+    (`enviarRespostaChat`) pausa o agente quando um atendente responde manualmente pelo painel.
+    Resposta gerada de forma síncrona dentro do webhook, sem fila/cron — decisão registrada em
+    `_memoria/decisoes.md` (o CRM roda em container Node persistente no Railway, não serverless).
+  - UI: `SidebarNav.tsx` ganhou grupo "Ferramentas"; telas `/agentes` (lista, com contagem real de
+    mensagens por agente), `/agentes/novo` e `/agentes/[id]` (form com criação de etiqueta
+    inline); todas admin-only, sem kit de UI novo (Tailwind cru, mesmo idioma de `conexao`/`equipe`).
+  - Todo agente nasce Pausado e o prompt sugerido já embute as regras do CFO-196/2019 — decisão
+    registrada em `_memoria/decisoes.md`.
+  - Cortado do V1 de propósito: dividir resposta em várias bolhas do WhatsApp, leitura de
+    áudio/imagem, botões interativos, detecção automática de intenção de transferência
+    (`max_mensagens_resposta`/`mensagem_transferencia` existem no schema, sem comportamento ainda
+    — mesmo espírito de `consultas` na Fase 4).
+  - Validado: `typecheck`/`lint`/`test` (145, 9 novos)/`next build` limpos. Smoke test local
+    (só leitura) contra Supabase/Evolution de produção, sessão mintada admin e atendente: páginas
+    carregam, gate de admin redireciona de verdade, sidebar esconde certo pra atendente, tela não
+    quebra sem nenhuma chave de IA configurada.
+  - **Nada commitado, nada deployado.** Faltam: Rafael rodar a migração v9 no SQL Editor (sem
+    acesso MCP nem CLI a este projeto Supabase nesta sessão — mesma limitação já documentada em
+    `_contexto/ferramentas.md`) e configurar ao menos uma chave de IA.

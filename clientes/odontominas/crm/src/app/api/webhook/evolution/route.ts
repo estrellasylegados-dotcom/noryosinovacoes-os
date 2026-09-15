@@ -4,6 +4,7 @@ import { getClinicaId } from "@/lib/clinica";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido } from "@/lib/status";
+import { deveResponder, responderComoAgente } from "@/lib/agentes";
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
@@ -226,6 +227,37 @@ export async function POST(request: Request) {
     }
     logErr("insert:mensagens", mensagemError);
     return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 503 });
+  }
+
+  // Agente de IA: nunca pode derrubar o ack do webhook pra Evolution — roda
+  // isolado, depois que a mensagem já está persistida. Uma falha/demora da
+  // IA só fica no log; a conversa segue visível no Chat ao Vivo normalmente.
+  if (direcao === "recebida" && conteudo) {
+    try {
+      const { data: conversaAgente } = await supabase
+        .from("conversas")
+        .select("agente_ativo_id, agente_pausado_ate")
+        .eq("id", conversaId)
+        .maybeSingle();
+
+      const deveIaResponder = deveResponder(
+        {
+          agenteAtivoId: (conversaAgente?.agente_ativo_id as string | null) ?? null,
+          agentePausadoAte: (conversaAgente?.agente_pausado_ate as string | null) ?? null,
+        },
+        new Date(),
+        false
+      );
+
+      if (deveIaResponder) {
+        const resultado = await responderComoAgente(clinicaId, conversaId as string, conteudo);
+        if (!resultado.ok) {
+          console.error("[webhook/evolution] agente_ia_failed", JSON.stringify({ conversaId, error: resultado.error ?? null }));
+        }
+      }
+    } catch (e) {
+      console.error("[webhook/evolution] agente_ia_error", JSON.stringify({ conversaId, message: (e as Error).message }));
+    }
   }
 
   return NextResponse.json({ ok: true });

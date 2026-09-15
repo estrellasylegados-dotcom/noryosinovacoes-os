@@ -1,10 +1,15 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { decidirAtivarAgentePorEtiqueta, listarAgentes } from "@/lib/agentes";
 
 /**
  * Etiquetas (tags) livres do Chat ao Vivo — infraestrutura pedida pelo
  * Rafael mesmo sem um catálogo fixo pra odontologia ainda ("não se prenda
  * pelas etiquetas de outro nicho, mas já prepara o sistema pra ter"). Cada
  * clínica cria as suas; sem seed nenhum aqui de propósito.
+ *
+ * `adicionarEtiquetaConversa` também é o gatilho dos Agentes de IA
+ * (src/lib/agentes.ts): se a etiqueta aplicada for a etiqueta-gatilho de
+ * algum agente ativo, essa conversa passa a ser respondida por ele.
  */
 
 export type Etiqueta = { id: string; nome: string; cor: string };
@@ -95,7 +100,28 @@ export async function adicionarEtiquetaConversa(
     return { ok: false, error: "persist_failed" };
   }
 
+  await ativarAgentePorEtiqueta(clinicaId, conversaId, etiquetaId);
+
   return { ok: true };
+}
+
+/**
+ * Se a etiqueta aplicada for a etiqueta-gatilho de algum agente ativo desta
+ * clínica, a conversa passa a ser escutada por ele. Silencioso de propósito
+ * (nunca falha a aplicação da etiqueta em si por causa disso).
+ */
+async function ativarAgentePorEtiqueta(clinicaId: string, conversaId: string, etiquetaId: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+
+  const agentes = await listarAgentes(clinicaId);
+  const agente = decidirAtivarAgentePorEtiqueta(agentes, etiquetaId);
+  if (!agente) return;
+
+  const { error } = await supabase.from("conversas").update({ agente_ativo_id: agente.id }).eq("id", conversaId).eq("clinica_id", clinicaId);
+  if (error) {
+    console.error("[etiquetas] ativar_agente_failed", JSON.stringify({ conversaId, agenteId: agente.id, code: error.code ?? null }));
+  }
 }
 
 export async function removerEtiquetaConversa(
