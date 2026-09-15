@@ -20,6 +20,8 @@ jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 - **Fase 2 do CRM: scaffold Next.js + migração (`clinica_id` em tudo) + webhook da Evolution API**
   — infra (Fase 1) já pronta; isso é o que falta pra chegar no estado demonstrável (ver
   `clientes/odontominas/andamento.md`) (2026-09-15).
+- Autorizar o MCP do Supabase (CRM OdontoMinas) por OAuth — configurado em `.mcp.json` mas falta
+  rodar `/mcp` numa sessão interativa antes de usar na Fase 2 (2026-09-15).
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
   técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
   domínio próprio (2026-09-11).
