@@ -31,6 +31,24 @@ export function formatDataHora(iso: string | null): string {
   });
 }
 
+/**
+ * Hora curta pro Chat ao Vivo: "HH:mm" se `iso` é hoje em Brasília, senão
+ * "dd/mm" — mesmo padrão do WhatsApp/RoiZap na lista de conversas (a
+ * legibilidade importa mais que a data completa numa lista compacta).
+ * Fuso fixo (America/Sao_Paulo) de propósito, pra não variar com o ambiente
+ * de execução — diferente de formatDataHora, que usa o fuso do sistema.
+ */
+export function formatHoraCurta(iso: string | null, agora: Date = new Date()): string {
+  if (!iso) return "—";
+  const data = new Date(iso);
+  const mesmoDia = inicioDoDiaBrasilia(data).getTime() === inicioDoDiaBrasilia(agora).getTime();
+
+  return data.toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    ...(mesmoDia ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit" }),
+  });
+}
+
 /** Aceita telefone com ou sem DDI 55; cai no valor cru se não bater um formato BR conhecido. */
 export function formatTelefone(telefone: string): string {
   const digitos = telefone.replace(/\D/g, "");

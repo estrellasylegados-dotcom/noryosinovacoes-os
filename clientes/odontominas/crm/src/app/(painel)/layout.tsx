@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatusConexao } from "@/lib/evolution-status";
+import { getClinicaId } from "@/lib/clinica";
+import { contarNaoLidas } from "@/lib/chat";
 import { formatTelefone } from "@/lib/tempo";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -19,6 +21,9 @@ export default async function PainelLayout({ children }: { children: ReactNode }
 
   if (!sessao) redirect("/login");
 
+  const clinicaId = await getClinicaId();
+  const naoLidas = clinicaId ? await contarNaoLidas(clinicaId) : 0;
+
   return (
     <div className="min-h-screen bg-neutral-50 sm:flex">
       <AutoRefresh />
@@ -28,7 +33,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             <p className="text-sm font-semibold tracking-tight text-teal-800">OdontoMinas</p>
             <p className="text-xs text-neutral-400">CRM · Atendimento</p>
           </div>
-          <SidebarNav papel={sessao.papel} />
+          <SidebarNav papel={sessao.papel} naoLidas={naoLidas} />
         </div>
 
         <div className="space-y-3 border-t border-neutral-100 pt-4 sm:mt-auto">

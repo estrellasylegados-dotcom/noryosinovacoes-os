@@ -8,12 +8,12 @@ type Item = { href: string; label: string; adminOnly?: boolean };
 
 const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
-  { href: "/equipe", label: "Equipe", adminOnly: true },
-  { href: "/resumo", label: "Resumo Executivo", adminOnly: true },
+  { href: "/chat", label: "Chat ao Vivo" },
+  { href: "/resumo", label: "Relatórios", adminOnly: true },
   { href: "/conexao", label: "Conexão WhatsApp", adminOnly: true },
 ];
 
-export function SidebarNav({ papel }: { papel: Papel }) {
+export function SidebarNav({ papel, naoLidas = 0 }: { papel: Papel; naoLidas?: number }) {
   const pathname = usePathname();
 
   return (
@@ -24,11 +24,20 @@ export function SidebarNav({ papel }: { papel: Papel }) {
           <Link
             key={item.href}
             href={item.href}
-            className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               ativo ? "bg-teal-700 text-white" : "text-neutral-600 hover:bg-neutral-100"
             }`}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.href === "/chat" && naoLidas > 0 && (
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
+                  ativo ? "bg-white/20 text-white" : "bg-red-500 text-white"
+                }`}
+              >
+                {naoLidas > 99 ? "99+" : naoLidas}
+              </span>
+            )}
           </Link>
         );
       })}

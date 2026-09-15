@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDataHora, formatDuracao, formatTelefone, inicioDoDiaBrasilia } from "@/lib/tempo";
+import { formatDataHora, formatDuracao, formatHoraCurta, formatTelefone, inicioDoDiaBrasilia } from "@/lib/tempo";
 
 describe("formatDuracao", () => {
   it("mostra 'agora' pra menos de 1 minuto", () => {
@@ -57,6 +57,31 @@ describe("formatTelefone", () => {
 
   it("cai no valor cru quando não bate um formato BR conhecido", () => {
     expect(formatTelefone("123")).toBe("123");
+  });
+});
+
+describe("formatHoraCurta", () => {
+  it("devolve travessão pra nulo", () => {
+    expect(formatHoraCurta(null)).toBe("—");
+  });
+
+  it("mesmo dia em Brasília mostra só hora:min", () => {
+    const agora = new Date("2026-09-15T18:00:00.000Z"); // 15h em Brasília
+    const iso = "2026-09-15T14:37:00.000Z"; // 11:37 em Brasília, mesmo dia
+    expect(formatHoraCurta(iso, agora)).toBe("11:37");
+  });
+
+  it("dia anterior em Brasília mostra dd/mm, mesmo se ainda 'hoje' em UTC", () => {
+    const agora = new Date("2026-09-15T02:00:00.000Z"); // 2026-09-14T23:00 em Brasília
+    const iso = "2026-09-15T01:00:00.000Z"; // 2026-09-14T22:00 em Brasília — mesmo dia local
+    // Ambos caem no dia 14 em Brasília: mesmo dia local, mostra hora.
+    expect(formatHoraCurta(iso, agora)).toBe("22:00");
+  });
+
+  it("dia diferente mostra dd/mm", () => {
+    const agora = new Date("2026-09-15T18:00:00.000Z");
+    const iso = "2026-09-10T14:00:00.000Z";
+    expect(formatHoraCurta(iso, agora)).toBe("10/09");
   });
 });
 

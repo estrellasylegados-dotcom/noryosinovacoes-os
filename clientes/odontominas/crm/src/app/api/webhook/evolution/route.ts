@@ -154,6 +154,7 @@ export async function POST(request: Request) {
         primeira_mensagem_em: timestampWhatsapp,
         ultima_mensagem_em: timestampWhatsapp,
         aguardando_desde: timestampWhatsapp,
+        nao_lida: !fromMe,
       })
       .select("id")
       .single();
@@ -174,6 +175,10 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
         status: decisao.statusNovo,
         paciente_id: pacienteId,
+        // fromMe: a própria clínica respondeu (painel, app oficial ou automação) — já
+        // está "vista" por definição. !fromMe: o paciente escreveu, fica não lida até
+        // alguém abrir a conversa no Chat ao Vivo (src/lib/chat.ts).
+        nao_lida: !fromMe,
         // reabriu = mensagem nova numa conversa já resolvida: reinicia o
         // relógio de "tempo até 1ª resposta" a partir desta mensagem, não
         // do contato original (que pode ter sido dias/semanas atrás).
