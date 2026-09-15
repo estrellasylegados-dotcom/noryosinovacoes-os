@@ -50,7 +50,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-neutral-700">
                 {statusConexao.conectado
-                  ? "WhatsApp conectado"
+                  ? statusConexao.nome || "WhatsApp conectado"
                   : statusConexao.conectado === false
                     ? "WhatsApp desconectado"
                     : "WhatsApp — sem status"}

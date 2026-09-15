@@ -106,6 +106,34 @@ export default async function ResumoPage({
           />
         </div>
 
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-medium text-neutral-700">Leads esfriando (esperando há mais de 30min)</h2>
+          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            {resumo.leadsEsfriando.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum lead esfriando agora.</p>
+            ) : (
+              <ul className="divide-y divide-neutral-100">
+                {resumo.leadsEsfriando.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between px-4 py-3">
+                    {c.pacienteId ? (
+                      <Link href={`/pacientes/${c.pacienteId}`} className="text-sm font-medium text-neutral-900 hover:underline">
+                        {c.pacienteNome || formatTelefone(c.telefone)}
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-medium text-neutral-900">
+                        {c.pacienteNome || formatTelefone(c.telefone)}
+                      </span>
+                    )}
+                    <span className="text-sm font-semibold text-red-600">
+                      esperando há {formatDuracao(c.tempoPrimeiraRespostaMs ?? 0)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
         <AbasRelatorio
           abas={[
             {
@@ -218,34 +246,6 @@ export default async function ResumoPage({
             },
           ]}
         />
-
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-700">Leads esfriando (esperando há mais de 30min)</h2>
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            {resumo.leadsEsfriando.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum lead esfriando agora.</p>
-            ) : (
-              <ul className="divide-y divide-neutral-100">
-                {resumo.leadsEsfriando.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between px-4 py-3">
-                    {c.pacienteId ? (
-                      <Link href={`/pacientes/${c.pacienteId}`} className="text-sm font-medium text-neutral-900 hover:underline">
-                        {c.pacienteNome || formatTelefone(c.telefone)}
-                      </Link>
-                    ) : (
-                      <span className="text-sm font-medium text-neutral-900">
-                        {c.pacienteNome || formatTelefone(c.telefone)}
-                      </span>
-                    )}
-                    <span className="text-sm font-semibold text-red-600">
-                      esperando há {formatDuracao(c.tempoPrimeiraRespostaMs ?? 0)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
       </div>
     </main>
   );

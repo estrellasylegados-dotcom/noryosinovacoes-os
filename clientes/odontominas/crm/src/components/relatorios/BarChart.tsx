@@ -27,11 +27,6 @@ export function BarChart({
   const maxValor = Math.max(1, ...series.flatMap((s) => s.valores));
   const escalaY = (altura - 24) / maxValor;
 
-  // Passo do gridline: nice number simples (1/2/5 x 10^n) pra não repetir "1,1,1,1".
-  const passo = calcularPasso(maxValor);
-  const linhasGrid = [];
-  for (let v = 0; v <= maxValor; v += passo) linhasGrid.push(v);
-
   return (
     <div className="rounded-xl border border-neutral-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -60,13 +55,6 @@ export function BarChart({
             role="img"
             aria-label={titulo}
           >
-            {linhasGrid.map((v) => {
-              const y = altura - 20 - v * escalaY;
-              return (
-                <line key={v} x1={0} y1={y} x2={largura} y2={y} stroke="#e1e0d9" strokeWidth={1} />
-              );
-            })}
-
             {categorias.map((cat, i) => {
               const grupoLargura = larguraCategoria - 12;
               const barraLargura = grupoLargura / series.length - 4;
@@ -104,13 +92,4 @@ export function BarChart({
       )}
     </div>
   );
-}
-
-function calcularPasso(maxValor: number): number {
-  if (maxValor <= 4) return 1;
-  const bruto = maxValor / 4;
-  const potencia = 10 ** Math.floor(Math.log10(bruto));
-  const normalizado = bruto / potencia;
-  const passo = normalizado <= 1 ? 1 : normalizado <= 2 ? 2 : normalizado <= 5 ? 5 : 10;
-  return passo * potencia;
 }

@@ -1,9 +1,20 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarQrCode, buscarStatusConexao } from "@/lib/evolution-status";
-import { formatTelefone } from "@/lib/tempo";
+import { formatDataHora, formatTelefone } from "@/lib/tempo";
 
 export const dynamic = "force-dynamic";
+
+const LABEL_INTEGRACAO: Record<string, string> = {
+  "WHATSAPP-BAILEYS": "Não-oficial (Baileys)",
+  "WHATSAPP-BUSINESS": "API oficial (Meta)",
+};
+
+function iniciais(nome: string | null): string {
+  if (!nome) return "?";
+  const partes = nome.trim().split(/\s+/);
+  return (partes[0][0] + (partes[1]?.[0] ?? "")).toUpperCase();
+}
 
 /** Reconectar o WhatsApp é sensível (troca o aparelho por trás do número da clínica) — só admin. */
 export default async function ConexaoPage() {
@@ -24,21 +35,64 @@ export default async function ConexaoPage() {
         </header>
 
         <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                status.conectado ? "bg-emerald-500" : status.conectado === false ? "bg-red-500" : "bg-neutral-300"
-              }`}
-            />
-            <span className="text-sm font-medium text-neutral-900">
-              {status.conectado
-                ? "Conectado"
-                : status.conectado === false
-                  ? "Desconectado"
-                  : "Não foi possível verificar agora"}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              {status.foto ? (
+                // Foto de perfil vinda da Evolution API — não dá pra otimizar via next/image.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={status.foto} alt="" className="h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-700 text-sm font-semibold text-white">
+                  {iniciais(status.nome)}
+                </div>
+              )}
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
+                  status.conectado ? "bg-emerald-500" : status.conectado === false ? "bg-red-500" : "bg-neutral-300"
+                }`}
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-neutral-900">{status.nome || "WhatsApp"}</p>
+              {status.numero && <p className="truncate text-xs text-neutral-500">{formatTelefone(status.numero)}</p>}
+            </div>
           </div>
-          {status.numero && <p className="mt-1 pl-[18px] text-sm text-neutral-500">{formatTelefone(status.numero)}</p>}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
+                status.conectado
+                  ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                  : status.conectado === false
+                    ? "bg-red-50 text-red-700 ring-red-600/20"
+                    : "bg-neutral-100 text-neutral-500 ring-neutral-500/20"
+              }`}
+            >
+              {status.conectado ? "Conectado" : status.conectado === false ? "Desconectado" : "Sem status"}
+            </span>
+            {status.integracao && (
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                {LABEL_INTEGRACAO[status.integracao] ?? status.integracao}
+              </span>
+            )}
+          </div>
+
+          {(status.criadaEm || status.numero) && (
+            <dl className="mt-4 space-y-1.5 border-t border-neutral-100 pt-4 text-sm">
+              {status.numero && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-neutral-500">Número</dt>
+                  <dd className="font-medium text-neutral-900">{formatTelefone(status.numero)}</dd>
+                </div>
+              )}
+              {status.criadaEm && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-neutral-500">Instância criada em</dt>
+                  <dd className="font-medium text-neutral-900">{formatDataHora(status.criadaEm)}</dd>
+                </div>
+              )}
+            </dl>
+          )}
 
           {!status.conectado && qr?.qrDataUrl && (
             <div className="mt-5 flex flex-col items-center gap-3 border-t border-neutral-100 pt-5">
@@ -58,7 +112,7 @@ export default async function ConexaoPage() {
           )}
 
           {!status.conectado && !qr?.qrDataUrl && (
-            <p className="mt-4 text-sm text-neutral-500">
+            <p className="mt-4 border-t border-neutral-100 pt-4 text-sm text-neutral-500">
               {qr?.erro === "nao_configurado" || status.erro === "nao_configurado"
                 ? "Evolution API não configurada neste ambiente."
                 : "Não consegui gerar o QR Code agora. A página atualiza sozinha em alguns segundos."}
