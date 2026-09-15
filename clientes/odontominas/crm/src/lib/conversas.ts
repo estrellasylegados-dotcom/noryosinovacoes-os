@@ -27,9 +27,9 @@ const PRIORIDADE: Record<StatusConversa, number> = {
   perdido: 4,
 };
 
-type PacienteEmbutido = { nome: string | null } | { nome: string | null }[] | null;
+export type PacienteEmbutido = { nome: string | null } | { nome: string | null }[] | null;
 
-function extrairNomePaciente(pacientes: PacienteEmbutido): string | null {
+export function extrairNomePaciente(pacientes: PacienteEmbutido): string | null {
   if (!pacientes) return null;
   return Array.isArray(pacientes) ? (pacientes[0]?.nome ?? null) : pacientes.nome;
 }

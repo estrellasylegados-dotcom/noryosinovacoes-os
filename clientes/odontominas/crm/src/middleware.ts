@@ -3,11 +3,12 @@ import { lerSessao, NOME_COOKIE_SESSAO } from "@/lib/sessao";
 
 /**
  * Gate de acesso a todo o painel (ver src/lib/sessao.ts). O webhook da
- * Evolution API fica de fora de propósito: é a instância WhatsApp chamando
- * servidor-a-servidor, sem cookie de navegador — a autenticação dele é a
- * própria apikey validada dentro da rota.
+ * Evolution API e o cron de reativação ficam de fora de propósito: são
+ * chamadas servidor-a-servidor, sem cookie de navegador — a autenticação de
+ * cada um é o próprio segredo validado dentro da rota (apikey da Evolution;
+ * CRON_SECRET no cron).
  */
-const ROTAS_PUBLICAS = ["/login", "/api/login", "/api/webhook/evolution"];
+const ROTAS_PUBLICAS = ["/login", "/api/login", "/api/webhook/evolution", "/api/cron/reativacao"];
 
 function isRotaPublica(pathname: string): boolean {
   return ROTAS_PUBLICAS.some((rota) => pathname === rota || pathname.startsWith(`${rota}/`));
