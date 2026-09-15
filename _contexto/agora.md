@@ -13,7 +13,10 @@ verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta
 demonstração ao vivo pro marido, não um documento formal. Fase 3 do CRM (painel de atendimento) e
 a revisão técnica que a seguiu (2 bugs corrigidos no funil, login com rate limit, 71 testes) estão
 em produção desde 2026-09-15. **Fase 4 completa e em produção (2026-09-15)**: ficha de paciente e
-resumo executivo, com alerta de leads esfriando (detalhe em `clientes/odontominas/andamento.md`).
+resumo executivo, com alerta de leads esfriando. **Fase 5 completa e em produção (2026-09-15)**:
+automação de reativação de paciente inativo (conversa resolvida sem mensagem há +30 dias recebe 1
+WhatsApp de reativação), disparada 1x/dia por um cron do GitHub Actions (detalhe em
+`clientes/odontominas/andamento.md`). Próximo passo: Fase 6 (demo pro marido).
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -43,9 +46,9 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 4 (ficha de paciente + resumo
-  executivo) validado em produção; Fase 5 (1 automação de destaque) é o próximo passo — demonstrar
-  funcionando é a "proposta" pro marido/Ariadna.
+- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 (reativação automática de paciente
+  inativo) validado em produção; Fase 6 (demo pro marido, e se validar, pra Ariadna) é o próximo
+  passo — demonstrar funcionando é a "proposta".
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

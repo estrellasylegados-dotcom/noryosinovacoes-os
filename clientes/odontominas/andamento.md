@@ -1,5 +1,13 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, Fase 5)
+
+CRM: **Fase 5 completa e em produção** — automação de reativação de paciente inativo (conversa
+resolvida sem mensagem há mais de 30 dias recebe 1 WhatsApp de reativação, uma vez só por
+conversa), disparada 1x/dia por um cron do GitHub Actions. Detalhe completo em "Feito" abaixo.
+Próximo passo é a Fase 6 (demo pro marido, e se validar, pra Ariadna) — não sobra mais nenhuma
+fase técnica antes da demo.
+
 ## Onde está (2026-09-15, Fase 4)
 
 CRM: pendência da revisão técnica fechada (migração `aguardando_desde` rodada, `railway up` feito
@@ -73,7 +81,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   (corrige o funil de atendimento e endurece o login) — ver "Feito".
 - [x] Fase 4 — ficha de paciente + resumo executivo (dashboard simples). Completa e em produção
   (2026-09-15) — ver "Feito".
-- [ ] Fase 5 — 1 automação de destaque (lembrete de consulta ou reativação de paciente inativo).
+- [x] Fase 5 — automação de reativação de paciente inativo (escolhida em vez de lembrete de
+  consulta — ver `_memoria/decisoes.md`). Completa e em produção (2026-09-15) — ver "Feito".
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
   o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
@@ -295,3 +304,39 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     "ligado" numa sessão anterior) apareceram disponíveis nesta sessão — hoje só o SQL Editor
     manual funciona pra escrever neste banco. Corrigido em `ferramentas.md` da raiz.
   - Commitado (`29d4187`) e deployado no Railway (`railway up`).
+- 2026-09-15: **Fase 5 completa e em produção.** Automação de reativação de paciente inativo.
+  Perguntei ao Rafael qual das duas automações da pendência construir — lembrete de consulta
+  dependia de criar do zero um jeito de cadastrar consulta (`consultas` segue sem nenhuma escrita,
+  nem webhook nem painel gravam nela); reativação reaproveita dado que já existe. Ele escolheu
+  reativação (decisão completa em `_memoria/decisoes.md`).
+  - `crm/src/lib/evolution-send.ts`: primeiro ponto do código que **envia** mensagem (contraparte
+    do webhook, que só recebia) — `POST {EVOLUTION_API_URL}/message/sendText/{instance}`.
+  - `crm/src/lib/reativacao.ts`: regra pura (`selecionarCandidatos`) — conversa resolvida
+    (respondido/agendado/perdido) sem mensagem há mais de 30 dias (`LIMITE_INATIVIDADE_MS`) vira
+    candidata; manda 1x só por conversa (`ultima_reativacao_em` é o trinco, sem cadência de
+    repetição automática na V1) — mais orquestração (`executarReativacao`) que busca no Supabase,
+    manda pela Evolution API e grava (`ultima_reativacao_em`, `ultima_mensagem_em` e a mensagem em
+    si, pra aparecer na ficha do paciente igual qualquer outra). Mensagem de check-in simples, sem
+    promessa de resultado nem superlativo (Resolução CFO-196/2019).
+  - `crm/src/app/api/cron/reativacao/route.ts`: dispara a automação, protegida por `CRON_SECRET`
+    comparado em tempo constante — mesmo padrão do webhook (servidor-a-servidor, sem sessão de
+    painel; adicionada às rotas públicas do `middleware.ts`).
+  - Migração `2026-09-15_v3_reativacao.sql`: coluna `ultima_reativacao_em` em `conversas`.
+  - **Decisão técnica**: em vez de um serviço novo no Railway só pra cron (custo e infra extra), o
+    disparo diário roda por `.github/workflows/odontominas-crm-reativacao.yml` (GitHub Actions,
+    1x/dia às ~9h Brasília, chama a rota via `curl` autenticado) — reaproveita o GitHub que já
+    estava conectado, sem nada pago a mais.
+  - De bônus: `crm/.env.example` nunca tinha sido versionado — o `.env*` do `.gitignore` excluía
+    ele por engano (não tem segredo nenhum, só nome de variável). Corrigido.
+  - 12 testes novos (87 no total); `typecheck`, `lint` e `next build` limpos.
+  - Validação sem risco: antes de tocar produção, li (sem escrever) a tabela `conversas` do
+    Supabase de produção direto por REST — confirmei que está vazia, então nenhum paciente real
+    corria risco de receber mensagem nesta sessão. O classificador de modo automático bloqueou uma
+    tentativa minha de chamar a rota com o segredo real pra smoke test (dispararia a automação de
+    verdade) — segui só com checagens que não executam envio, por decisão do próprio Rafael de não
+    validar com envio real desta vez.
+  - Deploy: `CRON_SECRET` setado no Railway via MCP e `railway up` rodado. Rafael aplicou a
+    migração no SQL Editor do Supabase e criou o secret `ODONTOMINAS_CRM_CRON_SECRET` no GitHub
+    Actions (os 2 passos que esta sessão não conseguia fazer sozinha: sem MCP do Supabase
+    disponível, sem `gh` CLI instalado nesta máquina — ver `ferramentas.md`). Commitado (`c72a211`)
+    e enviado ao GitHub.

@@ -146,3 +146,10 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   qualquer sessão futura neste repo, sem perder nada que já era usado de verdade. `read_only=true`
   ficou de fora de propósito (bloquearia rodar a migração pendente por MCP) — fica pra decidir
   quando o MCP for reautorizado.
+- **2026-09-15** (Rafael) [odontominas]: a automação de destaque da Fase 5 do CRM é reativação de
+  paciente inativo, não lembrete de consulta (as 2 opções previstas no plano técnico). Por quê:
+  lembrete de consulta dependia de construir do zero um jeito de cadastrar consulta — a tabela
+  `consultas` existe desde a Fase 1 mas nada no código escreve nela ainda, nem webhook nem painel —
+  ou seja, carregava escopo extra antes da automação em si. Reativação reaproveita dado que já
+  existe (`conversas`/`mensagens`/`eventos_funil`, o mesmo cálculo de "esfriando" que já alimenta o
+  `/resumo`), sem depender de nada novo no banco.

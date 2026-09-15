@@ -8,7 +8,7 @@
 
 | ferramenta | pra quê | como o agente alcança | estado | última checagem |
 |---|---|---|---|---|
-| GitHub | código do site, PRs, issues, histórico de commits | MCP (`GITHUB_PERSONAL_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
+| GitHub | código do site, PRs, issues, histórico de commits, workflow do Actions | MCP (`GITHUB_PERSONAL_ACCESS_TOKEN` no `.env`) pra repo/PR/issues; **`gh` CLI não está instalado nesta máquina** (tentado via Bash e PowerShell, não achou) — criar/editar secret do Actions é manual, no site, não é coberto pelo MCP atual | ligada (repo); secret do Actions só manual | 2026-09-15 |
 | Supabase | banco de dados do Diagnóstico Digital (leads, scoring) | MCP, somente-leitura (`SUPABASE_ACCESS_TOKEN` no `.env`) | ligada | 2026-09-10 |
 | Supabase (CRM OdontoMinas) | banco do CRM da OdontoMinas (projeto `odontominas-crm`, separado do Diagnóstico Digital) | Sem acesso direto funcionando hoje: o MCP local `supabase-crm` (token pessoal, registrado como ligado numa sessão anterior) não apareceu disponível numa sessão nova; o HTTP/OAuth em `.mcp.json` (`supabase-crm-odontominas`) pede autorização que só roda em sessão interativa; o Supabase CLI local está logado numa conta que não é dona deste projeto (só enxerga `noryos-inovacoes`). Caminho que funciona: SQL Editor manual (`https://supabase.com/dashboard/project/exaluyarsphucotprwpi/sql/new`), você roda o SQL que eu preparo | parcialmente ligada (só manual) | 2026-09-15 |
 | Cloudflare | hospedagem de sites (Pages) — 1º uso: site da OdontoMinas, no ar | só você, no dashboard (deploy automático via Git); sem MCP/API conectado aqui | não ligada (deploy roda sozinho; eu não gerencio o projeto) | 2026-09-12 |
