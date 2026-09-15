@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarResumoExecutivo } from "@/lib/resumo";
@@ -7,8 +8,18 @@ import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Visão de gestão (números do funil) — só admin. Atendente lida com conversa
+ * por conversa no painel principal, não precisa do agregado do negócio.
+ * Gate aqui, não só escondendo o link: sem isso, digitar a URL direto
+ * contornava a diferença de papel.
+ */
 export default async function ResumoPage() {
   const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
+
+  if (sessao?.papel !== "admin") {
+    redirect("/");
+  }
 
   if (!clinicaId) {
     return (

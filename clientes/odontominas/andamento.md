@@ -86,7 +86,10 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
   o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
-  (2026-09-15).
+  (2026-09-15) — o Resumo executivo já é exclusivo de admin (2026-09-15), o resto do painel segue
+  igual pros 2 papéis.
+- [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
+  telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -340,3 +343,26 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     Actions (os 2 passos que esta sessão não conseguia fazer sozinha: sem MCP do Supabase
     disponível, sem `gh` CLI instalado nesta máquina — ver `ferramentas.md`). Commitado (`c72a211`)
     e enviado ao GitHub.
+- 2026-09-15: preparo pra Fase 6. Ao testar o login em produção, o painel voltou "não consegui
+  conectar ao banco".
+  - **Bug real encontrado e corrigido**: logs do Railway mostraram `PGRST303 "JWT issued at
+    future"` — erro transiente real do Supabase (a mesma consulta, refeita na mão, funcionou
+    normal em seguida). `src/lib/clinica.ts` guardava esse resultado em cache **pra sempre**,
+    inclusive quando era erro — um soluço passageiro do Supabase travava o painel até o processo
+    reiniciar sozinho. Corrigido: só cacheia sucesso, nunca falha. Reiniciei o serviço no Railway
+    (MCP) pra limpar o estado travado na hora, e depois deployei a correção. Testado
+    (typecheck/lint/test/build limpos).
+  - A pedido do Rafael ("admin e atendente têm os mesmos menus, não faz sentido"): Resumo
+    executivo virou exclusivo de admin. `resumo/page.tsx` redireciona pro painel se quem não é
+    admin tentar acessar (gate de verdade, não só esconder o link); `page.tsx` só mostra o link
+    "Resumo" pra admin. Painel principal segue igual pros 2 papéis — é onde o atendente trabalha.
+    Decisão completa em `_memoria/decisoes.md`.
+  - Com aprovação do Rafael, semeei 5 conversas fictícias direto no Supabase de produção (nomes e
+    telefones claramente falsos, 556199990001-5) cobrindo os 5 status: Camila Duarte (novo),
+    Rodrigo Alves (aguardando 52min, aparece em vermelho), Fernanda Lima (respondido em 8min),
+    Marcos Teixeira (agendado, jornada respondido→agendado), Beatriz Nogueira (perdido, inativa há
+    47 dias, `ultima_reativacao_em` já preenchida de propósito pra não disparar mensagem de
+    verdade no cron de amanhã). Validado ao vivo por login real (cookie de sessão): admin vê
+    Resumo e entra (200), atendente não vê o link e toma redirect (307) se tentar a URL, os 5
+    nomes aparecem certos no painel.
+  - 2 deploys nesta sessão (1 só com a correção do cache, 1 com o RBAC do Resumo).

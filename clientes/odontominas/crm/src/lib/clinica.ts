@@ -8,16 +8,19 @@ import { getSupabaseServerClient } from "@/lib/supabase";
  */
 const CLINICA_SLUG = process.env.CLINICA_SLUG || "odontominas";
 
-let cachedId: string | null | undefined;
+// Só guarda em cache o sucesso: o id da clínica não muda em runtime, então
+// vale poupar a consulta depois da 1ª vez. Uma falha (Supabase fora do ar,
+// erro transiente) NUNCA fica em cache — senão um erro passageiro trava o
+// processo inteiro nesse estado até reiniciar (bug real: PGRST303 "JWT
+// issued at future" transiente da Supabase derrubou o painel até o próximo
+// deploy, porque a versão antiga cacheava `null` igual a um resultado bom).
+let cachedId: string | null = null;
 
 export async function getClinicaId(): Promise<string | null> {
-  if (cachedId !== undefined) return cachedId;
+  if (cachedId) return cachedId;
 
   const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    cachedId = null;
-    return cachedId;
-  }
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("clinicas")
@@ -34,8 +37,7 @@ export async function getClinicaId(): Promise<string | null> {
         message: (error?.message ?? "").slice(0, 200) || null,
       })
     );
-    cachedId = null;
-    return cachedId;
+    return null;
   }
 
   cachedId = data.id as string;

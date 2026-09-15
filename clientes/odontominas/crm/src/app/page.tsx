@@ -48,9 +48,11 @@ export default async function PainelPage({
             <p className="text-sm text-neutral-500">OdontoMinas — conversas do WhatsApp</p>
           </div>
           <div className="flex items-center gap-3 pt-1">
-            <Link href="/resumo" className="text-sm font-medium text-teal-700 hover:underline">
-              Resumo
-            </Link>
+            {sessao?.papel === "admin" && (
+              <Link href="/resumo" className="text-sm font-medium text-teal-700 hover:underline">
+                Resumo
+              </Link>
+            )}
             {sessao && <span className="text-sm capitalize text-neutral-400">{sessao.papel}</span>}
             <LogoutButton />
           </div>

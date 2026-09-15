@@ -24,7 +24,7 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 - Trocar as senhas temporárias do painel do CRM (`dev-admin-temp`/`dev-atendente-temp`, hoje em
   produção no Railway por decisão consciente do Rafael) antes de expor o painel pra equipe real da
   clínica; RBAC completo por perfil (permissão diferenciada) fica pra depois que o piloto validar
-  (2026-09-15).
+  (2026-09-15) — o Resumo executivo já é exclusivo de admin (2026-09-15), resto segue igual.
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
   técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
   domínio próprio (2026-09-11).
@@ -48,7 +48,9 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 - Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 (reativação automática de paciente
   inativo) validado em produção; Fase 6 (demo pro marido, e se validar, pra Ariadna) é o próximo
-  passo — demonstrar funcionando é a "proposta".
+  passo — demonstrar funcionando é a "proposta". Painel tem 5 conversas fictícias semeadas pra
+  demonstração (`clientes/odontominas/andamento.md`) — falta decidir se apaga ou mantém antes da
+  demo real.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

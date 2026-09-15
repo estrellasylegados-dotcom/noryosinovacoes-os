@@ -153,3 +153,9 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   ou seja, carregava escopo extra antes da automação em si. Reativação reaproveita dado que já
   existe (`conversas`/`mensagens`/`eventos_funil`, o mesmo cálculo de "esfriando" que já alimenta o
   `/resumo`), sem depender de nada novo no banco.
+- **2026-09-15** (Rafael) [odontominas]: Resumo executivo (números do funil) vira exclusivo do
+  perfil admin no painel do CRM — atendente não vê o link nem acessa a URL direto. Por quê: Rafael
+  testou os 2 logins e achou que admin e atendente terem os mesmos menus "não faz sentido". Resto
+  do painel (lista de conversas, mudar status, ficha de paciente) segue igual pros 2 — é onde o
+  atendente trabalha o dia a dia; RBAC completo por permissão ainda fica pra depois que o piloto
+  validar (decisão de 2026-09-15 anterior, sobre os 2 perfis).
