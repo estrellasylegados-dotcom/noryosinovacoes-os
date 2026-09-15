@@ -127,3 +127,13 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   approval" mesmo depois de 3 aprovações numa sessão interativa separada, sem causa identificada;
   o caminho por CLI (`railway login --browserless`, token pessoal do Supabase) funcionou de
   primeira e não depende de aprovação assíncrona.
+- **2026-09-15** (Rafael) [odontominas]: o painel do CRM ganha 2 perfis de acesso (`admin`,
+  `atendente`), não os 6 cargos sugeridos inicialmente (Admin, Gestor, Gerente, Dentista,
+  Assistente, Atendente); e ganha um remendo mínimo de senha compartilhada por perfil, sem
+  permissão diferenciada entre eles ainda — RBAC completo (Supabase Auth, tabela de usuário,
+  permissão por rota) fica pra depois que o piloto validar. Por quê: só a Ariadna e o marido
+  aparecem confirmados na operação da OdontoMinas hoje — Gestor/Gerente/Dentista/Assistente seriam
+  hierarquia especulativa sem equipe real pra ocupar; o painel também não tem, ainda, nenhuma ação
+  que precise ser diferenciada por cargo (as duas roles fazem a mesma coisa). Fechar a exposição
+  pública de dado de paciente (LGPD) era mais urgente do que construir permissão fina, e um sistema
+  de login completo atrasaria as Fases 4-6 rumo à demo pro marido/Ariadna.

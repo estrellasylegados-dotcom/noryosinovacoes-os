@@ -1,9 +1,15 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, atualizado)
+
+CRM: Fase 3 (painel de atendimento) completa e validada de ponta a ponta, em produção. Detalhe
+completo em "Feito" abaixo. Painel agora exige login (remendo mínimo — 2 perfis, admin/atendente,
+senha temporária). Próximo passo é a Fase 4 (ficha de paciente + resumo executivo).
+
 ## Onde está (2026-09-15)
 
 CRM: Fase 2 (espelhamento) completa e validada de ponta a ponta. Detalhe completo em "Feito"
-abaixo. Próximo passo é a Fase 3 (painel de atendimento).
+abaixo. Próximo passo era a Fase 3 (painel de atendimento) — ver bloco atualizado acima.
 
 ## Onde está (2026-09-12)
 
@@ -45,11 +51,15 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   validadas em `crm/.env.local` (2026-09-15). **Fase 1 (infra) completa.**
 - [x] Fase 2 — espelhamento: mensagem recebida/enviada grava em `conversas`/`mensagens`, sem tela
   ainda. Validada com WhatsApp real (2026-09-15) — ver "Feito".
-- [ ] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status
-  (novo/respondido/aguardando/agendado/perdido), tempo até a 1ª resposta.
+- [x] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status
+  (novo/respondido/aguardando/agendado/perdido), tempo até a 1ª resposta. Validada em produção
+  (2026-09-15) — ver "Feito".
 - [ ] Fase 4 — ficha de paciente + resumo executivo (dashboard simples).
 - [ ] Fase 5 — 1 automação de destaque (lembrete de consulta ou reativação de paciente inativo).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
+- [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
+  o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
+  (2026-09-15).
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -183,3 +193,27 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     local (`supabase-crm`) autenticado por token de acesso pessoal. Railway CLI instalada e logada
     (`railway login --browserless`), MCP oficial configurado (`railway mcp install`). Os dois MCPs
     novos só ficam disponíveis numa sessão futura desta máquina.
+- 2026-09-15: **Fase 3 do CRM completa e validada de ponta a ponta, em produção.** Painel de
+  atendimento em `crm/src/app/page.tsx`: lista de conversas (paciente/telefone), status em dropdown
+  colorido e clicável (a "ação leve" do plano técnico — grava em `eventos_funil` com
+  `motivo: "manual"`), filtro por status via link, tempo até 1ª resposta calculado a partir do
+  primeiro `eventos_funil` que tira a conversa de `novo` (destaque vermelho acima de 30min ainda
+  sem resposta — o "uau" da demo), auto-refresh de 20s pra mensagem nova aparecer sozinha numa
+  demonstração ao vivo. Zero dependência nova, só Tailwind. Testado com uma conversa sintética real
+  no Supabase (criada e apagada na sessão).
+  - Ao entregar, identificado que o painel não tinha login nenhum — URL pública do Railway expunha
+    telefone e conversa de paciente (LGPD). Rafael decidiu 2 perfis (`admin`, `atendente`) em vez
+    dos 6 cargos sugeridos (Admin, Gestor, Gerente, Dentista, Assistente, Atendente) — ver
+    `_memoria/decisoes.md` pro porquê — e um remendo mínimo de senha antes de RBAC completo.
+  - Implementado: `src/middleware.ts` protege painel + API (webhook da Evolution segue público, é
+    servidor-a-servidor); cookie assinado por HMAC via Web Crypto (`src/lib/sessao.ts`, sem
+    dependência nova, edge-safe); `/login` + logout; `.env.example` com as 3 variáveis novas
+    (`PAINEL_SENHA_ADMIN`, `PAINEL_SENHA_ATENDENTE`, `SESSAO_SECRET`).
+  - Deploy no Railway (`railway up`, serviço `odontominas-crm`) — variáveis setadas via MCP depois
+    de aprovação explícita do Rafael (o classificador de modo automático bloqueia escrita de
+    segredo em serviço remoto por padrão). Validado em produção: login errado rejeita, login certo
+    entra com o papel certo, painel exige sessão, webhook segue aberto, serviço irmão
+    (`evolution-api`) intocado.
+  - **Senhas de produção hoje são as temporárias de desenvolvimento**
+    (`dev-admin-temp`/`dev-atendente-temp`) — decisão consciente do Rafael, "por enquanto". Trocar
+    antes de expor o painel pra equipe real da clínica (pendência acima).
