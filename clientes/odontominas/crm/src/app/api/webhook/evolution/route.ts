@@ -52,8 +52,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const expectedKey = process.env.EVOLUTION_API_KEY;
-  if (!expectedKey || body.apikey !== expectedKey) {
+  // A Evolution API ecoa o TOKEN DA INSTÂNCIA no campo apikey do payload
+  // (não a chave global usada pra chamar a API dela) — validado empiricamente
+  // batendo os dois valores contra o payload real.
+  const validKeys = [process.env.EVOLUTION_API_KEY, process.env.EVOLUTION_INSTANCE_TOKEN].filter(Boolean);
+  if (validKeys.length === 0 || !validKeys.includes(body.apikey)) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
