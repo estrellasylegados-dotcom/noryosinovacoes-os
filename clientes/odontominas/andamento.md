@@ -32,8 +32,12 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   falta de automação — decide se dá pra só simplificar módulos em vez de construir substituto
   completo (o CRM não mexe na camada clínica/prontuário/financeiro dele, só na de
   captação/relacionamento).
-- [ ] Fase 1 — infra: projeto Supabase novo (separado do Diagnóstico Digital) + Evolution API no
-  Railway (template oficial), conectado no número de teste do Rafael, não o da clínica.
+- [x] Fase 1a — Evolution API no ar na Railway (instância `odontominas-teste`, WHATSAPP-BAILEYS),
+  conectada via QR no número de teste do Rafael (`state: open`), confirmado por chamada direta à
+  API (2026-09-15). Chave e URL em `crm/.env.local` (fora do git).
+- [x] Fase 1b — projeto Supabase novo criado (`odontominas-crm`, região Americas/São Paulo,
+  RLS automático ligado em toda tabela nova, tabela não exposta por padrão). Chaves salvas e
+  validadas em `crm/.env.local` (2026-09-15). **Fase 1 (infra) completa.**
 - [ ] Fase 2 — espelhamento: mensagem recebida/enviada grava em `conversas`/`mensagens`, sem tela
   ainda, só validar que o dado chega certo.
 - [ ] Fase 3 — painel de atendimento (o "uau" da demo): lista de conversas, status

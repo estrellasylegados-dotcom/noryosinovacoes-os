@@ -10,14 +10,16 @@ de graça (site + CRM de captação + tráfego pago, verba de mídia por conta d
 conceito pra depois oferecer aos contatos do marido com outros dentistas (detalhe em
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
-demonstração ao vivo pro marido, não um documento formal. Compliance jurídico: risco de
-exclusividade Mirante/Sicoob aceito conscientemente.
+demonstração ao vivo pro marido, não um documento formal. Infra do CRM (Fase 1) já está pronta:
+Evolution API conectada na Railway + Supabase novo criado e validado (2026-09-15) — próximo passo
+é a Fase 2, o código (scaffold Next.js, migração das tabelas, webhook da Evolution API). Compliance
+jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- **Construir o CRM (captação/relacionamento) até estado demonstrável** — vira a atividade
-  principal do projeto OdontoMinas; site+tráfego pago ficam em segundo plano até isso rodar (ver
-  `clientes/odontominas/andamento.md`) (2026-09-14).
+- **Fase 2 do CRM: scaffold Next.js + migração (`clinica_id` em tudo) + webhook da Evolution API**
+  — infra (Fase 1) já pronta; isso é o que falta pra chegar no estado demonstrável (ver
+  `clientes/odontominas/andamento.md`) (2026-09-15).
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
   técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
   domínio próprio (2026-09-11).
