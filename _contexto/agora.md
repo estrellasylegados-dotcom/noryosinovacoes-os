@@ -14,10 +14,15 @@ demonstração ao vivo pro marido, não um documento formal. Fase 3 do CRM (pain
 completa e validada de ponta a ponta, em produção (2026-09-15): lista de conversas, status, tempo
 até 1ª resposta com destaque de atraso, painel agora protegido por login (remendo mínimo — 2
 perfis, admin/atendente, sem permissão diferenciada ainda). Compliance jurídico: risco de
-exclusividade Mirante/Sicoob aceito conscientemente.
+exclusividade Mirante/Sicoob aceito conscientemente. Revisão técnica em 2026-09-15: 2 bugs reais
+corrigidos no funil de atendimento, login com rate limit, 71 testes automatizados novos (detalhe
+em `clientes/odontominas/andamento.md`) — código pronto, falta aplicar em produção.
 
 ## Pendências
 
+- Aplicar em produção os ajustes da revisão técnica de 2026-09-15: rodar a migração
+  `2026-09-15_v2_aguardando_desde.sql` no SQL Editor do Supabase e fazer `railway up` (corrige o
+  funil de atendimento e endurece o login) — nada disso está em produção ainda.
 - Trocar as senhas temporárias do painel do CRM (`dev-admin-temp`/`dev-atendente-temp`, hoje em
   produção no Railway por decisão consciente do Rafael) antes de expor o painel pra equipe real da
   clínica; RBAC completo por perfil (permissão diferenciada) fica pra depois que o piloto validar

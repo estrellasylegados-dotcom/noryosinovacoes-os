@@ -1,5 +1,12 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, revisão técnica)
+
+Revisão técnica aprofundada das Fases 1-3 do CRM, a pedido do Rafael. 2 bugs reais corrigidos no
+funil de atendimento, login endurecido (rate limit), suite de testes criada do zero (71 testes),
+escopo do MCP do Supabase enxugado. Detalhe completo em "Feito" abaixo. **Nada disso está em
+produção ainda** — falta rodar a migração nova no SQL Editor e fazer `railway up`.
+
 ## Onde está (2026-09-15, atualizado)
 
 CRM: Fase 3 (painel de atendimento) completa e validada de ponta a ponta, em produção. Detalhe
@@ -60,6 +67,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
   o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
   (2026-09-15).
+- [ ] Aplicar em produção a revisão técnica de 2026-09-15: rodar
+  `crm/supabase/migrations/2026-09-15_v2_aguardando_desde.sql` no SQL Editor do Supabase e fazer
+  `railway up` (corrige o funil de atendimento e endurece o login — ver "Feito").
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -217,3 +227,36 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   - **Senhas de produção hoje são as temporárias de desenvolvimento**
     (`dev-admin-temp`/`dev-atendente-temp`) — decisão consciente do Rafael, "por enquanto". Trocar
     antes de expor o painel pra equipe real da clínica (pendência acima).
+- 2026-09-15 (revisão técnica, a pedido do Rafael: "análise aprofundada, melhorias e testes em
+  tudo que foi feito até aqui"): leitura completa do código das Fases 1-3 (schema, webhook,
+  sessão/login, middleware, painel) e 2 bugs reais encontrados e corrigidos:
+  - Métrica "tempo até 1ª resposta" contava qualquer saída de `novo` como resposta — marcar uma
+    conversa `perdido` direto a partir de `novo` (sem nunca responder) aparecia como "respondeu em
+    Xmin" no painel, em verde. Corrigido: só conta transição de verdade pra `respondido`
+    (`status_novo = 'respondido'` em `eventos_funil`, não qualquer saída de `novo`).
+  - Conversa já resolvida (`respondido`/`agendado`/`perdido`) não reabria quando o paciente
+    escrevia de novo — sumia do radar do painel em vez de voltar a aparecer como `novo` (um
+    paciente pedindo remarcação, ou um lead "perdido" que volta a escrever, ficava invisível).
+    Corrigido: mensagem nova reabre o ciclo — automático no webhook, manual pelo dropdown de
+    status — com coluna nova `aguardando_desde` marcando o início do ciclo de espera atual
+    (`primeira_mensagem_em` continua intacto como registro do 1º contato de sempre, pra não perder
+    esse dado). Lógica de transição extraída pra `src/lib/funil.ts`, pura e testável isolada do
+    Supabase.
+  - Migração nova: `crm/supabase/migrations/2026-09-15_v2_aguardando_desde.sql` — **ainda não
+    rodada** no Supabase (pendência acima).
+  - Login: rate limit (`src/lib/rate-limit-login.ts`, 5 tentativas erradas / 15min por IP, em
+    memória) e comparação de senha em tempo constante (`src/lib/senha.ts`, `node:crypto`
+    `timingSafeEqual`) — as senhas continuam as temporárias, isto só reduz o risco de força bruta
+    enquanto isso.
+  - Testes: Vitest instalado (não existia nenhum teste no projeto), 71 testes novos cobrindo
+    normalização de telefone/mensagem do Baileys (`evolution-webhook.ts`), formatação
+    (`tempo.ts`), validação de status (`status.ts`), a regra de transição do funil (`funil.ts`),
+    assinatura HMAC da sessão — token adulterado, expirado, segredo trocado (`sessao.ts`), rate
+    limit e comparação de senha, e `conversas.ts` (listagem + troca manual de status) com um fake
+    de Supabase em memória cobrindo os dois bugs acima. `npm run test`, `typecheck`, `lint` e
+    `next build` — todos limpos.
+  - `.mcp.json`: escopo do MCP do Supabase enxugado — ver `_memoria/decisoes.md` pro porquê.
+  - `npm audit`: 4 vulnerabilidades em ferramenta de build/dev (postcss, vitest mocker), não em
+    código servido; correção exige Next.js v16 (major breaking) — registrado, não urgente.
+  - **Nada disso está em produção ainda**: falta rodar a migração no SQL Editor e fazer
+    `railway up`. Nada foi commitado nem enviado ao GitHub nesta sessão.

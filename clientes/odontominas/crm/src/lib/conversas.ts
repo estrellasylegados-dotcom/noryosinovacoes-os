@@ -1,17 +1,19 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { isStatusValido, type StatusConversa } from "@/lib/status";
+import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 
 export type ConversaPainel = {
   id: string;
   telefone: string;
   pacienteNome: string | null;
   status: StatusConversa;
-  primeiraMensagemEm: string | null;
+  aguardandoDesde: string | null;
   ultimaMensagemEm: string | null;
   /**
-   * null = sem primeira mensagem registrada.
+   * null = sem ciclo em aberto registrado, ou conversa que nunca chegou a
+   * ser respondida de fato (ex.: marcada "perdido" direto a partir de
+   * "novo" — não é honesto chamar isso de "respondeu em Xmin").
    * Enquanto `novo`/`aguardando`: tempo esperando (em aberto, recalculado a cada carga).
-   * Depois de responder: tempo que levou até a 1ª resposta (fixo).
+   * Depois de responder de verdade: tempo que levou até a 1ª resposta do ciclo atual (fixo).
    */
   tempoPrimeiraRespostaMs: number | null;
 };
@@ -59,7 +61,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
 
   let query = supabase
     .from("conversas")
-    .select("id, telefone, status, primeira_mensagem_em, ultima_mensagem_em, pacientes(nome)")
+    .select("id, telefone, status, aguardando_desde, ultima_mensagem_em, pacientes(nome)")
     .eq("clinica_id", clinicaId);
 
   if (filtroStatus && isStatusValido(filtroStatus)) {
@@ -72,23 +74,24 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
     return [];
   }
 
-  // Primeira resposta = 1º evento_funil que tira a conversa de "novo" (log gravado
-  // tanto pelo avanço automático do webhook quanto por troca manual no painel).
+  // Primeira resposta = 1º evento_funil que leva a conversa a "respondido" de
+  // verdade (não qualquer saída de "novo" — sair pra "perdido" direto não é
+  // resposta, é desistência, e não deve aparecer como "respondeu em Xmin").
   const ids = conversas.map((c) => c.id as string);
-  const primeiraRespostaPorConversa = new Map<string, string>();
+  const respostasPorConversa = new Map<string, string>();
   if (ids.length > 0) {
     const { data: eventos } = await supabase
       .from("eventos_funil")
       .select("conversa_id, created_at")
       .eq("clinica_id", clinicaId)
-      .eq("status_anterior", "novo")
+      .eq("status_novo", "respondido")
       .in("conversa_id", ids)
       .order("created_at", { ascending: true });
 
     for (const evento of eventos ?? []) {
       const conversaId = evento.conversa_id as string;
-      if (!primeiraRespostaPorConversa.has(conversaId)) {
-        primeiraRespostaPorConversa.set(conversaId, evento.created_at as string);
+      if (!respostasPorConversa.has(conversaId)) {
+        respostasPorConversa.set(conversaId, evento.created_at as string);
       }
     }
   }
@@ -97,15 +100,21 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
   const resultado: ConversaPainel[] = conversas.map((c) => {
     const statusBruto = c.status as string;
     const status = isStatusValido(statusBruto) ? statusBruto : "novo";
-    const primeiraMensagemEm = c.primeira_mensagem_em as string | null;
-    const respondidaEm = primeiraRespostaPorConversa.get(c.id as string) ?? null;
+    const aguardandoDesde = c.aguardando_desde as string | null;
+    const respondidaEm = respostasPorConversa.get(c.id as string) ?? null;
 
     let tempoPrimeiraRespostaMs: number | null = null;
-    if (primeiraMensagemEm) {
-      if (respondidaEm) {
-        tempoPrimeiraRespostaMs = new Date(respondidaEm).getTime() - new Date(primeiraMensagemEm).getTime();
+    if (aguardandoDesde) {
+      const inicioCiclo = new Date(aguardandoDesde).getTime();
+      // Reabrir zera `aguardando_desde`: uma resposta de um ciclo anterior
+      // (antes da reabertura) nunca deve contar pro ciclo atual.
+      const respostaDoCicloAtual =
+        respondidaEm && new Date(respondidaEm).getTime() >= inicioCiclo ? respondidaEm : null;
+
+      if (respostaDoCicloAtual) {
+        tempoPrimeiraRespostaMs = new Date(respostaDoCicloAtual).getTime() - inicioCiclo;
       } else if (status === "novo" || status === "aguardando") {
-        tempoPrimeiraRespostaMs = agora - new Date(primeiraMensagemEm).getTime();
+        tempoPrimeiraRespostaMs = agora - inicioCiclo;
       }
     }
 
@@ -114,7 +123,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
       telefone: c.telefone as string,
       pacienteNome: extrairNomePaciente(c.pacientes as PacienteEmbutido),
       status,
-      primeiraMensagemEm,
+      aguardandoDesde,
       ultimaMensagemEm: c.ultima_mensagem_em as string | null,
       tempoPrimeiraRespostaMs,
     };
@@ -126,7 +135,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
 
     if (a.status === "novo" || a.status === "aguardando") {
       // Dentro de quem espera resposta: quem espera há mais tempo primeiro.
-      return new Date(a.primeiraMensagemEm ?? 0).getTime() - new Date(b.primeiraMensagemEm ?? 0).getTime();
+      return new Date(a.aguardandoDesde ?? 0).getTime() - new Date(b.aguardandoDesde ?? 0).getTime();
     }
     return new Date(b.ultimaMensagemEm ?? 0).getTime() - new Date(a.ultimaMensagemEm ?? 0).getTime();
   });
@@ -154,9 +163,20 @@ export async function atualizarStatus(
   const statusAnterior = atual.status as string;
   if (statusAnterior === statusNovo) return { ok: true };
 
+  // Atendente reabrindo manualmente uma conversa já resolvida: reinicia o
+  // relógio de espera a partir de agora, senão "tempo até 1ª resposta"
+  // volta a contar desde o contato original (pode ser dias atrás).
+  const reabreCiclo =
+    statusNovo === "novo" && isStatusValido(statusAnterior) && STATUS_RESOLVIDOS.includes(statusAnterior);
+  const agora = new Date().toISOString();
+
   const { error: erroUpdate } = await supabase
     .from("conversas")
-    .update({ status: statusNovo, updated_at: new Date().toISOString() })
+    .update({
+      status: statusNovo,
+      updated_at: agora,
+      ...(reabreCiclo ? { aguardando_desde: agora } : {}),
+    })
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId);
 

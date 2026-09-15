@@ -137,3 +137,12 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   que precise ser diferenciada por cargo (as duas roles fazem a mesma coisa). Fechar a exposição
   pública de dado de paciente (LGPD) era mais urgente do que construir permissão fina, e um sistema
   de login completo atrasaria as Fases 4-6 rumo à demo pro marido/Ariadna.
+- **2026-09-15** (Rafael) [odontominas]: escopo de features do MCP do Supabase
+  (`supabase-crm-odontominas`, `.mcp.json`) reduzido de
+  `docs,account,database,debugging,development,functions,branching` pra
+  `docs,database,debugging,development`. Por quê: `account`/`branching` já ficavam desligados na
+  prática pelo `project_ref` na URL (escopa a ferramenta só a este projeto), e `functions` não se
+  aplica — o CRM roda no Railway, não em Edge Functions do Supabase; menos ferramenta exposta pra
+  qualquer sessão futura neste repo, sem perder nada que já era usado de verdade. `read_only=true`
+  ficou de fora de propósito (bloquearia rodar a migração pendente por MCP) — fica pra decidir
+  quando o MCP for reautorizado.

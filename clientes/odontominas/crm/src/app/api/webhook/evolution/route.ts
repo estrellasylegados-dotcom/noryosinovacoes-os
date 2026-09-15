@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { getClinicaId } from "@/lib/clinica";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
+import { decidirTransicaoWebhook } from "@/lib/funil";
+import { isStatusValido } from "@/lib/status";
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
- * Evolution API e grava em `conversas`/`mensagens`. Sem tela ainda — só
- * valida que o dado chega certo. Conversa/paciente são achados-ou-criados
- * por (clinica_id, telefone); V1 assume uma conversa por paciente (sem
- * reabertura), e o status só avança automaticamente de "novo" pra
- * "respondido" na primeira mensagem enviada pela clínica.
+ * Evolution API e grava em `conversas`/`mensagens`. Conversa/paciente são
+ * achados-ou-criados por (clinica_id, telefone) — uma conversa por paciente,
+ * reaberta em vez de duplicada quando ele escreve de novo depois de
+ * resolvida. Regra de transição de status em src/lib/funil.ts.
  *
  * Autenticação: a Evolution API ecoa a própria apikey da instância no corpo
  * do payload (`body.apikey`) — comparamos com EVOLUTION_API_KEY em vez de
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
   let conversaId: string | null = conversaExistente?.id ?? null;
   let statusAnterior: string | null = null;
   let statusNovo: string | null = null;
+  let motivoEvento: string | null = null;
 
   if (!conversaId) {
     const status = fromMe ? "respondido" : "novo";
@@ -151,6 +153,7 @@ export async function POST(request: Request) {
         status,
         primeira_mensagem_em: timestampWhatsapp,
         ultima_mensagem_em: timestampWhatsapp,
+        aguardando_desde: timestampWhatsapp,
       })
       .select("id")
       .single();
@@ -160,30 +163,38 @@ export async function POST(request: Request) {
     }
     conversaId = novaConversa.id as string;
   } else {
-    const statusAtual = conversaExistente!.status as string;
-    const proximoStatus = fromMe && statusAtual === "novo" ? "respondido" : statusAtual;
+    const statusBruto = conversaExistente!.status as string;
+    const statusAtual = isStatusValido(statusBruto) ? statusBruto : "novo";
+    const decisao = decidirTransicaoWebhook(statusAtual, fromMe);
+
     await supabase
       .from("conversas")
       .update({
         ultima_mensagem_em: timestampWhatsapp,
         updated_at: new Date().toISOString(),
-        status: proximoStatus,
+        status: decisao.statusNovo,
         paciente_id: pacienteId,
+        // reabriu = mensagem nova numa conversa já resolvida: reinicia o
+        // relógio de "tempo até 1ª resposta" a partir desta mensagem, não
+        // do contato original (que pode ter sido dias/semanas atrás).
+        ...(decisao.reabriu ? { aguardando_desde: timestampWhatsapp } : {}),
       })
       .eq("id", conversaId);
-    if (proximoStatus !== statusAtual) {
-      statusAnterior = statusAtual;
-      statusNovo = proximoStatus;
+
+    if (decisao.evento) {
+      statusAnterior = decisao.evento.statusAnterior;
+      statusNovo = decisao.evento.statusNovo;
+      motivoEvento = decisao.evento.motivo;
     }
   }
 
-  if (statusAnterior && statusNovo) {
+  if (statusAnterior && statusNovo && motivoEvento) {
     await supabase.from("eventos_funil").insert({
       clinica_id: clinicaId,
       conversa_id: conversaId,
       status_anterior: statusAnterior,
       status_novo: statusNovo,
-      motivo: "primeira_resposta_automatica",
+      motivo: motivoEvento,
     });
   }
 

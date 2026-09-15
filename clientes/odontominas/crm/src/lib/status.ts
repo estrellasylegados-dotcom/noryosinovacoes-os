@@ -40,3 +40,10 @@ export const STATUS_CONFIG: Record<StatusConversa, { label: string; corBadge: st
 export function isStatusValido(valor: string): valor is StatusConversa {
   return (STATUS_ORDEM as string[]).includes(valor);
 }
+
+/**
+ * Status que tratam a conversa como encerrada (respondida, marcada com
+ * consulta ou dada como perdida). Usado pra decidir quando uma mensagem
+ * nova do paciente reabre o ciclo de atendimento — ver src/lib/funil.ts.
+ */
+export const STATUS_RESOLVIDOS: StatusConversa[] = ["respondido", "agendado", "perdido"];
