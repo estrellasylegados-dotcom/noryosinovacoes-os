@@ -2,17 +2,14 @@
 
 ## Onde está (2026-09-15, V1 do painel — menu, login por atendente, Equipe, Conexão)
 
-CRM: pacote de melhorias na V1 do painel a pedido do Rafael (a Ariadna "precisa ser impactada" já
-na V1, mesmo sendo V1) — menu lateral em toda tela logada, login individual por atendente (troca
-as 2 senhas compartilhadas), tela **Equipe** (atendimento por secretária: quantidade, tempo médio
-de resposta) e tela **Conexão** (status do WhatsApp + QR Code pra reconectar sem abrir
-Railway/Evolution). Testado de ponta a ponta contra o Supabase e a Evolution API de produção reais
-(sessão assinada com o `SESSAO_SECRET` real, não só teste automatizado) — confirmado que o menu, o
-gate de admin e a conexão real do WhatsApp funcionam. **Falta rodar a migração
-`2026-09-15_v4_equipe.sql`** (SQL Editor) e fazer `railway up` antes do login por atendente
-funcionar em produção — sem ela, login degrada pra "credenciais inválidas" em vez de quebrar
-(confirmado ao vivo). Detalhe completo em "Feito" abaixo. Depois disso, segue valendo o próximo
-passo de sempre: Fase 6 (demo pro marido).
+CRM: **pacote de melhorias na V1 do painel completo e em produção de verdade** — menu lateral em
+toda tela logada, login individual por atendente (troca as 2 senhas compartilhadas), tela
+**Equipe** (atendimento por secretária: quantidade, tempo médio de resposta) e tela **Conexão**
+(status do WhatsApp + QR Code pra reconectar sem abrir Railway/Evolution). Migração
+`2026-09-15_v4_equipe.sql` rodada, um bug real de permissão corrigido com
+`2026-09-15_v5_grants_atendentes.sql` (ver "Feito"), `railway up` feito e **validado com login
+real de produção** (`admin`/`admin-temp-2026` entra, Rafael confirmou visualmente). Próximo passo
+de sempre: Fase 6 (demo pro marido).
 
 ## Onde está (2026-09-15, Fase 5)
 
@@ -98,14 +95,11 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Fase 5 — automação de reativação de paciente inativo (escolhida em vez de lembrete de
   consulta — ver `_memoria/decisoes.md`). Completa e em produção (2026-09-15) — ver "Feito".
 - [x] V1 do painel incrementada — menu lateral, login por atendente, Equipe, Conexão WhatsApp com
-  QR (2026-09-15) — ver "Feito". **Falta rodar `2026-09-15_v4_equipe.sql`** (SQL Editor) e
-  `railway up` antes de funcionar em produção.
+  QR (2026-09-15), migrações v4+v5 rodadas, `railway up` feito e validado com login real de
+  produção — ver "Feito". Trocar usuário/senha das 3 contas de demo
+  (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
+  demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
-- [ ] Rodar `2026-09-15_v4_equipe.sql` (SQL Editor do Supabase) e fazer `railway up` — troca as 2
-  senhas compartilhadas por 1 conta por atendente (substitui esta pendência: "trocar as senhas
-  temporárias" não se aplica mais, a arquitetura mudou). Semeia 3 contas de demo (`admin`,
-  `recepcao1`, `recepcao2`, senha `<usuario>-temp-2026`) — renomear pelas secretárias reais antes
-  da demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
 
@@ -429,3 +423,21 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     antes de rodar a migração. Tokens de sessão e HTML de produção gerados pra este teste foram
     apagados ao final, nada disso ficou salvo no repositório.
   - Nada commitado nem enviado ao GitHub nesta sessão.
+  - Commitado e enviado ao GitHub via `/syncar` (32 arquivos, commit `3f06feb`).
+- 2026-09-15: **V1 do painel foi pra produção de verdade.** Rafael rodou a migração v4 no SQL
+  Editor; ao testar, achei um bug real — mesmo problema da Fase 2 (este projeto Supabase não tem
+  os default privileges configurados no schema `public`), a tabela nova `atendentes` nasceu sem
+  `GRANT` pra `service_role`. Confirmado por leitura direta (`permission denied for table
+  atendentes`). Corrigido com `2026-09-15_v5_grants_atendentes.sql` (mesmo padrão de
+  `2026-09-15_v1_grants.sql`); Rafael rodou e a leitura confirmou as 3 contas certas.
+  - `railway up` estava sendo bloqueado pelo classificador de modo automático ("Production
+    Deploy") mesmo com autorização do Rafael no chat. A pedido dele: `Bash(railway up)` adicionado
+    em `.claude/settings.local.json` (permissão local desta máquina) — registrado em
+    `_contexto/ferramentas.md`.
+  - Deploy feito (2 builds em paralelo, porque o primeiro pareceu travado sem log por minutos —
+    não estava, só demorou a agendar builder; o segundo chegou no ar primeiro, mesmo código nos
+    dois — sem risco, é o mesmo commit). Validado com login real de produção:
+    `admin`/`admin-temp-2026` entra (`{"ok":true,"papel":"admin","nome":"Administração"}`), painel
+    carrega com o menu novo. Rafael confirmou visualmente a tela pedindo usuário/senha e testou o
+    login com sucesso.
+  - Commitado e enviado ao GitHub via `/syncar` (a migração v5, commit `f61d583`).

@@ -11,20 +11,17 @@ conceito pra depois oferecer aos contatos do marido com outros dentistas (detalh
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
 demonstração ao vivo pro marido, não um documento formal. Fases 1-5 do CRM (painel, ficha,
-resumo, reativação automática) em produção. **V1 do painel incrementada em 2026-09-15** (a pedido
-do Rafael, "a Ariadna precisa ser impactada já na V1"): menu lateral, login individual por
-atendente (troca as 2 senhas compartilhadas), tela Equipe (atendimento por secretária) e tela
-Conexão (status do WhatsApp + QR pra reconectar) — testado ao vivo contra Supabase/Evolution API
-de produção, mas ainda não em produção de verdade (falta rodar a migração, ver pendência). Próximo
-passo depois disso: Fase 6 (demo pro marido). Compliance jurídico: risco de exclusividade
-Mirante/Sicoob aceito conscientemente.
+resumo, reativação automática) em produção. **V1 do painel incrementada e em produção de verdade
+(2026-09-15)** (a pedido do Rafael, "a Ariadna precisa ser impactada já na V1"): menu lateral,
+login individual por atendente, tela Equipe (atendimento por secretária), tela Conexão (status do
+WhatsApp + QR) — validado com login real de produção. Próximo passo: Fase 6 (demo pro marido).
+Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Rodar `2026-09-15_v4_equipe.sql` (SQL Editor do Supabase) e `railway up` no CRM da OdontoMinas —
-  troca as 2 senhas compartilhadas do painel por 1 conta por atendente; semeia 3 contas de demo
-  (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) a renomear pelas secretárias reais
-  antes da demo. Substitui a pendência antiga "trocar as senhas temporárias" (2026-09-15).
+- Trocar usuário/senha das 3 contas de demo do painel do CRM
+  (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
+  demo (2026-09-15).
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
   técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
   domínio próprio (2026-09-11).
@@ -46,10 +43,10 @@ Mirante/Sicoob aceito conscientemente.
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 validado em produção + V1 do
-  painel incrementada (menu, login por atendente, Equipe, Conexão) testada ao vivo mas travada até
-  rodar a migração v4 (pendência acima). Fase 6 (demo pro marido) é o próximo passo depois disso.
-  Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
+- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 + V1 do painel (menu, login por
+  atendente, Equipe, Conexão) tudo validado em produção de verdade. Fase 6 (demo pro marido) é o
+  próximo passo. Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se
+  apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).
