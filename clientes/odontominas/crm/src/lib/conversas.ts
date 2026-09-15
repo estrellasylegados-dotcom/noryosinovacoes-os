@@ -4,6 +4,7 @@ import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/st
 export type ConversaPainel = {
   id: string;
   telefone: string;
+  pacienteId: string | null;
   pacienteNome: string | null;
   status: StatusConversa;
   aguardandoDesde: string | null;
@@ -61,7 +62,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
 
   let query = supabase
     .from("conversas")
-    .select("id, telefone, status, aguardando_desde, ultima_mensagem_em, pacientes(nome)")
+    .select("id, telefone, status, aguardando_desde, ultima_mensagem_em, paciente_id, pacientes(nome)")
     .eq("clinica_id", clinicaId);
 
   if (filtroStatus && isStatusValido(filtroStatus)) {
@@ -121,6 +122,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
     return {
       id: c.id as string,
       telefone: c.telefone as string,
+      pacienteId: (c.paciente_id as string | null | undefined) ?? null,
       pacienteNome: extrairNomePaciente(c.pacientes as PacienteEmbutido),
       status,
       aguardandoDesde,

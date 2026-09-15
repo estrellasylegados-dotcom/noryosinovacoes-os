@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { getClinicaId } from "@/lib/clinica";
 import { contarPorStatus, listarConversas } from "@/lib/conversas";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isStatusValido, type StatusConversa } from "@/lib/status";
+import { isStatusValido, LIMITE_ESPERA_MS, type StatusConversa } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
 import { StatusSelect } from "@/components/StatusSelect";
 import { FiltroStatus } from "@/components/FiltroStatus";
@@ -9,9 +10,6 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
-
-/** Acima disso, uma conversa em aberto vira destaque vermelho no painel. */
-const LIMITE_ESPERA_MS = 30 * 60 * 1000;
 
 export default async function PainelPage({
   searchParams,
@@ -50,6 +48,9 @@ export default async function PainelPage({
             <p className="text-sm text-neutral-500">OdontoMinas — conversas do WhatsApp</p>
           </div>
           <div className="flex items-center gap-3 pt-1">
+            <Link href="/resumo" className="text-sm font-medium text-teal-700 hover:underline">
+              Resumo
+            </Link>
             {sessao && <span className="text-sm capitalize text-neutral-400">{sessao.papel}</span>}
             <LogoutButton />
           </div>
@@ -84,7 +85,13 @@ export default async function PainelPage({
                 return (
                   <tr key={c.id} className="align-top">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-neutral-900">{c.pacienteNome || "Sem nome"}</div>
+                      {c.pacienteId ? (
+                        <Link href={`/pacientes/${c.pacienteId}`} className="font-medium text-neutral-900 hover:underline">
+                          {c.pacienteNome || "Sem nome"}
+                        </Link>
+                      ) : (
+                        <div className="font-medium text-neutral-900">{c.pacienteNome || "Sem nome"}</div>
+                      )}
                       <div className="text-xs text-neutral-500">{formatTelefone(c.telefone)}</div>
                     </td>
                     <td className="px-4 py-3">

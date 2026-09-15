@@ -41,9 +41,17 @@ export function isStatusValido(valor: string): valor is StatusConversa {
   return (STATUS_ORDEM as string[]).includes(valor);
 }
 
+/** Rótulo amigável de um status — aceita string crua (ex.: de eventos_funil) sem quebrar se vier algo inesperado. */
+export function labelStatus(valor: string): string {
+  return isStatusValido(valor) ? STATUS_CONFIG[valor].label : valor;
+}
+
 /**
  * Status que tratam a conversa como encerrada (respondida, marcada com
  * consulta ou dada como perdida). Usado pra decidir quando uma mensagem
  * nova do paciente reabre o ciclo de atendimento — ver src/lib/funil.ts.
  */
 export const STATUS_RESOLVIDOS: StatusConversa[] = ["respondido", "agendado", "perdido"];
+
+/** Acima disso, uma conversa em aberto (novo/aguardando) vira alerta de "esfriando" — painel e resumo executivo. */
+export const LIMITE_ESPERA_MS = 30 * 60 * 1000;
