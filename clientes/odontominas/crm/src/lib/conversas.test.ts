@@ -299,6 +299,34 @@ describe("atualizarStatus", () => {
     expect(conversa.tempoPrimeiraRespostaMs).toBe(min(8));
   });
 
+  it("marcar 'respondido' com atendente logado grava quem atendeu, e listarConversas devolve isso em atendidoPorId", async () => {
+    fake.setDb({
+      conversas: [
+        { id: "c1", clinica_id: CLINICA, telefone: "1", status: "novo", aguardando_desde: new Date(T0).toISOString(), ultima_mensagem_em: new Date(T0).toISOString() },
+      ],
+      eventos_funil: [],
+    });
+
+    await atualizarStatus(CLINICA, "c1", "respondido", "atendente-ana");
+
+    const [conversa] = await listarConversas(CLINICA);
+    expect(conversa.atendidoPorId).toBe("atendente-ana");
+  });
+
+  it("resposta automática do webhook (sem atendente) deixa atendidoPorId nulo", async () => {
+    fake.setDb({
+      conversas: [
+        { id: "c1", clinica_id: CLINICA, telefone: "1", status: "novo", aguardando_desde: new Date(T0).toISOString(), ultima_mensagem_em: new Date(T0).toISOString() },
+      ],
+      eventos_funil: [],
+    });
+
+    await atualizarStatus(CLINICA, "c1", "respondido");
+
+    const [conversa] = await listarConversas(CLINICA);
+    expect(conversa.atendidoPorId).toBeNull();
+  });
+
   it("status igual ao atual é no-op (não loga evento)", async () => {
     fake.setDb({
       conversas: [{ id: "c1", clinica_id: CLINICA, telefone: "1", status: "novo", aguardando_desde: new Date(T0).toISOString(), ultima_mensagem_em: new Date(T0).toISOString() }],

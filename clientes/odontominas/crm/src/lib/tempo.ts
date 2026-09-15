@@ -1,3 +1,11 @@
+/** Início do dia (00:00) no fuso de Brasília (UTC-3 fixo, sem horário de verão desde 2019), como instante UTC. */
+export function inicioDoDiaBrasilia(agora: Date): Date {
+  const OFFSET_MS = 3 * 60 * 60 * 1000;
+  const local = new Date(agora.getTime() - OFFSET_MS);
+  const inicioLocal = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  return new Date(inicioLocal + OFFSET_MS);
+}
+
 export function formatDuracao(ms: number): string {
   const total = Math.max(0, ms);
   const min = Math.floor(total / 60000);

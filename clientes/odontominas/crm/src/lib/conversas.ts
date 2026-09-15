@@ -17,6 +17,12 @@ export type ConversaPainel = {
    * Depois de responder de verdade: tempo que levou até a 1ª resposta do ciclo atual (fixo).
    */
   tempoPrimeiraRespostaMs: number | null;
+  /**
+   * Quem marcou "respondido" manualmente no ciclo atual (atendente_id de
+   * eventos_funil) — null quando a resposta foi automática (webhook, sem
+   * pessoa por trás) ou quando ainda não há resposta. Alimenta src/lib/equipe.ts.
+   */
+  atendidoPorId: string | null;
 };
 
 const PRIORIDADE: Record<StatusConversa, number> = {
@@ -27,11 +33,12 @@ const PRIORIDADE: Record<StatusConversa, number> = {
   perdido: 4,
 };
 
-export type PacienteEmbutido = { nome: string | null } | { nome: string | null }[] | null;
+/** Formato de uma relação embutida `select("...(nome)")` do Supabase — usado pra paciente e, na ficha, pra atendente. */
+export type NomeEmbutido = { nome: string | null } | { nome: string | null }[] | null;
 
-export function extrairNomePaciente(pacientes: PacienteEmbutido): string | null {
-  if (!pacientes) return null;
-  return Array.isArray(pacientes) ? (pacientes[0]?.nome ?? null) : pacientes.nome;
+export function extrairNomeEmbutido(embutido: NomeEmbutido): string | null {
+  if (!embutido) return null;
+  return Array.isArray(embutido) ? (embutido[0]?.nome ?? null) : embutido.nome;
 }
 
 export async function contarPorStatus(clinicaId: string): Promise<Record<StatusConversa, number>> {
@@ -80,10 +87,11 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
   // resposta, é desistência, e não deve aparecer como "respondeu em Xmin").
   const ids = conversas.map((c) => c.id as string);
   const respostasPorConversa = new Map<string, string>();
+  const atendentePorConversa = new Map<string, string | null>();
   if (ids.length > 0) {
     const { data: eventos } = await supabase
       .from("eventos_funil")
-      .select("conversa_id, created_at")
+      .select("conversa_id, created_at, atendente_id")
       .eq("clinica_id", clinicaId)
       .eq("status_novo", "respondido")
       .in("conversa_id", ids)
@@ -93,6 +101,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
       const conversaId = evento.conversa_id as string;
       if (!respostasPorConversa.has(conversaId)) {
         respostasPorConversa.set(conversaId, evento.created_at as string);
+        atendentePorConversa.set(conversaId, (evento.atendente_id as string | null) ?? null);
       }
     }
   }
@@ -105,6 +114,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
     const respondidaEm = respostasPorConversa.get(c.id as string) ?? null;
 
     let tempoPrimeiraRespostaMs: number | null = null;
+    let atendidoPorId: string | null = null;
     if (aguardandoDesde) {
       const inicioCiclo = new Date(aguardandoDesde).getTime();
       // Reabrir zera `aguardando_desde`: uma resposta de um ciclo anterior
@@ -114,6 +124,7 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
 
       if (respostaDoCicloAtual) {
         tempoPrimeiraRespostaMs = new Date(respostaDoCicloAtual).getTime() - inicioCiclo;
+        atendidoPorId = atendentePorConversa.get(c.id as string) ?? null;
       } else if (status === "novo" || status === "aguardando") {
         tempoPrimeiraRespostaMs = agora - inicioCiclo;
       }
@@ -123,11 +134,12 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
       id: c.id as string,
       telefone: c.telefone as string,
       pacienteId: (c.paciente_id as string | null | undefined) ?? null,
-      pacienteNome: extrairNomePaciente(c.pacientes as PacienteEmbutido),
+      pacienteNome: extrairNomeEmbutido(c.pacientes as NomeEmbutido),
       status,
       aguardandoDesde,
       ultimaMensagemEm: c.ultima_mensagem_em as string | null,
       tempoPrimeiraRespostaMs,
+      atendidoPorId,
     };
   });
 
@@ -148,7 +160,8 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
 export async function atualizarStatus(
   clinicaId: string,
   conversaId: string,
-  statusNovo: StatusConversa
+  statusNovo: StatusConversa,
+  atendenteId: string | null = null
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
@@ -190,6 +203,7 @@ export async function atualizarStatus(
     status_anterior: statusAnterior,
     status_novo: statusNovo,
     motivo: "manual",
+    atendente_id: atendenteId,
   });
 
   return { ok: true };

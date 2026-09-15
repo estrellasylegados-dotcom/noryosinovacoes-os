@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
+import { formatDataHora, formatDuracao, formatTelefone, inicioDoDiaBrasilia } from "@/lib/tempo";
 
 describe("formatDuracao", () => {
   it("mostra 'agora' pra menos de 1 minuto", () => {
@@ -57,5 +57,24 @@ describe("formatTelefone", () => {
 
   it("cai no valor cru quando não bate um formato BR conhecido", () => {
     expect(formatTelefone("123")).toBe("123");
+  });
+});
+
+describe("inicioDoDiaBrasilia", () => {
+  it("madrugada UTC que ainda é 'ontem' em Brasília (UTC-3) volta o início de ontem", () => {
+    // 2026-09-15T02:30Z = 2026-09-14T23:30 em Brasília
+    const resultado = inicioDoDiaBrasilia(new Date("2026-09-15T02:30:00.000Z"));
+    expect(resultado.toISOString()).toBe("2026-09-14T03:00:00.000Z");
+  });
+
+  it("hora do dia já virado em Brasília devolve o início de hoje", () => {
+    // 2026-09-15T10:00Z = 2026-09-15T07:00 em Brasília
+    const resultado = inicioDoDiaBrasilia(new Date("2026-09-15T10:00:00.000Z"));
+    expect(resultado.toISOString()).toBe("2026-09-15T03:00:00.000Z");
+  });
+
+  it("exatamente meia-noite em Brasília devolve o mesmo instante", () => {
+    const resultado = inicioDoDiaBrasilia(new Date("2026-09-15T03:00:00.000Z"));
+    expect(resultado.toISOString()).toBe("2026-09-15T03:00:00.000Z");
   });
 });

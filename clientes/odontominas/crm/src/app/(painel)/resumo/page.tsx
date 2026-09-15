@@ -4,7 +4,6 @@ import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarResumoExecutivo } from "@/lib/resumo";
 import { formatDuracao, formatTelefone } from "@/lib/tempo";
-import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,7 @@ export default async function ResumoPage() {
 
   if (!clinicaId) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-50 p-8">
+      <main className="flex min-h-[60vh] items-center justify-center p-8">
         <p className="text-sm text-red-600">
           Não consegui conectar ao banco do CRM. Confira as variáveis de ambiente do Supabase.
         </p>
@@ -42,20 +41,11 @@ export default async function ResumoPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-neutral-50 px-4 py-8 sm:px-8">
+    <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">Resumo Executivo</h1>
-            <p className="text-sm text-neutral-500">OdontoMinas — visão geral do funil de atendimento</p>
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            <Link href="/" className="text-sm font-medium text-teal-700 hover:underline">
-              Painel
-            </Link>
-            {sessao && <span className="text-sm capitalize text-neutral-400">{sessao.papel}</span>}
-            <LogoutButton />
-          </div>
+        <header className="mb-6">
+          <h1 className="text-xl font-semibold text-neutral-900">Resumo Executivo</h1>
+          <p className="text-sm text-neutral-500">OdontoMinas — visão geral do funil de atendimento</p>
         </header>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

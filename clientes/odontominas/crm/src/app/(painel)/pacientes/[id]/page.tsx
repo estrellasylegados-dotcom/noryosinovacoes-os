@@ -13,7 +13,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
 
   if (!clinicaId) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-50 p-8">
+      <main className="flex min-h-[60vh] items-center justify-center p-8">
         <p className="text-sm text-red-600">
           Não consegui conectar ao banco do CRM. Confira as variáveis de ambiente do Supabase.
         </p>
@@ -31,7 +31,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
   const atrasado = tempoEsperaMs !== null && tempoEsperaMs > LIMITE_ESPERA_MS;
 
   return (
-    <main className="min-h-screen bg-neutral-50 px-4 py-8 sm:px-8">
+    <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-3xl">
         <Link href="/" className="text-sm font-medium text-teal-700 hover:underline">
           ← Painel
@@ -68,6 +68,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
                   <span className="text-neutral-400">{formatDataHora(e.quando)}</span>{" "}
                   {e.statusAnterior ? `${labelStatus(e.statusAnterior)} → ` : ""}
                   {labelStatus(e.statusNovo)}
+                  {e.atendenteNome && <span className="text-neutral-400"> · {e.atendenteNome}</span>}
                 </li>
               ))}
             </ol>

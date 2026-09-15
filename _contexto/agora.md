@@ -10,21 +10,21 @@ de graça (site + CRM de captação + tráfego pago, verba de mídia por conta d
 conceito pra depois oferecer aos contatos do marido com outros dentistas (detalhe em
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
-demonstração ao vivo pro marido, não um documento formal. Fase 3 do CRM (painel de atendimento) e
-a revisão técnica que a seguiu (2 bugs corrigidos no funil, login com rate limit, 71 testes) estão
-em produção desde 2026-09-15. **Fase 4 completa e em produção (2026-09-15)**: ficha de paciente e
-resumo executivo, com alerta de leads esfriando. **Fase 5 completa e em produção (2026-09-15)**:
-automação de reativação de paciente inativo (conversa resolvida sem mensagem há +30 dias recebe 1
-WhatsApp de reativação), disparada 1x/dia por um cron do GitHub Actions (detalhe em
-`clientes/odontominas/andamento.md`). Próximo passo: Fase 6 (demo pro marido).
-Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
+demonstração ao vivo pro marido, não um documento formal. Fases 1-5 do CRM (painel, ficha,
+resumo, reativação automática) em produção. **V1 do painel incrementada em 2026-09-15** (a pedido
+do Rafael, "a Ariadna precisa ser impactada já na V1"): menu lateral, login individual por
+atendente (troca as 2 senhas compartilhadas), tela Equipe (atendimento por secretária) e tela
+Conexão (status do WhatsApp + QR pra reconectar) — testado ao vivo contra Supabase/Evolution API
+de produção, mas ainda não em produção de verdade (falta rodar a migração, ver pendência). Próximo
+passo depois disso: Fase 6 (demo pro marido). Compliance jurídico: risco de exclusividade
+Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Trocar as senhas temporárias do painel do CRM (`dev-admin-temp`/`dev-atendente-temp`, hoje em
-  produção no Railway por decisão consciente do Rafael) antes de expor o painel pra equipe real da
-  clínica; RBAC completo por perfil (permissão diferenciada) fica pra depois que o piloto validar
-  (2026-09-15) — o Resumo executivo já é exclusivo de admin (2026-09-15), resto segue igual.
+- Rodar `2026-09-15_v4_equipe.sql` (SQL Editor do Supabase) e `railway up` no CRM da OdontoMinas —
+  troca as 2 senhas compartilhadas do painel por 1 conta por atendente; semeia 3 contas de demo
+  (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) a renomear pelas secretárias reais
+  antes da demo. Substitui a pendência antiga "trocar as senhas temporárias" (2026-09-15).
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
   técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
   domínio próprio (2026-09-11).
@@ -46,11 +46,10 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 (reativação automática de paciente
-  inativo) validado em produção; Fase 6 (demo pro marido, e se validar, pra Ariadna) é o próximo
-  passo — demonstrar funcionando é a "proposta". Painel tem 5 conversas fictícias semeadas pra
-  demonstração (`clientes/odontominas/andamento.md`) — falta decidir se apaga ou mantém antes da
-  demo real.
+- Cliente-piloto #1 (OdontoMinas): site no ar, CRM até a Fase 5 validado em produção + V1 do
+  painel incrementada (menu, login por atendente, Equipe, Conexão) testada ao vivo mas travada até
+  rodar a migração v4 (pendência acima). Fase 6 (demo pro marido) é o próximo passo depois disso.
+  Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

@@ -1,16 +1,17 @@
 /**
- * Remendo mínimo de acesso (ver andamento.md, decisão 2026-09-15): 2 senhas
- * compartilhadas (admin/atendente), sem tabela de usuário nem Supabase Auth.
- * Fecha a exposição da URL pública; RBAC de verdade (permissão diferenciada
- * por perfil) fica pra depois que o piloto validar — hoje as duas roles têm
- * a mesma capacidade no painel, então só carregam o papel pra sessão futura
- * não precisar redesenhar o login.
+ * Sessão do painel (ver andamento.md): 1 conta por atendente (tabela
+ * `atendentes`, migração 2026-09-15_v4_equipe), sem Supabase Auth — cookie
+ * assinado carrega quem logou (id + nome + papel), não só o papel genérico
+ * de antes. É o que permite atribuir "quem atendeu" no funil (src/lib/conversas.ts)
+ * e agregar por secretária na Equipe (src/lib/equipe.ts).
  *
  * Usa Web Crypto (crypto.subtle) em vez do módulo `node:crypto` de propósito:
  * este arquivo é importado pelo middleware, que roda em runtime Edge.
  */
 
 export type Papel = "admin" | "atendente";
+
+export type SessaoAtual = { atendenteId: string; nome: string; papel: Papel };
 
 export const NOME_COOKIE_SESSAO = "crm_sessao";
 
@@ -28,8 +29,8 @@ async function getChave(): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", keyData, ALGORITMO, false, ["sign", "verify"]);
 }
 
-function paraBase64Url(bytes: ArrayBuffer): string {
-  const arr = new Uint8Array(bytes);
+function paraBase64Url(bytes: ArrayBuffer | Uint8Array): string {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   let binario = "";
   for (const b of arr) binario += String.fromCharCode(b);
   return btoa(binario).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -48,15 +49,16 @@ function isPapelValido(v: string): v is Papel {
   return v === "admin" || v === "atendente";
 }
 
-export async function criarTokenSessao(papel: Papel): Promise<string> {
+export async function criarTokenSessao(atendenteId: string, nome: string, papel: Papel): Promise<string> {
   const expiraEm = Date.now() + DURACAO_SESSAO_MS;
-  const payload = `${papel}:${expiraEm}`;
+  const nomeCodificado = paraBase64Url(new TextEncoder().encode(nome));
+  const payload = `${papel}:${atendenteId}:${nomeCodificado}:${expiraEm}`;
   const chave = await getChave();
   const assinatura = await crypto.subtle.sign(ALGORITMO, chave, new TextEncoder().encode(payload));
   return `${payload}.${paraBase64Url(assinatura)}`;
 }
 
-export async function lerSessao(token: string | undefined | null): Promise<{ papel: Papel } | null> {
+export async function lerSessao(token: string | undefined | null): Promise<SessaoAtual | null> {
   if (!token) return null;
 
   const ultimoPonto = token.lastIndexOf(".");
@@ -65,8 +67,10 @@ export async function lerSessao(token: string | undefined | null): Promise<{ pap
   const payload = token.slice(0, ultimoPonto);
   const assinaturaBase64 = token.slice(ultimoPonto + 1);
 
-  const [papel, expiraEmStr] = payload.split(":");
-  if (!isPapelValido(papel)) return null;
+  const partes = payload.split(":");
+  if (partes.length !== 4) return null;
+  const [papel, atendenteId, nomeCodificado, expiraEmStr] = partes;
+  if (!isPapelValido(papel) || !atendenteId) return null;
 
   try {
     const chave = await getChave();
@@ -84,5 +88,12 @@ export async function lerSessao(token: string | undefined | null): Promise<{ pap
   const expiraEm = Number(expiraEmStr);
   if (!Number.isFinite(expiraEm) || Date.now() > expiraEm) return null;
 
-  return { papel };
+  let nome: string;
+  try {
+    nome = new TextDecoder().decode(deBase64Url(nomeCodificado));
+  } catch {
+    return null;
+  }
+
+  return { atendenteId, nome, papel };
 }

@@ -14,6 +14,7 @@ function conversa(overrides: Partial<ConversaPainel>): ConversaPainel {
     aguardandoDesde: null,
     ultimaMensagemEm: null,
     tempoPrimeiraRespostaMs: null,
+    atendidoPorId: null,
     ...overrides,
   };
 }

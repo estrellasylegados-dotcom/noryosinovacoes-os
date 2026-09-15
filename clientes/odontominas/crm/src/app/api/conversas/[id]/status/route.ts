@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getClinicaId } from "@/lib/clinica";
 import { atualizarStatus } from "@/lib/conversas";
+import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { isStatusValido } from "@/lib/status";
 
 /**
@@ -24,12 +25,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, error: "invalid_status" }, { status: 400 });
   }
 
-  const clinicaId = await getClinicaId();
+  const [clinicaId, sessao] = await Promise.all([getClinicaId(), getSessaoAtual()]);
   if (!clinicaId) {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
-  const resultado = await atualizarStatus(clinicaId, id, body.status);
+  const resultado = await atualizarStatus(clinicaId, id, body.status, sessao?.atendenteId ?? null);
   if (!resultado.ok) {
     const httpStatus = resultado.error === "not_found" ? 404 : 503;
     return NextResponse.json(resultado, { status: httpStatus });

@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { getClinicaId } from "@/lib/clinica";
 import { contarPorStatus, listarConversas } from "@/lib/conversas";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { isStatusValido, LIMITE_ESPERA_MS, type StatusConversa } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
 import { StatusSelect } from "@/components/StatusSelect";
 import { FiltroStatus } from "@/components/FiltroStatus";
-import { AutoRefresh } from "@/components/AutoRefresh";
-import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +17,11 @@ export default async function PainelPage({
   const filtroStatus: StatusConversa | undefined =
     statusBruto && isStatusValido(statusBruto) ? statusBruto : undefined;
 
-  const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
+  const clinicaId = await getClinicaId();
 
   if (!clinicaId) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-neutral-50 p-8">
+      <main className="flex min-h-[60vh] items-center justify-center p-8">
         <p className="text-sm text-red-600">
           Não consegui conectar ao banco do CRM. Confira as variáveis de ambiente do Supabase.
         </p>
@@ -39,23 +36,11 @@ export default async function PainelPage({
   const total = Object.values(contagens).reduce((a, b) => a + b, 0);
 
   return (
-    <main className="min-h-screen bg-neutral-50 px-4 py-8 sm:px-8">
-      <AutoRefresh />
+    <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">Painel de Atendimento</h1>
-            <p className="text-sm text-neutral-500">OdontoMinas — conversas do WhatsApp</p>
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            {sessao?.papel === "admin" && (
-              <Link href="/resumo" className="text-sm font-medium text-teal-700 hover:underline">
-                Resumo
-              </Link>
-            )}
-            {sessao && <span className="text-sm capitalize text-neutral-400">{sessao.papel}</span>}
-            <LogoutButton />
-          </div>
+        <header className="mb-6">
+          <h1 className="text-xl font-semibold text-neutral-900">Painel de Atendimento</h1>
+          <p className="text-sm text-neutral-500">OdontoMinas — conversas do WhatsApp</p>
         </header>
 
         <div className="mb-6">

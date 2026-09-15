@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { criarTokenSessao, NOME_COOKIE_SESSAO, type Papel } from "@/lib/sessao";
-import { compararSenhas } from "@/lib/senha";
+import { getClinicaId } from "@/lib/clinica";
+import { buscarAtendentePorUsuario } from "@/lib/atendentes";
+import { criarTokenSessao, NOME_COOKIE_SESSAO } from "@/lib/sessao";
+import { HASH_DUMMY_TIMING, verificarSenha } from "@/lib/senha";
 import { estaBloqueado, limparTentativas, registrarFalha } from "@/lib/rate-limit-login";
 
 export const runtime = "nodejs";
@@ -12,7 +14,7 @@ function getIpCliente(request: Request): string {
 }
 
 export async function POST(request: Request) {
-  let body: { senha?: string };
+  let body: { usuario?: string; senha?: string };
   try {
     body = await request.json();
   } catch {
@@ -28,22 +30,25 @@ export async function POST(request: Request) {
     );
   }
 
+  const usuario = (body.usuario ?? "").trim().toLowerCase();
   const senha = body.senha ?? "";
-  let papel: Papel | null = null;
-  if (senha && compararSenhas(senha, process.env.PAINEL_SENHA_ADMIN)) {
-    papel = "admin";
-  } else if (senha && compararSenhas(senha, process.env.PAINEL_SENHA_ATENDENTE)) {
-    papel = "atendente";
-  }
 
-  if (!papel) {
+  const clinicaId = await getClinicaId();
+  const atendente = usuario && clinicaId ? await buscarAtendentePorUsuario(clinicaId, usuario) : null;
+
+  // Roda verificarSenha mesmo quando o usuário não existe (contra o hash
+  // fixo), senão "usuário não existe" responde mais rápido que "senha
+  // errada" e um atacante descobre por tempo quais usuários são reais.
+  const senhaValida = verificarSenha(senha, atendente?.senhaHash ?? HASH_DUMMY_TIMING);
+
+  if (!atendente || !senhaValida) {
     registrarFalha(ip);
-    return NextResponse.json({ ok: false, error: "senha_invalida" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "credenciais_invalidas" }, { status: 401 });
   }
 
   limparTentativas(ip);
-  const token = await criarTokenSessao(papel);
-  const resposta = NextResponse.json({ ok: true, papel });
+  const token = await criarTokenSessao(atendente.id, atendente.nome, atendente.papel);
+  const resposta = NextResponse.json({ ok: true, papel: atendente.papel, nome: atendente.nome });
   resposta.cookies.set(NOME_COOKIE_SESSAO, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

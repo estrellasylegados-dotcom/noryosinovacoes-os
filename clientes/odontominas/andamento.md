@@ -1,5 +1,19 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, V1 do painel — menu, login por atendente, Equipe, Conexão)
+
+CRM: pacote de melhorias na V1 do painel a pedido do Rafael (a Ariadna "precisa ser impactada" já
+na V1, mesmo sendo V1) — menu lateral em toda tela logada, login individual por atendente (troca
+as 2 senhas compartilhadas), tela **Equipe** (atendimento por secretária: quantidade, tempo médio
+de resposta) e tela **Conexão** (status do WhatsApp + QR Code pra reconectar sem abrir
+Railway/Evolution). Testado de ponta a ponta contra o Supabase e a Evolution API de produção reais
+(sessão assinada com o `SESSAO_SECRET` real, não só teste automatizado) — confirmado que o menu, o
+gate de admin e a conexão real do WhatsApp funcionam. **Falta rodar a migração
+`2026-09-15_v4_equipe.sql`** (SQL Editor) e fazer `railway up` antes do login por atendente
+funcionar em produção — sem ela, login degrada pra "credenciais inválidas" em vez de quebrar
+(confirmado ao vivo). Detalhe completo em "Feito" abaixo. Depois disso, segue valendo o próximo
+passo de sempre: Fase 6 (demo pro marido).
+
 ## Onde está (2026-09-15, Fase 5)
 
 CRM: **Fase 5 completa e em produção** — automação de reativação de paciente inativo (conversa
@@ -83,11 +97,15 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   (2026-09-15) — ver "Feito".
 - [x] Fase 5 — automação de reativação de paciente inativo (escolhida em vez de lembrete de
   consulta — ver `_memoria/decisoes.md`). Completa e em produção (2026-09-15) — ver "Feito".
+- [x] V1 do painel incrementada — menu lateral, login por atendente, Equipe, Conexão WhatsApp com
+  QR (2026-09-15) — ver "Feito". **Falta rodar `2026-09-15_v4_equipe.sql`** (SQL Editor) e
+  `railway up` antes de funcionar em produção.
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
-- [ ] Trocar as senhas temporárias do painel (`dev-admin-temp`/`dev-atendente-temp`) antes de expor
-  o painel pra equipe real da clínica; RBAC completo por perfil fica pra depois que o piloto validar
-  (2026-09-15) — o Resumo executivo já é exclusivo de admin (2026-09-15), o resto do painel segue
-  igual pros 2 papéis.
+- [ ] Rodar `2026-09-15_v4_equipe.sql` (SQL Editor do Supabase) e fazer `railway up` — troca as 2
+  senhas compartilhadas por 1 conta por atendente (substitui esta pendência: "trocar as senhas
+  temporárias" não se aplica mais, a arquitetura mudou). Semeia 3 contas de demo (`admin`,
+  `recepcao1`, `recepcao2`, senha `<usuario>-temp-2026`) — renomear pelas secretárias reais antes
+  da demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
 
@@ -366,3 +384,48 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     Resumo e entra (200), atendente não vê o link e toma redirect (307) se tentar a URL, os 5
     nomes aparecem certos no painel.
   - 2 deploys nesta sessão (1 só com a correção do cache, 1 com o RBAC do Resumo).
+- 2026-09-15: **V1 do painel incrementada** — a pedido do Rafael (a Ariadna "precisa ser impactada
+  já na V1"). Nada disso ainda em produção: falta rodar a migração e fazer `railway up`.
+  - Menu lateral em toda tela logada: `src/app/(painel)/layout.tsx` (rota movida pra dentro de um
+    route group `(painel)` — `/`, `/pacientes/[id]`, `/resumo`, `/equipe`, `/conexao` continuam nas
+    mesmas URLs). Nav (`SidebarNav.tsx`) esconde Equipe/Resumo/Conexão de quem não é admin, mas o
+    gate de verdade continua sendo o redirect no servidor de cada página (mesmo padrão do Resumo
+    desde a Fase 3) — confirmado que digitar a URL direto como atendente ainda redireciona.
+  - **Login por atendente** substitui `PAINEL_SENHA_ADMIN`/`PAINEL_SENHA_ATENDENTE`: tabela nova
+    `atendentes` (`clinica_id`, nome, usuário, `senha_hash` scrypt, papel, ativo — migração
+    `2026-09-15_v4_equipe.sql`). `src/lib/senha.ts` ganhou `hashSenha`/`verificarSenha` (mantém
+    `compararSenhas`, ainda usado pelo `CRON_SECRET`). Login roda `verificarSenha` mesmo quando o
+    usuário não existe, contra um hash fixo (`HASH_DUMMY_TIMING`) — sem isso, "usuário não existe"
+    respondia mais rápido que "senha errada" e vazava por tempo quais usuários são reais. Cookie de
+    sessão (`src/lib/sessao.ts`) passa a carregar `atendenteId` + `nome`, não só o papel.
+  - **Equipe** (`src/app/(painel)/equipe/page.tsx`, admin): `src/lib/equipe.ts` agrega, por
+    atendente, atendimentos hoje (fuso de Brasília — `inicioDoDiaBrasilia` novo em `tempo.ts`),
+    atendimentos no total, tempo médio até responder e última atividade. Cada troca manual de
+    status (`src/app/api/conversas/[id]/status/route.ts`) agora grava `eventos_funil.atendente_id`
+    com quem estava logado; transição automática do webhook continua sem dono (o sistema não sabe
+    qual secretária digitou no WhatsApp).
+  - **Conexão** (`src/app/(painel)/conexao/page.tsx`, admin): `src/lib/evolution-status.ts` consulta
+    `connectionState`/`fetchInstances`/`connect` da Evolution API (mesma instância de
+    `evolution-send.ts`) com timeout curto e degradação silenciosa em erro — status (bolinha
+    verde/vermelha + número) e QR Code (`base64` da Evolution, direto num `<img>`) pra reconectar
+    sem abrir Railway/Evolution. Confirmado ao vivo: instância realmente conectada, número real
+    (61) 9925-6901.
+  - Sidebar mostra sempre quem está logado (bolinha verde + nome do atendente) e o status da
+    conexão do WhatsApp — os dois "bolinha verde" pedidos pelo Rafael, propositalmente separados
+    (sessão ativa vs. WhatsApp conectado, são coisas diferentes).
+  - Ficha de paciente (`src/lib/pacientes.ts`): jornada mostra quem atendeu cada troca
+    (`eventos_funil.atendentes(nome)`, reaproveitando o extrator antes chamado
+    `extrairNomePaciente` — renomeado pra `extrairNomeEmbutido` já que agora serve paciente e
+    atendente).
+  - Validação: 103 testes (16 novos: `senha`, `sessao`, `tempo`, `equipe`, `conversas`),
+    `typecheck`/`lint`/`next build` limpos. Sem `chromium-cli` disponível nesta máquina pra
+    screenshot, a verificação em navegador de verdade virou: dev server local apontando pro
+    Supabase e Evolution API **de produção** (`.env.local`), sessões válidas mintadas com o mesmo
+    `SESSAO_SECRET` (mesmo algoritmo HMAC de `sessao.ts`) pra navegar como admin e como atendente
+    de verdade — confirmou menu, gate de admin (redirect real, não só link escondido), conexão
+    WhatsApp genuinamente ao vivo, e a ficha de paciente com dado real (sem crashar). Sem a
+    migração v4 aplicada, `buscarAtendentePorUsuario`/`listarAtendentes` retornam vazio com log
+    claro (`PGRST205`, tabela ausente) em vez de derrubar a página — confirmado tentando logar
+    antes de rodar a migração. Tokens de sessão e HTML de produção gerados pra este teste foram
+    apagados ao final, nada disso ficou salvo no repositório.
+  - Nada commitado nem enviado ao GitHub nesta sessão.

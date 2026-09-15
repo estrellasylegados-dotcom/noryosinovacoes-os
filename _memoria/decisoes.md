@@ -159,3 +159,11 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   do painel (lista de conversas, mudar status, ficha de paciente) segue igual pros 2 — é onde o
   atendente trabalha o dia a dia; RBAC completo por permissão ainda fica pra depois que o piloto
   validar (decisão de 2026-09-15 anterior, sobre os 2 perfis).
+- **2026-09-15** (Rafael) [odontominas]: painel do CRM troca as 2 senhas compartilhadas
+  (`PAINEL_SENHA_ADMIN`/`PAINEL_SENHA_ATENDENTE`) por 1 conta por atendente (tabela `atendentes`,
+  senha com hash scrypt — migração `2026-09-15_v4_equipe.sql`, `Substitui: 2026-09-15` a decisão de
+  "remendo mínimo de senha compartilhada" sobre os 2 perfis, que seguem valendo como papel de cada
+  conta). Por quê: Rafael pediu pra saber atendimento por secretária (quantidade, tempo de
+  resposta) na tela nova Equipe — sem identidade individual não dá pra atribuir quem atendeu o quê;
+  a troca também resolve, de brinde, a pendência antiga de tirar as senhas temporárias de
+  desenvolvimento de produção antes de expor o painel pra equipe real.

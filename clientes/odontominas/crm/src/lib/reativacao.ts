@@ -1,6 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
-import { extrairNomePaciente, type PacienteEmbutido } from "@/lib/conversas";
+import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 
 /**
@@ -86,7 +86,7 @@ export async function executarReativacao(clinicaId: string): Promise<ResultadoRe
     id: c.id as string,
     telefone: c.telefone as string,
     pacienteId: (c.paciente_id as string | null | undefined) ?? null,
-    pacienteNome: extrairNomePaciente(c.pacientes as PacienteEmbutido),
+    pacienteNome: extrairNomeEmbutido(c.pacientes as NomeEmbutido),
     status: (isStatusValido(c.status as string) ? c.status : "novo") as StatusConversa,
     ultimaMensagemEm: c.ultima_mensagem_em as string | null,
     ultimaReativacaoEm: c.ultima_reativacao_em as string | null,

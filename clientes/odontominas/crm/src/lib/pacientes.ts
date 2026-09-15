@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { isStatusValido, type StatusConversa } from "@/lib/status";
 
 export type MensagemFicha = {
@@ -13,6 +14,8 @@ export type EventoFicha = {
   statusAnterior: string | null;
   statusNovo: string;
   quando: string;
+  /** Quem fez a troca manual no painel — null quando foi automática (webhook). */
+  atendenteNome: string | null;
 };
 
 export type FichaPaciente = {
@@ -78,7 +81,7 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
         .order("created_at", { ascending: true }),
       supabase
         .from("eventos_funil")
-        .select("status_anterior, status_novo, created_at")
+        .select("status_anterior, status_novo, created_at, atendentes(nome)")
         .eq("conversa_id", conversa.id)
         .order("created_at", { ascending: true }),
     ]);
@@ -95,6 +98,7 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
       statusAnterior: e.status_anterior as string | null,
       statusNovo: e.status_novo as string,
       quando: e.created_at as string,
+      atendenteNome: extrairNomeEmbutido(e.atendentes as NomeEmbutido),
     }));
   }
 
