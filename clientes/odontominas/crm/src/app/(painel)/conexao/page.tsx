@@ -106,7 +106,7 @@ export default async function ConexaoPage() {
             </dl>
           )}
 
-          <RodapeInstancia apelidoAtual={apelido} />
+          <RodapeInstancia apelidoAtual={apelido} conectado={status.conectado} />
 
           {!status.conectado && qr?.qrDataUrl && (
             <div className="mt-5 flex flex-col items-center gap-3 border-t border-neutral-100 pt-5">

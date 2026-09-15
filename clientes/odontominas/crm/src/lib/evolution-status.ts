@@ -126,3 +126,32 @@ export async function buscarQrCode(): Promise<QrResultado> {
     return { conectado: false, qrDataUrl: null, erro: "request_error" };
   }
 }
+
+/**
+ * Encerra a sessão do WhatsApp conectado (equivalente a "sair" no app) —
+ * a instância continua existindo na Evolution API, só precisa de um QR novo
+ * pra reconectar. Ação séria de verdade (derruba o atendimento até
+ * reconectar): a confirmação fica no botão que chama isto (src/components/RodapeInstancia.tsx),
+ * não aqui — esta função só executa.
+ */
+export async function desconectarInstancia(): Promise<{ ok: boolean; error?: string }> {
+  const apiUrl = process.env.EVOLUTION_API_URL;
+  const apiKey = process.env.EVOLUTION_API_KEY;
+  if (!apiUrl || !apiKey) return { ok: false, error: "nao_configurado" };
+
+  try {
+    const res = await fetch(`${apiUrl}/instance/logout/${INSTANCE}`, {
+      method: "DELETE",
+      headers: headersEvolution(apiKey),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.error("[evolution-status] logout_failed", JSON.stringify({ status: res.status }));
+      return { ok: false, error: `http_${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[evolution-status] logout_error", JSON.stringify({ message: (e as Error).message }));
+    return { ok: false, error: "request_error" };
+  }
+}

@@ -198,7 +198,9 @@ export function ChatAoVivo({
     setSelecionadaId(c.id);
     setErroEnvio(null);
     if (c.naoLida) {
-      setConversas((prev) => prev.map((x) => (x.id === c.id ? { ...x, naoLida: false } : x)));
+      setConversas((prev) =>
+        prev.map((x) => (x.id === c.id ? { ...x, naoLida: false, mensagensNaoLidas: 0 } : x))
+      );
       chamarApi(`/api/chat/conversas/${c.id}`, { method: "PATCH", body: JSON.stringify({ naoLida: false }) });
     }
   }
@@ -370,7 +372,11 @@ export function ChatAoVivo({
                     {c.ultimaMensagemDirecao === "enviada" ? "Você: " : ""}
                     {c.ultimaMensagemPreview ?? "Sem mensagens ainda"}
                   </p>
-                  {c.naoLida && <span className="h-2 w-2 shrink-0 rounded-full bg-teal-600" />}
+                  {c.mensagensNaoLidas > 0 && (
+                    <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-semibold text-white">
+                      {c.mensagensNaoLidas > 99 ? "99+" : c.mensagensNaoLidas}
+                    </span>
+                  )}
                 </div>
                 {c.etiquetas.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">

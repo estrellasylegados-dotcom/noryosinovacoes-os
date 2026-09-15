@@ -9,6 +9,7 @@ function conversa(parcial: Partial<ConversaChat> & { id: string }): ConversaChat
     status: "novo",
     prioridade: "normal",
     naoLida: false,
+    mensagensNaoLidas: 0,
     arquivada: false,
     atribuidoAId: null,
     atribuidoANome: null,

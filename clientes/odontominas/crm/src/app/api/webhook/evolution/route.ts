@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
   const { data: conversaExistente } = await supabase
     .from("conversas")
-    .select("id, status")
+    .select("id, status, mensagens_nao_lidas")
     .eq("clinica_id", clinicaId)
     .eq("telefone", telefone)
     .maybeSingle();
@@ -155,6 +155,7 @@ export async function POST(request: Request) {
         ultima_mensagem_em: timestampWhatsapp,
         aguardando_desde: timestampWhatsapp,
         nao_lida: !fromMe,
+        mensagens_nao_lidas: fromMe ? 0 : 1,
       })
       .select("id")
       .single();
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
     const statusBruto = conversaExistente!.status as string;
     const statusAtual = isStatusValido(statusBruto) ? statusBruto : "novo";
     const decisao = decidirTransicaoWebhook(statusAtual, fromMe);
+    const contadorAtual = (conversaExistente!.mensagens_nao_lidas as number | null) ?? 0;
 
     await supabase
       .from("conversas")
@@ -176,9 +178,11 @@ export async function POST(request: Request) {
         status: decisao.statusNovo,
         paciente_id: pacienteId,
         // fromMe: a própria clínica respondeu (painel, app oficial ou automação) — já
-        // está "vista" por definição. !fromMe: o paciente escreveu, fica não lida até
-        // alguém abrir a conversa no Chat ao Vivo (src/lib/chat.ts).
+        // está "vista" por definição, zera o contador. !fromMe: o paciente escreveu,
+        // soma mais 1 — só volta a zero quando alguém abre a conversa no Chat ao Vivo
+        // ou responde por lá (src/lib/chat.ts).
         nao_lida: !fromMe,
+        mensagens_nao_lidas: fromMe ? 0 : contadorAtual + 1,
         // reabriu = mensagem nova numa conversa já resolvida: reinicia o
         // relógio de "tempo até 1ª resposta" a partir desta mensagem, não
         // do contato original (que pode ter sido dias/semanas atrás).

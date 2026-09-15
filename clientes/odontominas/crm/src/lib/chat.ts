@@ -26,6 +26,7 @@ export type ConversaChat = {
   status: StatusConversa;
   prioridade: Prioridade;
   naoLida: boolean;
+  mensagensNaoLidas: number;
   arquivada: boolean;
   atribuidoAId: string | null;
   atribuidoANome: string | null;
@@ -65,7 +66,7 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
   const { data: conversas, error } = await supabase
     .from("conversas")
     .select(
-      "id, telefone, status, prioridade, nao_lida, arquivada, atribuido_a, ultima_mensagem_em, paciente_id, pacientes(nome), atendentes(nome)"
+      "id, telefone, status, prioridade, nao_lida, mensagens_nao_lidas, arquivada, atribuido_a, ultima_mensagem_em, paciente_id, pacientes(nome), atendentes(nome)"
     )
     .eq("clinica_id", clinicaId);
 
@@ -127,6 +128,7 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
       status: isStatusValido(statusBruto) ? statusBruto : "novo",
       prioridade: isPrioridadeValida(prioridadeBruta) ? prioridadeBruta : "normal",
       naoLida: c.nao_lida as boolean,
+      mensagensNaoLidas: (c.mensagens_nao_lidas as number | null) ?? 0,
       arquivada: c.arquivada as boolean,
       atribuidoAId: (c.atribuido_a as string | null | undefined) ?? null,
       atribuidoANome: extrairNomeEmbutido(c.atendentes as NomeEmbutido),
@@ -200,7 +202,13 @@ export async function enviarRespostaChat(
 
   await supabase
     .from("conversas")
-    .update({ ultima_mensagem_em: agora, updated_at: agora, status: decisao.statusNovo, nao_lida: false })
+    .update({
+      ultima_mensagem_em: agora,
+      updated_at: agora,
+      status: decisao.statusNovo,
+      nao_lida: false,
+      mensagens_nao_lidas: 0,
+    })
     .eq("id", conversaId);
 
   if (decisao.evento) {
@@ -271,7 +279,12 @@ export async function atualizarConversaChat(
 
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.arquivada !== undefined) payload.arquivada = patch.arquivada;
-  if (patch.naoLida !== undefined) payload.nao_lida = patch.naoLida;
+  if (patch.naoLida !== undefined) {
+    payload.nao_lida = patch.naoLida;
+    // Marcar como lida (abrir a conversa no painel) zera a contagem também —
+    // só reabre por mensagem nova de verdade (webhook incrementa de novo).
+    if (!patch.naoLida) payload.mensagens_nao_lidas = 0;
+  }
   if (patch.atribuidoAId !== undefined) payload.atribuido_a = patch.atribuidoAId;
   if (patch.prioridade !== undefined) {
     if (!isPrioridadeValida(patch.prioridade)) return { ok: false, error: "prioridade_invalida" };
