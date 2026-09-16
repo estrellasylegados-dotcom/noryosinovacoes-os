@@ -18,13 +18,16 @@ de verdade num teste ao vivo — ver `clientes/odontominas/andamento.md`. CRM ta
 "Pausar IA"/"Retomar IA"/"Finalizar Atendimento" no Chat ao Vivo e notificação real do navegador
 (não só o sino do painel). **Automação de reativação de paciente inativo (Fase 5) também validada
 de ponta a ponta pela 1ª vez** — achado e corrigido um bug real (secret do GitHub Actions
-desalinhado do Railway). Próximo passo: Fase 2B (Buffer de mensagens) ou Fase 6 (demo pro
-marido) — nenhuma fase técnica falta mais pra demo.
+desalinhado do Railway). CRM também ganhou 2 ajustes de UI a pedido do Rafael (prints da RoiZap de
+referência): menu "Ferramentas" da sidebar abre/recolhe, e som de notificação (liga/desliga) pra
+mensagem nova no Chat ao Vivo — deployados e confirmados funcionando em produção pelo próprio
+Rafael. **Próximo passo em andamento: Agentes de IA — Fase 2B (Buffer de mensagens)**, escolhida
+por ele em vez da Fase 6 (demo pro marido) por enquanto.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Agentes de IA — Fase 2B (Buffer de mensagens): construir quando der, plano já aprovado
+- Agentes de IA — Fase 2B (Buffer de mensagens): em construção agora, plano já aprovado
   (2026-09-15).
 - Trocar usuário/senha das 3 contas de demo do painel do CRM
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
@@ -51,9 +54,10 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 ## Quente agora
 
 - Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
-  agente real rodando (Fase 1+2A), automação de reativação (Fase 5) validada de ponta a ponta.
-  Fase 6 (demo pro marido) é o próximo passo. Painel tem 5 conversas fictícias semeadas pra
-  demonstração — falta decidir se apaga ou mantém.
+  agente real rodando (Fase 1+2A), automação de reativação (Fase 5) validada de ponta a ponta,
+  menu/som de notificação no ar. Fase 2B (Buffer de mensagens) em construção agora; Fase 6 (demo
+  pro marido) fica pra depois. Painel tem 5 conversas fictícias semeadas pra demonstração — falta
+  decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

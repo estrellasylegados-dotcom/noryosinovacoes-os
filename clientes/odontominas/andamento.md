@@ -1,5 +1,17 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, menu colapsável + som de notificação; próximo: Fase 2B)
+
+**2 ajustes de UI no CRM**, a pedido do Rafael (prints de referência da RoiZap: um menu
+"Ferramentas" que abre/recolhe, e um controle de som de notificação que não chegou anexado —
+perguntei o formato e ele escolheu liga/desliga simples). Menu da sidebar (`SidebarNav.tsx`) ganhou
+ícone de raio + chevron que gira, aberto por padrão; Chat ao Vivo (`ChatAoVivo.tsx`) ganhou botão de
+alto-falante no cabeçalho que toca um "ding" (Web Audio API, sem lib nova) só quando chega mensagem
+**recebida** nova, preferência em `localStorage`. Validado (typecheck/lint/183 testes/build
+limpos), commitado (`13378d5`) e deployado no Railway — **Rafael testou em produção e confirmou que
+funcionou**. Decidiu seguir agora para **Agentes de IA — Fase 2B (Buffer de mensagens)**, em vez da
+Fase 6 (demo pro marido).
+
 ## Onde está (2026-09-15, automação de reativação validada de ponta a ponta)
 
 **Fase 5 (automação de reativação de paciente inativo) validada de ponta a ponta pela 1ª vez** — a
@@ -668,3 +680,23 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   sucesso). De bônus, confirmado que leitura de workflows/runs/jobs/logs do GitHub Actions funciona
   direto por REST com o `GITHUB_PERSONAL_ACCESS_TOKEN`, sem precisar de `gh` CLI — só disparo manual
   e escrita de secret continuam fora do alcance (ver `ferramentas.md`).
+- 2026-09-15: **menu "Ferramentas" abre/recolhe + som de notificação no Chat ao Vivo.** A pedido do
+  Rafael, 2 prints de referência da RoiZap (o menu com ícone de raio + chevron, e um controle de som
+  que não veio anexado — perguntei o formato via 3 opções, ele escolheu liga/desliga simples).
+  - `src/components/SidebarNav.tsx`: grupo "Ferramentas" ganhou ícone de raio, label e chevron que
+    gira (aberto = pra cima, fechado = pra baixo); clique alterna; aberto por padrão, sem mudar o
+    comportamento de antes. No nav horizontal do mobile (sem esse cabeçalho) os itens continuam
+    sempre visíveis — só o desktop tem o recolher.
+  - `src/components/chat/ChatAoVivo.tsx`: botão de alto-falante no cabeçalho ao lado de "Nova
+    conversa". Toca um "ding" de dois tons via Web Audio API (oscilador + gain, `AudioContext`, sem
+    lib nova, sem arquivo de áudio) só quando `atualizarListaAgora` (polling da lista a cada 8s)
+    detecta uma conversa com `ultimaMensagemDirecao === "recebida"` mais nova que a que já estava —
+    nunca no envio do próprio atendente, nunca na carga inicial da página. Preferência liga/desliga
+    em `localStorage` (por navegador/pessoa, mesmo padrão do `notificacoes-preferencia.ts` do sino
+    do topo), ligado por padrão.
+  - Validado: typecheck/lint/183 testes/`next build` limpos. Sem `chromium-cli` nesta máquina pra
+    clicar/ouvir de verdade (limitação já conhecida) — smoke test via sessão de admin mintada
+    localmente (mesmo `SESSAO_SECRET`) conferindo o HTML renderizado dos dois recursos.
+  - Commitado (`13378d5`) e deployado no Railway (`railway up`, sucesso, smoke HTTP 200). **Rafael
+    testou em produção e confirmou que funcionou.**
+  - Escolheu seguir agora para a Fase 2B (Buffer de mensagens) em vez da Fase 6 (demo pro marido).
