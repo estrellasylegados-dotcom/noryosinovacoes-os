@@ -21,6 +21,14 @@ import { buscarAgente, responderComoAgente } from "@/lib/agentes";
 
 const INTERVALO_POLL_MS = 3000;
 
+// A mensagem que abre a janela já foi inserida em `mensagens` (created_at do
+// Postgres) ANTES desta função rodar — abrir/decidir/gravar leva um
+// instante. Sem essa folga, `agente_buffer_desde` fica um pouco DEPOIS do
+// created_at da própria mensagem que abriu a rajada, e ela nunca entra na
+// busca do poll (created_at >= agente_buffer_desde) — resposta nunca sai,
+// sem erro nenhum no log (achado ao vivo no 1º teste real).
+const MARGEM_ABERTURA_MS = 10_000;
+
 /** Junta os textos de uma rajada de mensagens numa resposta só — pura, sem I/O. */
 export function juntarMensagensBuffer(textos: string[]): string {
   return textos
@@ -52,12 +60,13 @@ async function abrirOuEstenderBuffer(
 
   const agora = new Date();
   const ate = new Date(agora.getTime() + bufferSegundos * 1000).toISOString();
+  const desde = new Date(agora.getTime() - MARGEM_ABERTURA_MS).toISOString();
 
   const { error } = await supabase
     .from("conversas")
     .update({
       agente_buffer_ate: ate,
-      ...(atual?.agente_buffer_desde ? {} : { agente_buffer_desde: agora.toISOString() }),
+      ...(atual?.agente_buffer_desde ? {} : { agente_buffer_desde: desde }),
       ...(isNovoPaciente ? { agente_buffer_novo_paciente: true } : {}),
     })
     .eq("id", conversaId)
