@@ -1,5 +1,19 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, automação de reativação validada de ponta a ponta)
+
+**Fase 5 (automação de reativação de paciente inativo) validada de ponta a ponta pela 1ª vez** — a
+pedido do Rafael, checado o workflow do GitHub Actions (existia há dias, nunca confirmado rodando).
+Achado real: já tinha disparado sozinho 1x (agendado) e falhou com 401 — o secret
+`ODONTOMINAS_CRM_CRON_SECRET` do GitHub não batia byte a byte com o `CRON_SECRET` do Railway
+(`compararSenhas` exige mesmo tamanho antes de comparar, então um espaço/quebra de linha a mais em
+qualquer um dos dois já derruba). Corrigido gerando um segredo novo e sincronizando os dois lados:
+`CRON_SECRET` atualizado no Railway direto (MCP, redeploy automático); Rafael colou o mesmo valor
+no secret do GitHub (escrever secret de repositório é bloqueado pelo classificador de segurança,
+sempre manual, mesmo com autorização no chat). Rafael re-rodou o job pela aba Actions; confirmado
+por leitura via API (REST com `GITHUB_PERSONAL_ACCESS_TOKEN`, sem precisar de `gh` CLI) que passou
+— pronto pro cron das 9h Brasília rodar sozinho a partir de amanhã.
+
 ## Onde está (2026-09-15, Agentes de IA validado + Pausar IA/Finalizar Atendimento + notificação)
 
 **1º Agente de IA real criado e validado de ponta a ponta em produção**: "Recepção Virtual"
@@ -643,3 +657,14 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     Railway (sucesso). Limite conhecido e aceito: só funciona com o navegador aberto (mesmo em
     segundo plano) — navegador fechado de vez não notifica, exigiria service worker + servidor de
     push, infra desproporcional ao tamanho da operação hoje.
+- 2026-09-15: **Fase 5 (automação de reativação) validada de ponta a ponta pela 1ª vez.** Bug real
+  achado ao checar o workflow do GitHub Actions a pedido do Rafael: já tinha disparado sozinho 1x
+  (agendado, 9h Brasília) e falhado com 401 — `ODONTOMINAS_CRM_CRON_SECRET` (GitHub) não batia byte
+  a byte com `CRON_SECRET` (Railway), provável espaço/quebra de linha a mais colado num dos dois
+  lados. Corrigido: segredo novo gerado e sincronizado nos dois lugares (Railway via MCP, redeploy
+  automático; GitHub colado manualmente pelo Rafael — escrita de secret de repositório é bloqueada
+  pelo classificador de segurança por design, mesmo com autorização explícita no chat). Rafael
+  re-rodou o job pela aba Actions; confirmado por leitura via API que passou (`run_attempt: 2`,
+  sucesso). De bônus, confirmado que leitura de workflows/runs/jobs/logs do GitHub Actions funciona
+  direto por REST com o `GITHUB_PERSONAL_ACCESS_TOKEN`, sem precisar de `gh` CLI — só disparo manual
+  e escrita de secret continuam fora do alcance (ver `ferramentas.md`).
