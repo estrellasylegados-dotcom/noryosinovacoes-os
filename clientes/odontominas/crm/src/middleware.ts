@@ -3,12 +3,21 @@ import { lerSessao, NOME_COOKIE_SESSAO } from "@/lib/sessao";
 
 /**
  * Gate de acesso a todo o painel (ver src/lib/sessao.ts). O webhook da
- * Evolution API e o cron de reativação ficam de fora de propósito: são
- * chamadas servidor-a-servidor, sem cookie de navegador — a autenticação de
- * cada um é o próprio segredo validado dentro da rota (apikey da Evolution;
- * CRON_SECRET no cron).
+ * Evolution API e os crons ficam de fora de propósito: são chamadas
+ * servidor-a-servidor, sem cookie de navegador — a autenticação de cada um
+ * é o próprio segredo validado dentro da rota (apikey da Evolution;
+ * CRON_SECRET nos crons). O webhook do ControleODONTO também é público
+ * (mesma razão), mas hoje só responde "desabilitado" — ver
+ * src/lib/controle-odonto/capabilities.ts.
  */
-const ROTAS_PUBLICAS = ["/login", "/api/login", "/api/webhook/evolution", "/api/cron/reativacao"];
+const ROTAS_PUBLICAS = [
+  "/login",
+  "/api/login",
+  "/api/webhook/evolution",
+  "/api/cron/reativacao",
+  "/api/integrations/controle-odonto/webhook",
+  "/api/cron/controle-odonto-sync",
+];
 
 function isRotaPublica(pathname: string): boolean {
   return ROTAS_PUBLICAS.some((rota) => pathname === rota || pathname.startsWith(`${rota}/`));
