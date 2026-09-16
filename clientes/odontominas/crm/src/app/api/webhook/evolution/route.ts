@@ -7,6 +7,8 @@ import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido } from "@/lib/status";
 import { deveResponder } from "@/lib/agentes";
 import { processarMensagemRecebida } from "@/lib/agentes-buffer";
+import { detectarPedidoOptOut, aplicarOptOut, MENSAGEM_CONFIRMACAO_OPT_OUT } from "@/lib/opt-out";
+import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
@@ -235,10 +237,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 503 });
   }
 
+  // Opt-out por palavra-chave (LGPD, ver src/lib/opt-out.ts): checado antes
+  // do Agente de IA de propósito — precisa funcionar mesmo sem agente ativo,
+  // e se detectado a IA nem deve responder mais nada além da confirmação.
+  let optOutDetectado = false;
+  if (direcao === "recebida" && conteudo && pacienteId && detectarPedidoOptOut(conteudo)) {
+    const resultadoOptOut = await aplicarOptOut(clinicaId, pacienteId, "webhook_whatsapp");
+    if (resultadoOptOut.ok) {
+      optOutDetectado = true;
+      const envio = await enviarMensagemWhatsapp(telefone, MENSAGEM_CONFIRMACAO_OPT_OUT);
+      if (envio.ok) {
+        const { error: confirmacaoError } = await supabase.from("mensagens").insert({
+          clinica_id: clinicaId,
+          conversa_id: conversaId,
+          direcao: "enviada",
+          tipo: "texto",
+          conteudo: MENSAGEM_CONFIRMACAO_OPT_OUT,
+          evolution_message_id: envio.mensagemId ?? null,
+          timestamp_whatsapp: new Date().toISOString(),
+        });
+        // unique(evolution_message_id): se o webhook já espelhou esta mesma
+        // mensagem antes deste insert rodar, 23505 é esperado, não erro real.
+        if (confirmacaoError && confirmacaoError.code !== "23505") {
+          logErr("insert:mensagens:confirmacao_opt_out", confirmacaoError);
+        }
+      }
+    }
+  }
+
   // Agente de IA: nunca pode derrubar o ack do webhook pra Evolution — roda
   // isolado, depois que a mensagem já está persistida. Uma falha/demora da
   // IA só fica no log; a conversa segue visível no Chat ao Vivo normalmente.
-  if (direcao === "recebida" && conteudo) {
+  // Opt-out detectado agora: a IA não responde mais nada além da confirmação
+  // já mandada acima.
+  if (direcao === "recebida" && conteudo && !optOutDetectado) {
     try {
       const { data: conversaAgente } = await supabase
         .from("conversas")

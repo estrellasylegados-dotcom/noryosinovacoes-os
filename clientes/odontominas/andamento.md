@@ -1,5 +1,44 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Disparos — Fase A: fundamentos; próximo: Fase B)
+
+**Fase A da evolução do módulo "Ferramentas → Disparos" completa e em produção**, a partir de um
+briefing extenso do Rafael pedindo campanhas/reativação/follow-up de verdade, não um "disparo em
+massa" genérico. Antes de codar, auditoria completa do repositório (a pedido dele) encontrou que
+**o módulo não existia**: sem rota, tabela, nav item nem service de Disparos/Campanhas/Fluxos/
+Listas/Mensagens salvas — o único parente era a automação fixa de reativação (`reativacao.ts`, 1
+mensagem, 1x por conversa, sem UI). Opt-out também não existia em lugar nenhum do código, e "Funil"
+no CRM é uma máquina de estado fixa da conversa, não um pipeline multi-etapa configurável como o
+briefing original supunha.
+
+Rafael sugeriu, de forma independente, que a segmentação (pacientes inativos, faltou à consulta
+etc.) devia ser um motor reutilizável por vários módulos — decisão registrada em
+`_memoria/decisoes.md`: o Motor de Públicos ("Audiências") nasce ANTES do wizard de Disparos, não
+depois, junto com opt-out como fundação cross-módulo.
+
+Plano formal (`EnterPlanMode`/`ExitPlanMode`, mesma prática das fases de Agentes de IA) fatiou o
+trabalho em Fase A (fundamentos) e Fase B (Disparos v1 — wizard + worker). **Fase A entregue**:
+
+- `pacientes.opt_out_em`/`opt_out_origem` (migração `v16`) — opt-out fica no próprio paciente, não
+  numa tabela à parte (minimizar dados, LGPD).
+- `src/lib/opt-out.ts`: detecção por palavra-chave (mesmo padrão de `detectarPedidoHumano`),
+  cuidado explícito com falso positivo (palavra solta como "parar"/"sair" só conta como opt-out
+  quando é a mensagem inteira; frase dentro de outra frase precisa ser inequívoca — "posso parar de
+  usar o fio dental?" não dispara). Plugado no webhook antes do Agente de IA: funciona mesmo sem
+  agente ativo, confirma o opt-out por WhatsApp, e a IA para de responder pra quem saiu.
+- `src/lib/mensagens-salvas.ts` (tabela nova): biblioteca de templates + `resolverVariaveis` com
+  fallback seguro — nunca "Olá undefined", limpa pontuação órfã quando o nome falta.
+- `src/lib/audiencias.ts` (tabela nova): motor de públicos v1 — etiqueta (todas/qualquer), status
+  da conversa, inatividade por dias sem mensagem; opt-out e telefone inválido sempre excluídos,
+  nunca opcionais. Separa "encontrados/excluídos/elegíveis", como o print de referência pedia.
+- 36 testes novos (324 no total), migração `v16` aplicada em produção pelo MCP do Supabase
+  (confirmada lendo o schema depois), typecheck/lint/build limpos. Ainda não commitado nem
+  sincronizado no GitHub nesta sessão.
+
+Próximo passo: Fase B (wizard de criação, worker de envio in-process — não GitHub Actions, cuja
+granularidade de minutos não serve pro intervalo de 15-25s entre mensagens —, relatório). Trilha
+independente da Fase 6 (demo pro marido): não bloqueia nem depende dela.
+
 ## Onde está (2026-09-16, Integração ControleODONTO — Fase 0; próximo: obter credencial real, depois Fase 6)
 
 **Fase 0 da integração com o ControleODONTO completa e em produção**: pesquisa técnica, adapter
@@ -338,6 +377,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   `crm/docs/integrations/controle-odonto.md`. Não bloqueia a Fase 6.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
+- [x] Disparos — Fase A (fundamentos: opt-out, mensagens salvas, motor de públicos): construída,
+  testada e em produção (2026-09-16) — ver "Feito". Falta a Fase B (wizard de criação + worker de
+  envio + relatório) — trilha independente da Fase 6, não bloqueia a demo.
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -388,6 +430,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 
 ## Feito
 
+- 2026-09-16: **Disparos — Fase A (fundamentos) completa e em produção.** Ver "Onde está" no topo
+  desta seção pro detalhe.
 - 2026-09-16: **Integração ControleODONTO — Fase 0 completa e em produção.** Ver "Onde está" no
   topo desta seção pro detalhe.
 - 2026-09-11: pasta criada, escopo e checklist de compliance do CFO documentados em

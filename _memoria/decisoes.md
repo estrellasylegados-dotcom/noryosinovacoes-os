@@ -287,3 +287,11 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   independente. Rafael pediu explicitamente pra nunca inventar contrato e preferir integração
   parcialmente habilitada e correta a uma aparentemente completa baseada em suposição. Detalhe
   completo (pesquisa, checklist) em `clientes/odontominas/crm/docs/integrations/controle-odonto.md`.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: a evolução do módulo "Disparos" do
+  CRM constrói o Motor de Públicos (segmentação reutilizável — etiqueta, status, inatividade,
+  opt-out) ANTES do wizard de Disparos, não depois, e opt-out nasce como fundação cross-módulo, não
+  como detalhe interno de Disparos. Por quê: auditoria do repositório mostrou que Disparos,
+  opt-out, Fluxos e biblioteca de mensagens não existiam no código (só a automação fixa de
+  reativação) — construir a segmentação 1x dentro de Disparos e extrair depois arriscaria a mesma
+  regra divergir entre Disparos, Automações e Funil no futuro. Fase A (opt-out, mensagens salvas,
+  motor de públicos v1) já em produção; Fase B (wizard + worker de envio) segue depois.

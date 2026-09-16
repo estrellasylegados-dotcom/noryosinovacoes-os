@@ -5,12 +5,13 @@
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia).
 Site no ar (Cloudflare Pages). CRM em produção de verdade: Fases 1-5, V1 do painel, Chat ao Vivo,
-Relatórios, Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel de Conversão) e a
-Fase 0 da integração ControleODONTO (2026-09-16) — tudo desligado/pendente de credencial onde
-ainda não há dado real. Histórico dia a dia completo em `clientes/odontominas/andamento.md` (não
-duplicar aqui). **Próximo passo do CRM: Fase 6 (demo pro marido)** — não sobra mais nenhuma fase
-técnica antes dela. Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito
-conscientemente.
+Relatórios, Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel de Conversão),
+Fase 0 do ControleODONTO e a Fase A de Disparos (opt-out, mensagens salvas, motor de públicos —
+2026-09-16) — tudo desligado/pendente de credencial ou de tela onde ainda não há dado real.
+Histórico dia a dia completo em `clientes/odontominas/andamento.md` (não duplicar aqui).
+**Próximo passo do CRM: Fase 6 (demo pro marido)** e, em paralelo, a Fase B de Disparos (wizard +
+worker) — trilhas independentes, nenhuma bloqueia a outra. Compliance jurídico: risco de
+exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
@@ -27,13 +28,16 @@ conscientemente.
 - Integração ControleODONTO: obter credencial/documentação real antes de habilitar qualquer
   capability (2026-09-16, checklist em
   `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
+- Disparos — Fase B (wizard + worker + relatório) ainda não construída; Fase A (fundamentos) já em
+  produção (2026-09-16, ver andamento.md).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
 - Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
   fechar (2026-09-14).
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): CRM completo em produção, Fase 6 (demo pro marido) é o próximo
-  passo. Painel tem 5 conversas fictícias de demonstração — falta decidir se apaga ou mantém.
+- Cliente-piloto #1 (OdontoMinas): CRM completo em produção; Fase 6 (demo pro marido) e a Fase B
+  de Disparos são as duas frentes abertas agora. Painel tem 5 conversas fictícias de demonstração —
+  falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

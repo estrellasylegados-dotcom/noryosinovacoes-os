@@ -46,7 +46,8 @@ export function selecionarCandidatos(
   });
 }
 
-function primeiroNome(nomeCompleto: string): string {
+/** Reaproveitado por mensagens-salvas.ts pra resolver {primeiro_nome} — não duplicar. */
+export function primeiroNome(nomeCompleto: string): string {
   return nomeCompleto.trim().split(/\s+/)[0];
 }
 
