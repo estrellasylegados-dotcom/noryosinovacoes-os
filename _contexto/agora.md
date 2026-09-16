@@ -4,67 +4,36 @@
 ## Onde paramos
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia).
-Site no ar em produção (Cloudflare Pages, https://odontominas.pages.dev/, deploy automático a cada
-push na `main`). Escopo do piloto (reunião com o marido em 14/09): pacote completo de graça (site +
-CRM de captação + tráfego pago, verba de mídia por conta da clínica) — prova de conceito pra depois
-oferecer aos contatos dele com outros dentistas (detalhe em `clientes/odontominas/contexto.md`).
-**Foco atual: construir o CRM até funcionar de verdade** — Ariadna só avança em projeto que vê
-rodando, então a "proposta" vai ser uma demonstração ao vivo pro marido, não um documento formal.
-CRM em produção de verdade: Fases 1-5 (painel, ficha, resumo, reativação), V1 do painel (login por
-atendente, Equipe, Conexão), Chat ao Vivo + Relatórios + dark mode, Agentes de IA (Fase 1+2A
-validada com o agente real "Recepção Virtual"; Fase 2B/buffer de mensagens validada e desligada por
-decisão consciente). **Agentes de IA ganharam prompt estruturado (Simples/Avançado) + aba Conhecimento, Qualificação
-Automática de Leads e Pixel de Conversão (Facebook + Google Ads), tudo no mesmo dia
-(2026-09-16)** — Qualificação aplica escala Quente/Morno/Frio como etiqueta a cada resposta do
-agente; Pixel dispara 3 eventos (novo lead, lead quente, agendado) pras duas plataformas de
-anúncio, nunca repetindo por conversa. As duas desligadas por padrão. Ferramentas do print da
-RoiZap segue de fora, mesmo motivo de antes (detalhe em `clientes/odontominas/andamento.md`). MCP
-do Supabase confirmado aplicando schema direto em produção 4x seguidas (v12 a v15), sem SQL
-Editor manual — ver `ferramentas.md`. **Integração ControleODONTO — Fase 0 pronta e em produção
-(2026-09-16)**: adapter, painel e infraestrutura de sync, todas as capabilities desligadas até
-existir credencial/documentação real do sistema da clínica (detalhe em
-`clientes/odontominas/andamento.md`). **Próximo passo do CRM: Fase 6 (demo pro marido)** — não
-sobra mais nenhuma fase técnica antes dela; a integração ControleODONTO segue em paralelo, sem
-bloquear a demo.
-Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
+Site no ar (Cloudflare Pages). CRM em produção de verdade: Fases 1-5, V1 do painel, Chat ao Vivo,
+Relatórios, Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel de Conversão) e a
+Fase 0 da integração ControleODONTO (2026-09-16) — tudo desligado/pendente de credencial onde
+ainda não há dado real. Histórico dia a dia completo em `clientes/odontominas/andamento.md` (não
+duplicar aqui). **Próximo passo do CRM: Fase 6 (demo pro marido)** — não sobra mais nenhuma fase
+técnica antes dela. Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito
+conscientemente.
 
 ## Pendências
 
-- Trocar usuário/senha das 3 contas de demo do painel do CRM
-  (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
-  demo (2026-09-15).
+- Trocar as 3 senhas de demo do painel do CRM pelas secretárias reais antes da demo (2026-09-15).
 - Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
-  técnico da PJ, formação 2011/Mestrado 2019, Endodontia/Periodontia, convênios, fotos reais,
-  domínio próprio (2026-09-11).
-- CNAE/MEI da esposa não cobre tráfego pago/publicidade (confirmado, Anexo XI CGSN 140/2018) — não
-  trava cobrar o piloto #1 (é grátis), mas trava cobrar o próximo cliente odonto pagante. Caminho
-  recomendado: abrir CNPJ próprio da Noryos (ME, Simples Nacional, em nome da esposa), via Contajá
-  (abertura grátis 24h, a partir de R$137/mês) ou Contabilidade.com; confirmar CNAE de
-  desenvolvimento web + publicidade e simular Fator R (Anexo III x V) antes de fechar (2026-09-14).
-- Confirmar se a responsável técnica da clínica de estética (2º piloto) é médica, biomédica ou
-  esteticista — muda se aplica a Resolução CFM 2.336/2023 ou vigilância sanitária (2026-09-11).
-- Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida — rodou vazio em
-  2026-09-11, empresa ainda em estruturação.
-- Pra ligar o Pixel de Conversão de verdade (Google Ads): criar o app OAuth no Google Cloud
-  (`GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET`) — infra que ainda não existe. Facebook não tem esse
-  pré-requisito, só precisa do Pixel ID/token do cliente quando o tráfego pago começar
-  (2026-09-16).
-- Ligar o projeto existente do site/CRM via `/novo-projeto link`, sem mover o código nem quebrar o
-  deploy da Hostinger (2026-09-10).
-- Fase 1 do CRM Twenty (comercial interno da Noryos, não confundir com o CRM da OdontoMinas)
-  **pausada até o CRM da OdontoMinas estar rodando ou o 1º cliente pagante do nicho fechar**
-  (2026-09-14, substitui o critério de 2026-09-10/14 — "piloto #1 fechar comercialmente" não se
-  aplica mais porque o piloto é gratuito).
+  técnico da PJ, formação/mestrado, convênios, fotos reais, domínio próprio (2026-09-11).
+- CNAE/MEI da esposa não cobre tráfego pago — não trava o piloto #1 (grátis), trava cobrar o
+  próximo odonto. Abrir CNPJ próprio da Noryos antes de fechar esse cliente (2026-09-14).
+- Confirmar se a responsável da clínica de estética (2º piloto) é médica/biomédica/esteticista —
+  muda a resolução aplicável (2026-09-11).
+- Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida (2026-09-11).
+- Pixel de Conversão (Google Ads): criar app OAuth no Google Cloud antes de ligar de verdade;
+  Facebook só precisa do Pixel ID/token do cliente (2026-09-16).
+- Integração ControleODONTO: obter credencial/documentação real antes de habilitar qualquer
+  capability (2026-09-16, checklist em
+  `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
+- Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
+- Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
+  fechar (2026-09-14).
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
-  agente real rodando (Fase 1+2A), automação de reativação (Fase 5), buffer de mensagens (Fase 2B,
-  desligado por decisão), prompt estruturado + aba Conhecimento, Qualificação Automática de Leads e
-  Pixel de Conversão (2026-09-16, as duas desligadas por padrão) — tudo testado em produção. Fase 6
-  (demo pro marido) é o próximo passo — não falta mais nenhuma fase técnica.
-  Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
-  Integração ControleODONTO (Fase 0) pronta, aguardando credencial real da clínica pra ligar.
-- CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
-- Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
-  pausado até Twenty ativo (2026-09-14).
+- Cliente-piloto #1 (OdontoMinas): CRM completo em produção, Fase 6 (demo pro marido) é o próximo
+  passo. Painel tem 5 conversas fictícias de demonstração — falta decidir se apaga ou mantém.
+- CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
+- Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).
