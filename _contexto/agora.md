@@ -8,8 +8,8 @@ no ar (Cloudflare Pages). CRM em produção: Fases 1-5, V1 do painel, Chat ao Vi
 Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO e
 Disparos completo (Fase A + Fase B, 2026-09-16) — tudo desligado/pendente de credencial, dado real
 ou teste fim a ponta onde ainda não há. Histórico completo em `clientes/odontominas/andamento.md`.
-**Próximo passo: Fase 6 (demo pro marido)** e, em paralelo, testar Disparos com paciente real —
-trilhas independentes. Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
+Disparos já testado fim a ponta com sucesso. **Próximo passo: Fase 6 (demo pro marido)**.
+Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
@@ -26,8 +26,9 @@ trilhas independentes. Compliance: risco de exclusividade Mirante/Sicoob aceito 
 - Integração ControleODONTO: obter credencial/documentação real antes de habilitar qualquer
   capability (2026-09-16, checklist em
   `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
-- Testar Disparos fim a ponta com paciente real antes de usar em massa — Fase A e B já em produção
-  (2026-09-16, decisão do Rafael, ver andamento.md).
+- Apagar os dados de teste de Disparos (paciente "Rafael (teste Disparos)", conversa, campanha)
+  antes da produção real com clientes — teste fim a ponta já feito e confirmado pelo sistema
+  (2026-09-16, ver andamento.md e decisoes.md).
 - `.ratosos` sumiu do disco (git mostra deletado) e `.noryosinovacoes` (conteúdo "2.0") apareceu sem
   versionar — parece rename/atualização do kit incompleta (2026-09-16).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
@@ -36,7 +37,7 @@ trilhas independentes. Compliance: risco de exclusividade Mirante/Sicoob aceito 
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): CRM em produção; Fase 6 (demo) e o teste fim a ponta de Disparos
-  são as duas frentes abertas. Painel tem 5 conversas fictícias — falta decidir se apaga ou mantém.
+- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos testado com sucesso; Fase 6 (demo) é a
+  frente aberta agora. Painel tem 5 conversas fictícias — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

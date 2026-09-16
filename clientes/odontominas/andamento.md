@@ -1,6 +1,6 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-16, Disparos — Fase B: wizard + worker + relatório; próximo: teste fim a ponta com paciente real; Fase 6 segue em paralelo)
+## Onde está (2026-09-16, Disparos — Fase B testada em produção; próximo: Fase 6)
 
 **Fase B do módulo "Ferramentas → Disparos" completa e em produção**, fechando o que a Fase A abriu
 (opt-out, mensagens salvas, motor de públicos — sem UI nem tabela de campanha ainda). Planejamento
@@ -24,8 +24,16 @@ mensagem → revisão) e `/disparos/[id]` (relatório com ações e auto-refresh
 Supabase, confirmada lendo o schema. Deploy no Railway (`railway up`) confirmado `SUCCESS`, logs sem
 erro nos dois workers, smoke test em produção ok.
 
-Falta o teste fim a ponta com paciente real (decisão do Rafael, não feito nesta sessão por envolver
-mandar mensagem de verdade). Ainda não commitado nem sincronizado no GitHub.
+Commitado e sincronizado no GitHub (`292defd`).
+
+**Teste fim a ponta feito e confirmado pelo sistema** (2026-09-16, mesmo dia): paciente "Rafael
+(teste Disparos)" criado direto no banco de produção com o número do próprio Rafael
+(61981925241), campanha `enviando` com 1 destinatário — o worker já rodando em produção pegou
+sozinho, mandou a mensagem (`{primeiro_nome}` resolvido certo), registrou no Chat ao Vivo e fechou
+a campanha (`concluida`) sem nenhuma ação manual. `evolution_message_id` confirma que a Evolution
+API aceitou o envio; confirmação visual do Rafael no celular ainda não veio. Dados de teste ficam
+no banco por decisão do Rafael (ver `_memoria/decisoes.md`) — apagar antes da produção real com
+clientes.
 
 ## Onde está (2026-09-16, Disparos — Fase A: fundamentos; próximo: Fase B)
 
@@ -404,9 +412,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   `crm/docs/integrations/controle-odonto.md`. Não bloqueia a Fase 6.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
-- [x] Disparos — Fase A (fundamentos) e Fase B (wizard + worker de envio + relatório): construídas,
-  testadas e em produção (2026-09-16) — ver "Feito". Falta o teste fim a ponta com paciente real
-  (decisão do Rafael) — trilha independente da Fase 6, não bloqueia a demo.
+- [x] Disparos — Fase A e Fase B (wizard + worker de envio + relatório): construídas, testadas e
+  em produção, teste fim a ponta feito com sucesso (2026-09-16) — ver "Feito". Falta apagar os
+  dados de teste antes da produção real com clientes (decisão em `_memoria/decisoes.md`).
 
 ## Plano técnico do CRM (2026-09-14)
 

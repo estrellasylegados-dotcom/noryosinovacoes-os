@@ -303,3 +303,9 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   antes de codar, mesmo critério das fases anteriores — os dois recursos adicionam schema e caminho
   de teste sem um caso de uso concreto ainda pedindo por eles; mais simples de construir e validar
   primeiro, reabrir depois é barato.
+- **2026-09-16** (Rafael) [odontominas]: os dados do teste fim a ponta de Disparos (paciente "Rafael
+  (teste Disparos)", a conversa e a campanha, criados direto no banco de produção pra validar o
+  worker com o número do próprio Rafael) **ficam no banco por enquanto**, em vez de apagados logo
+  depois do teste. Por quê: evita recriar tudo de novo se precisar testar outra campanha antes da
+  Fase 6. Rafael pediu explicitamente pra apagar **todo** dado de teste (não só este) antes de o
+  sistema ir pra produção de verdade com clientes reais — pendência registrada em `agora.md`.
