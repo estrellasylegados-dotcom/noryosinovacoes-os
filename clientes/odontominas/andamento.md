@@ -1,5 +1,39 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Integração ControleODONTO — Fase 0; próximo: obter credencial real, depois Fase 6)
+
+**Fase 0 da integração com o ControleODONTO completa e em produção**: pesquisa técnica, adapter
+isolado (`crm/src/lib/controle-odonto/`), painel (Ferramentas → ControleODONTO) e infraestrutura
+de sincronização — sem nenhuma capability real ligada ainda. Pedido explícito do Rafael: camada de
+integração profissional, nunca inventando contrato de API.
+
+Pesquisa confirmou o que o brief já suspeitava: a área "Integrações - Webhooks/Autenticações
+Webhooks" do manual oficial (GitBook) existe mas está vazia (título "(FAZER)", verificado direto).
+O endpoint de agenda citado no brief (`GET /v6/Agendamento/Estabelecimento/{dataInicio}/{dataFim}`)
+**não foi confirmado de forma independente** — entrou só como candidato, nunca chamado de verdade.
+Pesquisa completa em `crm/docs/integrations/controle-odonto.md`.
+
+Adapter com as 7 capabilities pedidas (`canReadAppointments`, `canCreateAppointments`,
+`canUpdateAppointments`, `canCancelAppointments`, `canReadPatients`, `canCreatePatients`,
+`canReceiveWebhooks`) — **todas `false`**, só viram `true` manualmente em código depois de validar
+contra uma conta real (nunca por env var). Inclui cliente HTTP com retry/backoff/timeout, matching
+de paciente (id externo → telefone → CPF → e-mail → revisão manual, reaproveitando
+`normalizarTelefoneEntrada`), dedupe genérico (`external_ids`), lock distribuído
+(`integration_locks`), polling incremental preparado (`sync.ts`) e reconciliação (`reconcile.ts`,
+nunca apaga nada sozinha). Migração `v15` (4 tabelas novas) aplicada direto em produção pelo MCP
+do Supabase. 59 testes novos (288 no total)/typecheck/lint/build limpos. Deploy no Railway
+confirmado `SUCCESS`, smoke test em produção ok. Commitado (`265cf80`) e sincronizado no GitHub.
+
+Decisões conscientes de escopo: sem workflow do GitHub Actions pro cron ainda (rodar de 5 em 5 min
+sem nenhuma capability ativa gastaria minutos de Actions à toa — criar quando `canReadAppointments`
+for confirmada) e sem botão "Reprocessar falhas" no painel (seria idêntico a "Sincronizar agora"
+hoje, mesmo critério de nunca copiar funcionalidade sem lógica real por trás).
+
+Próximo passo desta integração: conseguir credencial/documentação real do ControleODONTO (contato
+com o suporte deles) e seguir a checklist de "Fase de Descoberta com Credencial" no próprio
+`docs/integrations/controle-odonto.md`. Isso não bloqueia a Fase 6 (demo pro marido) — são trilhas
+independentes.
+
 ## Onde está (2026-09-16, Agentes de IA — Pixel de Conversão; próximo: Fase 6)
 
 **Pixel de Conversão (Facebook Ads + Google Ads) construído, migrado e em produção**, a pedido
@@ -298,6 +332,10 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   pré-requisito só do lado Google do Pixel de Conversão; o Facebook não precisa disso, só do Pixel
   ID/token do cliente (2026-09-16).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
+- [ ] Integração ControleODONTO — Fase 0 (adapter, painel, migration) em produção (2026-09-16, ver
+  "Feito"). Falta: obter credencial/documentação real do ControleODONTO (contato com o suporte
+  deles) antes de habilitar qualquer capability — checklist em
+  `crm/docs/integrations/controle-odonto.md`. Não bloqueia a Fase 6.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
 
@@ -350,6 +388,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 
 ## Feito
 
+- 2026-09-16: **Integração ControleODONTO — Fase 0 completa e em produção.** Ver "Onde está" no
+  topo desta seção pro detalhe.
 - 2026-09-11: pasta criada, escopo e checklist de compliance do CFO documentados em
   `contexto.md`.
 - 2026-09-11: logo salva em `marca/logo/logo_site.png`, design-guide atualizado com a cor real

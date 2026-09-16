@@ -275,3 +275,15 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   quê: "só faz sentido quando o tráfego pago começar" deixava de valer no momento em que o Rafael
   decidiu construir a infraestrutura agora, pronta pra ligar quando o tráfego pago começar — mesmo
   raciocínio que já valeu pra reverter a Qualificação horas antes.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: integração com o ControleODONTO
+  (sistema de gestão da clínica) construída com todas as 7 capabilities (leitura/escrita de
+  agenda, leitura/criação de paciente, receber webhook) desligadas por padrão, e só viram `true`
+  manualmente em `capabilities.ts` depois de validação real contra uma conta — nunca por env var.
+  Também decidido não criar ainda o workflow do GitHub Actions pro polling (rodaria de 5 em 5 min
+  sem nenhuma capability ativa) e não criar o botão "Reprocessar falhas" no painel (seria idêntico
+  a "Sincronizar agora" hoje). Por quê: pesquisa própria não confirmou nenhum contrato de API do
+  ControleODONTO (autenticação, endpoint, payload) — a área pública de Webhooks está marcada
+  "(FAZER)", vazia, e o endpoint de agenda citado no brief original não foi confirmado de forma
+  independente. Rafael pediu explicitamente pra nunca inventar contrato e preferir integração
+  parcialmente habilitada e correta a uma aparentemente completa baseada em suposição. Detalhe
+  completo (pesquisa, checklist) em `clientes/odontominas/crm/docs/integrations/controle-odonto.md`.

@@ -19,9 +19,13 @@ Automática de Leads e Pixel de Conversão (Facebook + Google Ads), tudo no mesm
 agente; Pixel dispara 3 eventos (novo lead, lead quente, agendado) pras duas plataformas de
 anúncio, nunca repetindo por conversa. As duas desligadas por padrão. Ferramentas do print da
 RoiZap segue de fora, mesmo motivo de antes (detalhe em `clientes/odontominas/andamento.md`). MCP
-do Supabase confirmado aplicando schema direto em produção 3x seguidas (v12, v13 e v14), sem SQL
-Editor manual — ver `ferramentas.md`. **Próximo passo:
-Fase 6 (demo pro marido)** — não sobra mais nenhuma fase técnica antes dela.
+do Supabase confirmado aplicando schema direto em produção 4x seguidas (v12 a v15), sem SQL
+Editor manual — ver `ferramentas.md`. **Integração ControleODONTO — Fase 0 pronta e em produção
+(2026-09-16)**: adapter, painel e infraestrutura de sync, todas as capabilities desligadas até
+existir credencial/documentação real do sistema da clínica (detalhe em
+`clientes/odontominas/andamento.md`). **Próximo passo do CRM: Fase 6 (demo pro marido)** — não
+sobra mais nenhuma fase técnica antes dela; a integração ControleODONTO segue em paralelo, sem
+bloquear a demo.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -60,6 +64,7 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
   Pixel de Conversão (2026-09-16, as duas desligadas por padrão) — tudo testado em produção. Fase 6
   (demo pro marido) é o próximo passo — não falta mais nenhuma fase técnica.
   Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
+  Integração ControleODONTO (Fase 0) pronta, aguardando credencial real da clínica pra ligar.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).
