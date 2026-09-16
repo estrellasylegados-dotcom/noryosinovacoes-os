@@ -1,8 +1,8 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
+import { atualizarStatus, extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { decidirTransicaoWebhook } from "@/lib/funil";
-import { pausarAgenteSeConfigurado } from "@/lib/agentes";
+import { pausarAgenteManual, pausarAgenteSeConfigurado } from "@/lib/agentes";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 
@@ -35,6 +35,7 @@ export type ConversaChat = {
   ultimaMensagemPreview: string | null;
   ultimaMensagemDirecao: "recebida" | "enviada" | null;
   etiquetas: { id: string; nome: string; cor: string }[];
+  agenteAtivoId: string | null;
 };
 
 export type MensagemChat = {
@@ -67,7 +68,7 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
   const { data: conversas, error } = await supabase
     .from("conversas")
     .select(
-      "id, telefone, status, prioridade, nao_lida, mensagens_nao_lidas, arquivada, atribuido_a, ultima_mensagem_em, paciente_id, pacientes(nome), atendentes(nome)"
+      "id, telefone, status, prioridade, nao_lida, mensagens_nao_lidas, arquivada, atribuido_a, ultima_mensagem_em, paciente_id, agente_ativo_id, pacientes(nome), atendentes(nome)"
     )
     .eq("clinica_id", clinicaId);
 
@@ -137,6 +138,7 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
       ultimaMensagemPreview: ultima ? previewConteudo(ultima.tipo, ultima.conteudo) : null,
       ultimaMensagemDirecao: ultima?.direcao ?? null,
       etiquetas: etiquetasPorConversa.get(id) ?? [],
+      agenteAtivoId: (c.agente_ativo_id as string | null | undefined) ?? null,
     };
   });
 
@@ -464,4 +466,36 @@ export function filtrarConversasChat(
   }
 
   return resultado;
+}
+
+/**
+ * "Finalizar Atendimento" no Chat ao Vivo (a pedido do Rafael): um clique só
+ * pra encerrar — leva a conversa pra um status resolvido (sem regredir um
+ * status já resolvido mais específico, como agendado/perdido, de volta pra
+ * "respondido") e desliga a IA da conversa (pausarAgenteManual).
+ */
+export async function finalizarAtendimento(
+  clinicaId: string,
+  conversaId: string,
+  atendenteId: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const { data: conversa } = await supabase
+    .from("conversas")
+    .select("status")
+    .eq("id", conversaId)
+    .eq("clinica_id", clinicaId)
+    .maybeSingle();
+  if (!conversa) return { ok: false, error: "not_found" };
+
+  const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";
+  if (!STATUS_RESOLVIDOS.includes(statusAtual)) {
+    await atualizarStatus(clinicaId, conversaId, "respondido", atendenteId);
+  }
+
+  await pausarAgenteManual(clinicaId, conversaId);
+
+  return { ok: true };
 }

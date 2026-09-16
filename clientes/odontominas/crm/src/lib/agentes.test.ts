@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  decidirAgenteElegivel,
   decidirAtivarAgentePorEtiqueta,
   dentroDoHorario,
   deveResponder,
@@ -61,6 +62,27 @@ describe("decidirAtivarAgentePorEtiqueta", () => {
 
   it("devolve null se nenhum agente casa", () => {
     expect(decidirAtivarAgentePorEtiqueta([], "etiqueta-1")).toBeNull();
+  });
+});
+
+describe("decidirAgenteElegivel", () => {
+  it("acha o agente ativo cuja etiqueta-gatilho está entre as etiquetas da conversa", () => {
+    const agente = criarAgente();
+    expect(decidirAgenteElegivel([agente], ["etiqueta-99", "etiqueta-1"])).toEqual(agente);
+  });
+
+  it("ignora agente pausado mesmo com a etiqueta certa", () => {
+    const agente = criarAgente({ ativo: false });
+    expect(decidirAgenteElegivel([agente], ["etiqueta-1"])).toBeNull();
+  });
+
+  it("devolve null quando nenhuma etiqueta da conversa bate com agente nenhum", () => {
+    const agente = criarAgente();
+    expect(decidirAgenteElegivel([agente], ["etiqueta-x", "etiqueta-y"])).toBeNull();
+  });
+
+  it("devolve null sem etiquetas", () => {
+    expect(decidirAgenteElegivel([criarAgente()], [])).toBeNull();
   });
 });
 

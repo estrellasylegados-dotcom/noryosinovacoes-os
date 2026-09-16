@@ -351,6 +351,20 @@ export function decidirAtivarAgentePorEtiqueta(agentes: AgenteIA[], etiquetaId: 
 }
 
 /**
+ * "Retomar IA" no Chat ao Vivo: a conversa foi pausada manualmente (sem
+ * etiqueta nova), então reaproveita as etiquetas que ela já tem pra achar de
+ * novo o agente ativo cuja etiqueta-gatilho bate — mesma regra de
+ * decidirAtivarAgentePorEtiqueta, só que testando várias etiquetas de uma vez.
+ */
+export function decidirAgenteElegivel(agentes: AgenteIA[], etiquetaIds: string[]): AgenteIA | null {
+  for (const etiquetaId of etiquetaIds) {
+    const agente = decidirAtivarAgentePorEtiqueta(agentes, etiquetaId);
+    if (agente) return agente;
+  }
+  return null;
+}
+
+/**
  * Mensagem recebida numa conversa: o agente ativo dela (se algum) deve
  * responder agora? Não responde a mensagem da própria clínica (fromMe), e
  * respeita a pausa temporária depois de um humano responder manualmente
@@ -428,6 +442,56 @@ export async function pausarAgenteSeConfigurado(clinicaId: string, conversaId: s
   if (error) {
     console.error("[agentes] pausar_failed", JSON.stringify({ conversaId, code: error.code ?? null }));
   }
+}
+
+/**
+ * "Pausar IA" no Chat ao Vivo (a pedido do Rafael): um humano assume a
+ * conversa na hora, sem esperar a pausa temporária de
+ * pausarAgenteSeConfigurado nem depender de reaplicar etiqueta. Desliga de
+ * vez (`agente_ativo_id = null`) até alguém retomar ou reaplicar a etiqueta.
+ */
+export async function pausarAgenteManual(clinicaId: string, conversaId: string): Promise<{ ok: boolean }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false };
+
+  const { error } = await supabase
+    .from("conversas")
+    .update({ agente_ativo_id: null, agente_pausado_ate: null })
+    .eq("id", conversaId)
+    .eq("clinica_id", clinicaId);
+
+  if (error) {
+    console.error("[agentes] pausar_manual_failed", JSON.stringify({ conversaId, code: error.code ?? null }));
+    return { ok: false };
+  }
+  return { ok: true };
+}
+
+/** "Retomar IA": reconecta o agente elegível pelas etiquetas que a conversa já tem, sem precisar remover e reaplicar a etiqueta. */
+export async function retomarAgente(clinicaId: string, conversaId: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const [{ data: etiquetasLinks }, agentes] = await Promise.all([
+    supabase.from("conversa_etiquetas").select("etiqueta_id").eq("conversa_id", conversaId),
+    listarAgentes(clinicaId),
+  ]);
+
+  const etiquetaIds = (etiquetasLinks ?? []).map((r) => r.etiqueta_id as string);
+  const agente = decidirAgenteElegivel(agentes, etiquetaIds);
+  if (!agente) return { ok: false, error: "sem_agente_elegivel" };
+
+  const { error } = await supabase
+    .from("conversas")
+    .update({ agente_ativo_id: agente.id, agente_pausado_ate: null })
+    .eq("id", conversaId)
+    .eq("clinica_id", clinicaId);
+
+  if (error) {
+    console.error("[agentes] retomar_failed", JSON.stringify({ conversaId, code: error.code ?? null }));
+    return { ok: false, error: "update_failed" };
+  }
+  return { ok: true };
 }
 
 const MENSAGEM_TRANSFERENCIA_PADRAO = "Já vou te encaminhar pra nossa equipe, um momento 🙏";

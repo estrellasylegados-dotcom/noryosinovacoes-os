@@ -2,6 +2,7 @@ import { getClinicaId } from "@/lib/clinica";
 import { listarConversasChat } from "@/lib/chat";
 import { listarEtiquetas } from "@/lib/etiquetas";
 import { listarAtendentes } from "@/lib/atendentes";
+import { listarAgentes } from "@/lib/agentes";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { ChatAoVivo } from "@/components/chat/ChatAoVivo";
 
@@ -28,16 +29,23 @@ export default async function ChatAoVivoPage() {
     );
   }
 
-  const [conversas, etiquetas, atendentes] = await Promise.all([
+  const [conversas, etiquetas, atendentes, agentes] = await Promise.all([
     listarConversasChat(clinicaId),
     listarEtiquetas(clinicaId),
     listarAtendentes(clinicaId),
+    listarAgentes(clinicaId),
   ]);
+
+  // Só oferece "Retomar IA" quando a etiqueta que a conversa já tem de fato liga a algum agente ativo.
+  const etiquetasComAgente = agentes
+    .filter((a) => a.ativo && a.etiquetaGatilhoId)
+    .map((a) => a.etiquetaGatilhoId as string);
 
   return (
     <ChatAoVivo
       conversasIniciais={conversas}
       etiquetasIniciais={etiquetas}
+      etiquetasComAgente={etiquetasComAgente}
       atendentes={atendentes}
       atendenteAtualId={sessao?.atendenteId ?? null}
     />

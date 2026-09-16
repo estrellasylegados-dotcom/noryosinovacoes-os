@@ -17,6 +17,7 @@ function conversa(parcial: Partial<ConversaChat> & { id: string }): ConversaChat
     ultimaMensagemPreview: null,
     ultimaMensagemDirecao: null,
     etiquetas: [],
+    agenteAtivoId: null,
     ...parcial,
   };
 }

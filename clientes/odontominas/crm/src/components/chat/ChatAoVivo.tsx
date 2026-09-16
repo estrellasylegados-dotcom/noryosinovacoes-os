@@ -70,11 +70,13 @@ async function chamarApi<T = { ok: boolean; error?: string }>(
 export function ChatAoVivo({
   conversasIniciais,
   etiquetasIniciais,
+  etiquetasComAgente,
   atendentes,
   atendenteAtualId,
 }: {
   conversasIniciais: ConversaChat[];
   etiquetasIniciais: Etiqueta[];
+  etiquetasComAgente: string[];
   atendentes: Atendente[];
   atendenteAtualId: string | null;
 }) {
@@ -242,6 +244,31 @@ export function ChatAoVivo({
     if (!selecionada) return;
     setConversas((prev) => prev.map((c) => (c.id === selecionada.id ? { ...c, status } : c)));
     await chamarApi(`/api/conversas/${selecionada.id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+    atualizarListaAgora();
+  }
+
+  async function pausarIA() {
+    if (!selecionada) return;
+    setConversas((prev) => prev.map((c) => (c.id === selecionada.id ? { ...c, agenteAtivoId: null } : c)));
+    await chamarApi(`/api/chat/conversas/${selecionada.id}/agente`, {
+      method: "PATCH",
+      body: JSON.stringify({ acao: "pausar" }),
+    });
+  }
+
+  async function retomarIA() {
+    if (!selecionada) return;
+    await chamarApi(`/api/chat/conversas/${selecionada.id}/agente`, {
+      method: "PATCH",
+      body: JSON.stringify({ acao: "retomar" }),
+    });
+    atualizarListaAgora();
+  }
+
+  async function finalizarAtendimentoSelecionada() {
+    if (!selecionada) return;
+    setConversas((prev) => prev.map((c) => (c.id === selecionada.id ? { ...c, agenteAtivoId: null } : c)));
+    await chamarApi(`/api/chat/conversas/${selecionada.id}/finalizar`, { method: "POST" });
     atualizarListaAgora();
   }
 
@@ -439,6 +466,36 @@ export function ChatAoVivo({
                   </option>
                 ))}
               </select>
+
+              {selecionada.agenteAtivoId ? (
+                <button
+                  type="button"
+                  onClick={pausarIA}
+                  title="Um humano assume: a IA para de responder essa conversa"
+                  className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                >
+                  Pausar IA
+                </button>
+              ) : (
+                etiquetasComAgente.some((eid) => selecionada.etiquetas.some((e) => e.id === eid)) && (
+                  <button
+                    type="button"
+                    onClick={retomarIA}
+                    title="Volta a deixar a IA responder essa conversa"
+                    className="rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 hover:bg-teal-100"
+                  >
+                    Retomar IA
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={finalizarAtendimentoSelecionada}
+                className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+              >
+                Finalizar Atendimento
+              </button>
 
               <select
                 value={selecionada.prioridade}
