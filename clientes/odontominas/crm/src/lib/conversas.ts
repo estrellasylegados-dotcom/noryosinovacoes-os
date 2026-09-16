@@ -1,5 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
+import { buscarAgente } from "@/lib/agentes";
+import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
 
 export type ConversaPainel = {
   id: string;
@@ -168,7 +170,7 @@ export async function atualizarStatus(
 
   const { data: atual, error: erroAtual } = await supabase
     .from("conversas")
-    .select("status")
+    .select("status, telefone, ultimo_agente_id")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -205,6 +207,22 @@ export async function atualizarStatus(
     motivo: "manual",
     atendente_id: atendenteId,
   });
+
+  // Pixel de Conversão: "Agendado" é a conversão principal (Facebook + Google
+  // Ads) — busca o agente que já foi dono desta conversa (ultimo_agente_id
+  // sobrevive ao agente_ativo_id zerar quando o fluxo conclui) pra achar a
+  // config de Pixel dele. Isolado: nunca pode derrubar a troca de status.
+  const ultimoAgenteId = atual.ultimo_agente_id as string | null;
+  if (statusNovo === "agendado" && ultimoAgenteId) {
+    try {
+      const agente = await buscarAgente(clinicaId, ultimoAgenteId);
+      if (agente) {
+        await dispararPixelSeConfigurado(agente, "agendado", clinicaId, conversaId, atual.telefone as string);
+      }
+    } catch (e) {
+      console.error("[conversas] pixel_agendado_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
+    }
+  }
 
   return { ok: true };
 }

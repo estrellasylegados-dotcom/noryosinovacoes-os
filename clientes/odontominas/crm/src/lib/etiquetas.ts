@@ -165,7 +165,11 @@ async function ativarAgentePorEtiqueta(clinicaId: string, conversaId: string, et
   const agente = decidirAtivarAgentePorEtiqueta(agentes, etiquetaId);
   if (!agente) return;
 
-  const { error } = await supabase.from("conversas").update({ agente_ativo_id: agente.id }).eq("id", conversaId).eq("clinica_id", clinicaId);
+  const { error } = await supabase
+    .from("conversas")
+    .update({ agente_ativo_id: agente.id, ultimo_agente_id: agente.id })
+    .eq("id", conversaId)
+    .eq("clinica_id", clinicaId);
   if (error) {
     console.error("[etiquetas] ativar_agente_failed", JSON.stringify({ conversaId, agenteId: agente.id, code: error.code ?? null }));
   }

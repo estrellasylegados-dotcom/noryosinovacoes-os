@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { getClinicaId } from "@/lib/clinica";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
+import { extrairAtribuicaoWebhook } from "@/lib/agentes-pixel";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido } from "@/lib/status";
 import { deveResponder } from "@/lib/agentes";
@@ -113,9 +114,13 @@ export async function POST(request: Request) {
 
   let pacienteId: string | null = pacienteExistente?.id ?? null;
   if (!pacienteId) {
+    // Atribuição (Pixel de Conversão): melhor-esforço, só o que o próprio
+    // protocolo do WhatsApp carrega — ver agentes-pixel.ts pro porquê de
+    // utm_*/gclid/fbclid não terem captura automática ainda.
+    const { origemLead } = extrairAtribuicaoWebhook(data.message);
     const { data: novoPaciente, error: pacienteError } = await supabase
       .from("pacientes")
-      .insert({ clinica_id: clinicaId, telefone, nome: pushName })
+      .insert({ clinica_id: clinicaId, telefone, nome: pushName, origem_lead: origemLead })
       .select("id")
       .single();
     if (pacienteError || !novoPaciente) {

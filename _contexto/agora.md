@@ -13,12 +13,14 @@ rodando, então a "proposta" vai ser uma demonstração ao vivo pro marido, não
 CRM em produção de verdade: Fases 1-5 (painel, ficha, resumo, reativação), V1 do painel (login por
 atendente, Equipe, Conexão), Chat ao Vivo + Relatórios + dark mode, Agentes de IA (Fase 1+2A
 validada com o agente real "Recepção Virtual"; Fase 2B/buffer de mensagens validada e desligada por
-decisão consciente). **Agentes de IA ganharam prompt estruturado (Simples/Avançado) + aba
-Conhecimento e, na mesma data, Qualificação Automática de Leads (2026-09-16)** — escala
-Quente/Morno/Frio aplicada como etiqueta, reavaliada a cada resposta do agente, desligada por
-padrão. Ferramentas/Pixel do print da RoiZap continuam de fora, mesmo motivo de antes (detalhe em
-`clientes/odontominas/andamento.md`). MCP do Supabase confirmado aplicando schema direto em
-produção 2x seguidas (v12 e v13), sem SQL Editor manual — ver `ferramentas.md`. **Próximo passo:
+decisão consciente). **Agentes de IA ganharam prompt estruturado (Simples/Avançado) + aba Conhecimento, Qualificação
+Automática de Leads e Pixel de Conversão (Facebook + Google Ads), tudo no mesmo dia
+(2026-09-16)** — Qualificação aplica escala Quente/Morno/Frio como etiqueta a cada resposta do
+agente; Pixel dispara 3 eventos (novo lead, lead quente, agendado) pras duas plataformas de
+anúncio, nunca repetindo por conversa. As duas desligadas por padrão. Ferramentas do print da
+RoiZap segue de fora, mesmo motivo de antes (detalhe em `clientes/odontominas/andamento.md`). MCP
+do Supabase confirmado aplicando schema direto em produção 3x seguidas (v12, v13 e v14), sem SQL
+Editor manual — ver `ferramentas.md`. **Próximo passo:
 Fase 6 (demo pro marido)** — não sobra mais nenhuma fase técnica antes dela.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
@@ -39,6 +41,10 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
   esteticista — muda se aplica a Resolução CFM 2.336/2023 ou vigilância sanitária (2026-09-11).
 - Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida — rodou vazio em
   2026-09-11, empresa ainda em estruturação.
+- Pra ligar o Pixel de Conversão de verdade (Google Ads): criar o app OAuth no Google Cloud
+  (`GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET`) — infra que ainda não existe. Facebook não tem esse
+  pré-requisito, só precisa do Pixel ID/token do cliente quando o tráfego pago começar
+  (2026-09-16).
 - Ligar o projeto existente do site/CRM via `/novo-projeto link`, sem mover o código nem quebrar o
   deploy da Hostinger (2026-09-10).
 - Fase 1 do CRM Twenty (comercial interno da Noryos, não confundir com o CRM da OdontoMinas)
@@ -50,9 +56,9 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 - Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
   agente real rodando (Fase 1+2A), automação de reativação (Fase 5), buffer de mensagens (Fase 2B,
-  desligado por decisão), prompt estruturado + aba Conhecimento e Qualificação Automática de Leads
-  (2026-09-16, desligada por padrão) — tudo testado em produção. Fase 6 (demo pro marido) é o
-  próximo passo — não falta mais nenhuma fase técnica.
+  desligado por decisão), prompt estruturado + aba Conhecimento, Qualificação Automática de Leads e
+  Pixel de Conversão (2026-09-16, as duas desligadas por padrão) — tudo testado em produção. Fase 6
+  (demo pro marido) é o próximo passo — não falta mais nenhuma fase técnica.
   Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto

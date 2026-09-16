@@ -53,6 +53,15 @@ function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
     bufferMensagens: false,
     bufferSegundos: 8,
     qualificacaoAutomatica: false,
+    pixelAtivo: false,
+    pixelFacebookPixelId: null,
+    pixelFacebookAccessToken: null,
+    pixelGoogleCustomerId: null,
+    pixelGoogleLoginCustomerId: null,
+    pixelGoogleRefreshToken: null,
+    pixelGoogleConversionActionNovoLead: null,
+    pixelGoogleConversionActionQuente: null,
+    pixelGoogleConversionActionAgendado: null,
     ...overrides,
   };
 }

@@ -7,7 +7,7 @@ import type { ModeloIA } from "@/lib/ia-provedores";
 import type { ConhecimentoItem } from "@/lib/agentes-conhecimento";
 
 type Etiqueta = { id: string; nome: string; cor: string };
-type Aba = "configuracao" | "prompt" | "conhecimento" | "qualificacao";
+type Aba = "configuracao" | "prompt" | "conhecimento" | "qualificacao" | "pixel";
 
 const TOM_VOZ_OPCOES: { valor: TomVoz; label: string }[] = [
   { valor: "amigavel", label: "Amigável" },
@@ -72,6 +72,22 @@ export function AgenteForm({
   const [bufferMensagens, setBufferMensagens] = useState(agente?.bufferMensagens ?? false);
   const [bufferSegundos, setBufferSegundos] = useState(agente?.bufferSegundos ?? 8);
   const [qualificacaoAutomatica, setQualificacaoAutomatica] = useState(agente?.qualificacaoAutomatica ?? false);
+
+  const [pixelAtivo, setPixelAtivo] = useState(agente?.pixelAtivo ?? false);
+  const [pixelFacebookPixelId, setPixelFacebookPixelId] = useState(agente?.pixelFacebookPixelId ?? "");
+  const [pixelFacebookAccessToken, setPixelFacebookAccessToken] = useState(agente?.pixelFacebookAccessToken ?? "");
+  const [pixelGoogleCustomerId, setPixelGoogleCustomerId] = useState(agente?.pixelGoogleCustomerId ?? "");
+  const [pixelGoogleLoginCustomerId, setPixelGoogleLoginCustomerId] = useState(agente?.pixelGoogleLoginCustomerId ?? "");
+  const [pixelGoogleRefreshToken, setPixelGoogleRefreshToken] = useState(agente?.pixelGoogleRefreshToken ?? "");
+  const [pixelGoogleConversionActionNovoLead, setPixelGoogleConversionActionNovoLead] = useState(
+    agente?.pixelGoogleConversionActionNovoLead ?? ""
+  );
+  const [pixelGoogleConversionActionQuente, setPixelGoogleConversionActionQuente] = useState(
+    agente?.pixelGoogleConversionActionQuente ?? ""
+  );
+  const [pixelGoogleConversionActionAgendado, setPixelGoogleConversionActionAgendado] = useState(
+    agente?.pixelGoogleConversionActionAgendado ?? ""
+  );
 
   const [ativarTransferencia, setAtivarTransferencia] = useState(agente?.ativarTransferencia ?? false);
   const [mensagemTransferencia, setMensagemTransferencia] = useState(agente?.mensagemTransferencia ?? "");
@@ -145,6 +161,15 @@ export function AgenteForm({
       bufferMensagens,
       bufferSegundos,
       qualificacaoAutomatica,
+      pixelAtivo,
+      pixelFacebookPixelId: pixelFacebookPixelId || null,
+      pixelFacebookAccessToken: pixelFacebookAccessToken || null,
+      pixelGoogleCustomerId: pixelGoogleCustomerId || null,
+      pixelGoogleLoginCustomerId: pixelGoogleLoginCustomerId || null,
+      pixelGoogleRefreshToken: pixelGoogleRefreshToken || null,
+      pixelGoogleConversionActionNovoLead: pixelGoogleConversionActionNovoLead || null,
+      pixelGoogleConversionActionQuente: pixelGoogleConversionActionQuente || null,
+      pixelGoogleConversionActionAgendado: pixelGoogleConversionActionAgendado || null,
       ativarTransferencia,
       notificarNumeros: notificarNumeros || null,
       notificarPedidoHumano,
@@ -183,6 +208,7 @@ export function AgenteForm({
           desabilitada={!editando}
         />
         <AbaBotao label="Qualificação" ativa={aba === "qualificacao"} onClick={() => setAba("qualificacao")} />
+        <AbaBotao label="Pixel" ativa={aba === "pixel"} onClick={() => setAba("pixel")} />
       </div>
 
       {aba === "configuracao" && (
@@ -616,6 +642,134 @@ export function AgenteForm({
                   <p className="text-xs text-neutral-500">{descricao}</p>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {aba === "pixel" && (
+        <section className="rounded-xl border border-neutral-200 bg-white p-5">
+          <h2 className="mb-1 text-sm font-semibold text-neutral-900">Pixel de Conversão</h2>
+          <p className="mb-3 text-xs text-neutral-500">
+            Manda um evento de conversão pro Facebook Ads e pro Google Ads em 3 momentos do funil —
+            server-side, sem depender de pixel de navegador (aqui é WhatsApp, não site).
+          </p>
+          <Toggle
+            label="Pixel de Conversão"
+            descricao="Dispara os eventos abaixo pras plataformas de anúncio configuradas"
+            valor={pixelAtivo}
+            onChange={setPixelAtivo}
+          />
+
+          {pixelAtivo && (
+            <div className="mt-4 space-y-4 border-t border-neutral-100 pt-4">
+              <div className="flex gap-2">
+                {(
+                  [
+                    ["Novo Lead", "1ª mensagem de um contato novo"],
+                    ["Lead Quente", "Qualificação Automática classifica como Quente"],
+                    ["Agendado", "status vira Agendado — conversão principal"],
+                  ] as const
+                ).map(([nome, descricao]) => (
+                  <div key={nome} className="flex-1 rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                    <span className="mb-1 inline-block rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-medium text-white">
+                      {nome}
+                    </span>
+                    <p className="text-xs text-neutral-500">{descricao}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-neutral-100 p-4">
+                <h3 className="mb-3 text-xs font-semibold text-neutral-700">Meta (Facebook Ads)</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Campo label="Pixel ID">
+                    <input
+                      type="text"
+                      value={pixelFacebookPixelId}
+                      onChange={(e) => setPixelFacebookPixelId(e.target.value)}
+                      placeholder="Ex.: 1234567890123456"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                  <Campo label="Access Token (Conversions API)">
+                    <input
+                      type="password"
+                      value={pixelFacebookAccessToken}
+                      onChange={(e) => setPixelFacebookAccessToken(e.target.value)}
+                      placeholder="Gerado no Events Manager → Configurações → Conversions API"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-neutral-100 p-4">
+                <h3 className="mb-1 text-xs font-semibold text-neutral-700">Google Ads</h3>
+                <p className="mb-3 text-[11px] text-neutral-400">
+                  Client ID/Secret do app OAuth já estão configurados pela Noryos — só o Refresh
+                  Token (gerado 1x com a conta de anúncio do cliente) e os IDs abaixo entram aqui.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Campo label="Customer ID (só dígitos, sem &quot;AW-&quot;)">
+                    <input
+                      type="text"
+                      value={pixelGoogleCustomerId}
+                      onChange={(e) => setPixelGoogleCustomerId(e.target.value)}
+                      placeholder="Ex.: 1234567890"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                  <Campo label="Login Customer ID (MCC, opcional)">
+                    <input
+                      type="text"
+                      value={pixelGoogleLoginCustomerId}
+                      onChange={(e) => setPixelGoogleLoginCustomerId(e.target.value)}
+                      placeholder="Só se a conta for gerenciada por uma MCC"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                </div>
+                <div className="mt-3">
+                  <Campo label="Refresh Token">
+                    <input
+                      type="password"
+                      value={pixelGoogleRefreshToken}
+                      onChange={(e) => setPixelGoogleRefreshToken(e.target.value)}
+                      className={campoClasses}
+                    />
+                  </Campo>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <Campo label="Ação de Conversão — Agendamento (principal)">
+                    <input
+                      type="text"
+                      value={pixelGoogleConversionActionAgendado}
+                      onChange={(e) => setPixelGoogleConversionActionAgendado(e.target.value)}
+                      placeholder="ID numérico"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                  <Campo label="Ação de Conversão — Lead Quente (opcional)">
+                    <input
+                      type="text"
+                      value={pixelGoogleConversionActionQuente}
+                      onChange={(e) => setPixelGoogleConversionActionQuente(e.target.value)}
+                      placeholder="ID numérico"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                  <Campo label="Ação de Conversão — Novo Lead (opcional)">
+                    <input
+                      type="text"
+                      value={pixelGoogleConversionActionNovoLead}
+                      onChange={(e) => setPixelGoogleConversionActionNovoLead(e.target.value)}
+                      placeholder="ID numérico"
+                      className={campoClasses}
+                    />
+                  </Campo>
+                </div>
+              </div>
             </div>
           )}
         </section>

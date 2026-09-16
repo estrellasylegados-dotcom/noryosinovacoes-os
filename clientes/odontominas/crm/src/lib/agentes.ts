@@ -6,6 +6,7 @@ import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } 
 import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@/lib/agentes-notificacoes";
 import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib/agentes-conhecimento";
 import { aplicarQualificacaoAutomatica, classificarQualificacao } from "@/lib/agentes-qualificacao";
+import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -44,6 +45,13 @@ import { aplicarQualificacaoAutomatica, classificarQualificacao } from "@/lib/ag
  * src/lib/agentes-qualificacao.ts pra classificar a conversa em
  * Quente/Morno/Frio e aplicar a etiqueta correspondente — nunca derruba a
  * resposta já enviada se a classificação falhar (try/catch isolado ali).
+ *
+ * Pixel de Conversão (opt-in por agente, `pixelAtivo`): 3 eventos do funil
+ * (novo lead, lead quente, agendado) disparados pra Facebook Conversions API
+ * e Google Ads via src/lib/agentes-pixel.ts — `responderComoAgente` dispara
+ * novo_lead e lead_quente; `atualizarStatus` (src/lib/conversas.ts)
+ * dispara agendado. Nunca mais de uma vez por conversa (dedup no próprio
+ * agentes-pixel.ts).
  */
 
 export type ModoPrompt = "simples" | "avancado";
@@ -92,6 +100,15 @@ export type AgenteIA = {
   bufferMensagens: boolean;
   bufferSegundos: number;
   qualificacaoAutomatica: boolean;
+  pixelAtivo: boolean;
+  pixelFacebookPixelId: string | null;
+  pixelFacebookAccessToken: string | null;
+  pixelGoogleCustomerId: string | null;
+  pixelGoogleLoginCustomerId: string | null;
+  pixelGoogleRefreshToken: string | null;
+  pixelGoogleConversionActionNovoLead: string | null;
+  pixelGoogleConversionActionQuente: string | null;
+  pixelGoogleConversionActionAgendado: string | null;
 };
 
 export type DadosAgente = {
@@ -132,11 +149,21 @@ export type DadosAgente = {
   bufferMensagens?: boolean;
   bufferSegundos?: number;
   qualificacaoAutomatica?: boolean;
+  pixelAtivo?: boolean;
+  pixelFacebookPixelId?: string | null;
+  pixelFacebookAccessToken?: string | null;
+  pixelGoogleCustomerId?: string | null;
+  pixelGoogleLoginCustomerId?: string | null;
+  pixelGoogleRefreshToken?: string | null;
+  pixelGoogleConversionActionNovoLead?: string | null;
+  pixelGoogleConversionActionQuente?: string | null;
+  pixelGoogleConversionActionAgendado?: string | null;
 };
 
 const SELECT_AGENTE =
   "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, modo_prompt, persona, objetivo, fluxo_triagem, guardrails, tom_voz, usar_emojis, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
-  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos, qualificacao_automatica";
+  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos, qualificacao_automatica, " +
+  "pixel_ativo, pixel_facebook_pixel_id, pixel_facebook_access_token, pixel_google_customer_id, pixel_google_login_customer_id, pixel_google_refresh_token, pixel_google_conversion_action_novo_lead, pixel_google_conversion_action_quente, pixel_google_conversion_action_agendado";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAgente(row: any): AgenteIA {
@@ -181,6 +208,15 @@ function mapAgente(row: any): AgenteIA {
     bufferMensagens: row.buffer_mensagens ?? false,
     bufferSegundos: row.buffer_segundos ?? 8,
     qualificacaoAutomatica: row.qualificacao_automatica ?? false,
+    pixelAtivo: row.pixel_ativo ?? false,
+    pixelFacebookPixelId: row.pixel_facebook_pixel_id ?? null,
+    pixelFacebookAccessToken: row.pixel_facebook_access_token ?? null,
+    pixelGoogleCustomerId: row.pixel_google_customer_id ?? null,
+    pixelGoogleLoginCustomerId: row.pixel_google_login_customer_id ?? null,
+    pixelGoogleRefreshToken: row.pixel_google_refresh_token ?? null,
+    pixelGoogleConversionActionNovoLead: row.pixel_google_conversion_action_novo_lead ?? null,
+    pixelGoogleConversionActionQuente: row.pixel_google_conversion_action_quente ?? null,
+    pixelGoogleConversionActionAgendado: row.pixel_google_conversion_action_agendado ?? null,
   };
 }
 
@@ -235,6 +271,15 @@ function payloadDados(dados: DadosAgente) {
     buffer_mensagens: dados.bufferMensagens ?? false,
     buffer_segundos: dados.bufferSegundos ?? 8,
     qualificacao_automatica: dados.qualificacaoAutomatica ?? false,
+    pixel_ativo: dados.pixelAtivo ?? false,
+    pixel_facebook_pixel_id: dados.pixelFacebookPixelId?.trim() || null,
+    pixel_facebook_access_token: dados.pixelFacebookAccessToken?.trim() || null,
+    pixel_google_customer_id: dados.pixelGoogleCustomerId?.trim() || null,
+    pixel_google_login_customer_id: dados.pixelGoogleLoginCustomerId?.trim() || null,
+    pixel_google_refresh_token: dados.pixelGoogleRefreshToken?.trim() || null,
+    pixel_google_conversion_action_novo_lead: dados.pixelGoogleConversionActionNovoLead?.trim() || null,
+    pixel_google_conversion_action_quente: dados.pixelGoogleConversionActionQuente?.trim() || null,
+    pixel_google_conversion_action_agendado: dados.pixelGoogleConversionActionAgendado?.trim() || null,
   };
 }
 
@@ -336,6 +381,27 @@ export async function atualizarAgente(
     bufferMensagens: dados.bufferMensagens ?? atual.bufferMensagens,
     bufferSegundos: dados.bufferSegundos ?? atual.bufferSegundos,
     qualificacaoAutomatica: dados.qualificacaoAutomatica ?? atual.qualificacaoAutomatica,
+    pixelAtivo: dados.pixelAtivo ?? atual.pixelAtivo,
+    pixelFacebookPixelId: dados.pixelFacebookPixelId !== undefined ? dados.pixelFacebookPixelId : atual.pixelFacebookPixelId,
+    pixelFacebookAccessToken:
+      dados.pixelFacebookAccessToken !== undefined ? dados.pixelFacebookAccessToken : atual.pixelFacebookAccessToken,
+    pixelGoogleCustomerId: dados.pixelGoogleCustomerId !== undefined ? dados.pixelGoogleCustomerId : atual.pixelGoogleCustomerId,
+    pixelGoogleLoginCustomerId:
+      dados.pixelGoogleLoginCustomerId !== undefined ? dados.pixelGoogleLoginCustomerId : atual.pixelGoogleLoginCustomerId,
+    pixelGoogleRefreshToken:
+      dados.pixelGoogleRefreshToken !== undefined ? dados.pixelGoogleRefreshToken : atual.pixelGoogleRefreshToken,
+    pixelGoogleConversionActionNovoLead:
+      dados.pixelGoogleConversionActionNovoLead !== undefined
+        ? dados.pixelGoogleConversionActionNovoLead
+        : atual.pixelGoogleConversionActionNovoLead,
+    pixelGoogleConversionActionQuente:
+      dados.pixelGoogleConversionActionQuente !== undefined
+        ? dados.pixelGoogleConversionActionQuente
+        : atual.pixelGoogleConversionActionQuente,
+    pixelGoogleConversionActionAgendado:
+      dados.pixelGoogleConversionActionAgendado !== undefined
+        ? dados.pixelGoogleConversionActionAgendado
+        : atual.pixelGoogleConversionActionAgendado,
   };
 
   const erroValidacao = validarDados(mesclado);
@@ -432,6 +498,15 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
     bufferMensagens: original.bufferMensagens,
     bufferSegundos: original.bufferSegundos,
     qualificacaoAutomatica: original.qualificacaoAutomatica,
+    pixelAtivo: original.pixelAtivo,
+    pixelFacebookPixelId: original.pixelFacebookPixelId,
+    pixelFacebookAccessToken: original.pixelFacebookAccessToken,
+    pixelGoogleCustomerId: original.pixelGoogleCustomerId,
+    pixelGoogleLoginCustomerId: original.pixelGoogleLoginCustomerId,
+    pixelGoogleRefreshToken: original.pixelGoogleRefreshToken,
+    pixelGoogleConversionActionNovoLead: original.pixelGoogleConversionActionNovoLead,
+    pixelGoogleConversionActionQuente: original.pixelGoogleConversionActionQuente,
+    pixelGoogleConversionActionAgendado: original.pixelGoogleConversionActionAgendado,
   });
 
   if (resultado.ok && resultado.agente) {
@@ -670,7 +745,7 @@ export async function retomarAgente(clinicaId: string, conversaId: string): Prom
 
   const { error } = await supabase
     .from("conversas")
-    .update({ agente_ativo_id: agente.id, agente_pausado_ate: null })
+    .update({ agente_ativo_id: agente.id, agente_pausado_ate: null, ultimo_agente_id: agente.id })
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId);
 
@@ -804,6 +879,9 @@ export async function responderComoAgente(
   if (isNovoPaciente && agente.notificarNovoLead) {
     await notificarEquipe(agente, "novo_lead", notifParams);
   }
+  if (isNovoPaciente) {
+    await dispararPixelSeConfigurado(agente, "novo_lead", clinicaId, conversaId, telefone);
+  }
 
   // Pedido de transferência: detecção por palavra-chave (determinística, sem
   // depender de a IA "entender" e sem parsing de marcador entre 5 provedores
@@ -884,6 +962,9 @@ export async function responderComoAgente(
     try {
       const classificacao = await classificarQualificacao(agente, historico, mensagemRecebida);
       if (classificacao) await aplicarQualificacaoAutomatica(clinicaId, conversaId, classificacao);
+      if (classificacao === "quente") {
+        await dispararPixelSeConfigurado(agente, "lead_quente", clinicaId, conversaId, telefone);
+      }
     } catch (e) {
       console.error("[agentes] qualificacao_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
     }

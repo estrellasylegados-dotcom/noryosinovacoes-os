@@ -266,3 +266,12 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   em vez de só na 1ª mensagem do lead. Por quê: o "fluxo de perguntas" que faltava na decisão
   anterior valia pra um questionário de qualificação — classificar a temperatura do lead pelo
   histórico da conversa não depende disso, e fecha a lacuna que tinha deixado a aba de fora.
+- **2026-09-16** (Rafael) [odontominas] — Substitui: 2026-09-16: da mesma decisão de deixar
+  Qualificação/Ferramentas/Pixel fora dos Agentes de IA, **Pixel de Conversão (Facebook Ads +
+  Google Ads) entrou de verdade** (Ferramentas continua de fora, motivo original inalterado).
+  Rafael pediu explicitamente pra pesquisar e implementar os dois; critério fechado antes de
+  codar: os 3 eventos do funil de uma vez (novo lead, lead quente, agendado), nunca repetindo por
+  conversa, e desligado por padrão (mesmo padrão da Qualificação — sem credencial real ainda). Por
+  quê: "só faz sentido quando o tráfego pago começar" deixava de valer no momento em que o Rafael
+  decidiu construir a infraestrutura agora, pronta pra ligar quando o tráfego pago começar — mesmo
+  raciocínio que já valeu pra reverter a Qualificação horas antes.

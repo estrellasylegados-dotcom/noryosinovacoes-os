@@ -1,5 +1,41 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Agentes de IA — Pixel de Conversão; próximo: Fase 6)
+
+**Pixel de Conversão (Facebook Ads + Google Ads) construído, migrado e em produção**, a pedido
+explícito do Rafael — revertendo a parte do Pixel na decisão registrada horas antes ("só faz
+sentido quando o tráfego pago começar", ver decisão 2026-09-16 substituída em
+`_memoria/decisoes.md`). Critério fechado antes de codar (2 perguntas): os 3 eventos do funil de
+uma vez (novo lead, lead quente, agendado — não só um) e nasce desligado, sem credencial real
+(mesmo padrão da Qualificação).
+
+Pesquisa (Facebook Conversions API + Google Ads, docs atuais) mudou o desenho: a Evolution API
+(Baileys, WhatsApp não-oficial) não recebe `ctwa_clid`/UTMs/`gclid`/`fbclid` — só a API oficial da
+Meta recebe isso. As colunas de atribuição existem (`pacientes.origem_lead`/`utm_*`/`gclid`/
+`fbclid`), mas ficam `null` de verdade enquanto o CRM usar Evolution/Baileys — dito com clareza ao
+Rafael, não construído fingindo funcionar. A rota clássica de conversão do Google Ads API
+(`OfflineUserDataJobService`) está bloqueada pra conta nova desde abr/jun 2026 — implementação foi
+direto pro caminho vigente, **Data Manager API**.
+
+`src/lib/pixel-facebook.ts` (novo): Conversions API, hash SHA-256 via Web Crypto — não
+`node:crypto`, mesmo motivo de `sessao.ts` (o arquivo entra na cadeia de import que o Next bundla
+pro cliente via `chat.ts`/`ChatAoVivo.tsx`, e `node:crypto` quebra esse build; achado só na hora de
+rodar `npm run build`, corrigido). `src/lib/pixel-google-ads.ts` (novo): OAuth2 (refresh token →
+access token) + Data Manager API; Client ID/Secret do app ficam em env var
+(`GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET`, infra da Noryos), o resto é por-agente.
+`src/lib/agentes-pixel.ts` (novo): orquestra os dois com dedup atômico (`UPDATE ... WHERE coluna
+IS NULL`) — nunca dispara o mesmo evento 2x pra mesma conversa. `conversas.ultimo_agente_id`
+(coluna nova, nunca zera) resolve qual agente é dono da conversa pro evento "agendado", disparado
+na troca manual de status, quando o agente que respondeu já pode ter parado de escutar.
+
+Migração `v14` (9 colunas em `agentes_ia`, 4 em `conversas`, 7 em `pacientes`) aplicada em produção
+pelo MCP do Supabase, confirmada lendo o schema — 3ª vez seguida sem SQL Editor manual. UI
+(`AgenteForm.tsx`): aba "Pixel" — toggle mestre, os 3 cards de evento, campos do Meta e do Google.
+229 testes (27 novos)/typecheck/lint/build de produção limpos. Deploy no Railway confirmado
+`SUCCESS` via MCP, webhook em produção respondendo 200 depois do deploy. Ainda não commitado nem
+sincronizado no GitHub nesta sessão. Próximo passo continua sendo a Fase 6 (demo pro marido) — não
+sobra mais nenhuma fase técnica antes dela.
+
 ## Onde está (2026-09-16, Agentes de IA — Qualificação Automática de Leads; próximo: Fase 6)
 
 **Qualificação Automática de Leads construída, migrada e em produção**, a pedido do Rafael —
@@ -249,10 +285,18 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   ponta a ponta com WhatsApp real e desligada de novo por decisão consciente (2026-09-16).
 - [x] Agentes de IA — Prompt estruturado (Simples/Avançado) + aba Conhecimento: construído,
   testado e em produção (2026-09-16) — ver "Feito". Ferramentas/Pixel do print da RoiZap ficaram de
-  fora por decisão do Rafael, sem funcionalidade real por trás ainda.
+  fora por decisão do Rafael, sem funcionalidade real por trás ainda (Pixel entrou de verdade horas
+  depois — ver bullet abaixo; Ferramentas segue de fora).
 - [x] Agentes de IA — Qualificação Automática de Leads: construída, testada e em produção
   (2026-09-16) — ver "Feito". Revertendo a decisão de horas antes; critério que faltava (escala
   fixa Quente/Morno/Frio) fechado com o Rafael antes de codar.
+- [x] Agentes de IA — Pixel de Conversão (Facebook + Google Ads): construído, testado e em
+  produção (2026-09-16) — ver "Feito". Revertendo a parte do Pixel na mesma decisão de horas
+  antes. Desligado por padrão; falta credencial real (Pixel ID/token do Facebook, conta de Google
+  Ads) pra ligar de vez.
+- [ ] Criar o app OAuth do Google Ads no Google Cloud (`GOOGLE_ADS_OAUTH_CLIENT_ID/SECRET`) —
+  pré-requisito só do lado Google do Pixel de Conversão; o Facebook não precisa disso, só do Pixel
+  ID/token do cliente (2026-09-16).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
