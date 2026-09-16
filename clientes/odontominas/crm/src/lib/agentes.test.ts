@@ -40,6 +40,8 @@ function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
     notificarIntencaoCompra: false,
     notificarNovoLead: false,
     mensagemNotificacao: null,
+    bufferMensagens: false,
+    bufferSegundos: 8,
     ...overrides,
   };
 }

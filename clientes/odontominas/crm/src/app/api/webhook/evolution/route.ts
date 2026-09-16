@@ -4,7 +4,8 @@ import { getClinicaId } from "@/lib/clinica";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido } from "@/lib/status";
-import { deveResponder, responderComoAgente } from "@/lib/agentes";
+import { deveResponder } from "@/lib/agentes";
+import { processarMensagemRecebida } from "@/lib/agentes-buffer";
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
@@ -250,7 +251,13 @@ export async function POST(request: Request) {
       );
 
       if (deveIaResponder) {
-        const resultado = await responderComoAgente(clinicaId, conversaId as string, conteudo, !pacienteExistente);
+        const resultado = await processarMensagemRecebida(
+          clinicaId,
+          conversaId as string,
+          conversaAgente!.agente_ativo_id as string,
+          conteudo,
+          !pacienteExistente
+        );
         if (!resultado.ok) {
           console.error("[webhook/evolution] agente_ia_failed", JSON.stringify({ conversaId, error: resultado.error ?? null }));
         }

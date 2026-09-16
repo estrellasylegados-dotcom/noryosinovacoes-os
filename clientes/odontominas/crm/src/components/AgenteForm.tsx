@@ -51,6 +51,8 @@ export function AgenteForm({
   const [maxCaracteresResposta, setMaxCaracteresResposta] = useState(agente?.maxCaracteresResposta ?? 0);
   const [pausarAposConcluirFluxo, setPausarAposConcluirFluxo] = useState(agente?.pausarAposConcluirFluxo ?? false);
   const [dividirEmMensagensCurtas, setDividirEmMensagensCurtas] = useState(agente?.dividirEmMensagensCurtas ?? false);
+  const [bufferMensagens, setBufferMensagens] = useState(agente?.bufferMensagens ?? false);
+  const [bufferSegundos, setBufferSegundos] = useState(agente?.bufferSegundos ?? 8);
 
   const [ativarTransferencia, setAtivarTransferencia] = useState(agente?.ativarTransferencia ?? false);
   const [mensagemTransferencia, setMensagemTransferencia] = useState(agente?.mensagemTransferencia ?? "");
@@ -114,6 +116,8 @@ export function AgenteForm({
       maxCaracteresResposta: maxCaracteresResposta > 0 ? maxCaracteresResposta : null,
       pausarAposConcluirFluxo,
       dividirEmMensagensCurtas,
+      bufferMensagens,
+      bufferSegundos,
       ativarTransferencia,
       notificarNumeros: notificarNumeros || null,
       notificarPedidoHumano,
@@ -335,6 +339,25 @@ export function AgenteForm({
             valor={dividirEmMensagensCurtas}
             onChange={setDividirEmMensagensCurtas}
           />
+
+          <Toggle
+            label="Aguardar mensagens seguidas antes de responder"
+            descricao="Se o paciente mandar várias mensagens em sequência, a IA espera um tempo depois da última pra responder tudo de uma vez, em vez de responder mensagem por mensagem."
+            valor={bufferMensagens}
+            onChange={setBufferMensagens}
+          />
+          {bufferMensagens && (
+            <Campo label="Esperar depois da última mensagem (segundos)">
+              <input
+                type="number"
+                min={2}
+                max={60}
+                value={bufferSegundos}
+                onChange={(e) => setBufferSegundos(Number(e.target.value))}
+                className={`${campoClasses} max-w-[8rem]`}
+              />
+            </Campo>
+          )}
         </div>
       </section>
 

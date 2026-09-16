@@ -22,8 +22,11 @@ import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@
  * dividir em mensagens curtas, pausar após concluir o fluxo, transferência
  * pra humano real (detecção por palavra-chave — src/lib/agentes-notificacoes.ts
  * — não por IA, fica determinístico e testável) e "Avisar Membro da Equipe"
- * (a rede de segurança: notifica um número interno em 4 situações). Buffer
- * de mensagens fica pra Fase 2B, é a única mudança de arquitetura do grupo.
+ * (a rede de segurança: notifica um número interno em 4 situações).
+ *
+ * Fase 2B (Buffer de mensagens, opt-in por agente): ver src/lib/agentes-buffer.ts.
+ * `responderComoAgente` não sabe nada sobre buffer — recebe o texto (de uma
+ * mensagem só, ou já combinado de uma rajada) e responde do mesmo jeito.
  */
 
 export type AgenteIA = {
@@ -57,6 +60,8 @@ export type AgenteIA = {
   notificarIntencaoCompra: boolean;
   notificarNovoLead: boolean;
   mensagemNotificacao: string | null;
+  bufferMensagens: boolean;
+  bufferSegundos: number;
 };
 
 export type DadosAgente = {
@@ -87,11 +92,13 @@ export type DadosAgente = {
   notificarIntencaoCompra?: boolean;
   notificarNovoLead?: boolean;
   mensagemNotificacao?: string | null;
+  bufferMensagens?: boolean;
+  bufferSegundos?: number;
 };
 
 const SELECT_AGENTE =
   "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
-  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao";
+  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAgente(row: any): AgenteIA {
@@ -126,6 +133,8 @@ function mapAgente(row: any): AgenteIA {
     notificarIntencaoCompra: row.notificar_intencao_compra ?? false,
     notificarNovoLead: row.notificar_novo_lead ?? false,
     mensagemNotificacao: row.mensagem_notificacao ?? null,
+    bufferMensagens: row.buffer_mensagens ?? false,
+    bufferSegundos: row.buffer_segundos ?? 8,
   };
 }
 
@@ -165,6 +174,8 @@ function payloadDados(dados: DadosAgente) {
     notificar_intencao_compra: dados.notificarIntencaoCompra ?? false,
     notificar_novo_lead: dados.notificarNovoLead ?? false,
     mensagem_notificacao: dados.mensagemNotificacao?.trim() || null,
+    buffer_mensagens: dados.bufferMensagens ?? false,
+    buffer_segundos: dados.bufferSegundos ?? 8,
   };
 }
 
@@ -256,6 +267,8 @@ export async function atualizarAgente(
     notificarIntencaoCompra: dados.notificarIntencaoCompra ?? atual.notificarIntencaoCompra,
     notificarNovoLead: dados.notificarNovoLead ?? atual.notificarNovoLead,
     mensagemNotificacao: dados.mensagemNotificacao !== undefined ? dados.mensagemNotificacao : atual.mensagemNotificacao,
+    bufferMensagens: dados.bufferMensagens ?? atual.bufferMensagens,
+    bufferSegundos: dados.bufferSegundos ?? atual.bufferSegundos,
   };
 
   const erroValidacao = validarDados(mesclado);
@@ -342,6 +355,8 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
     notificarIntencaoCompra: original.notificarIntencaoCompra,
     notificarNovoLead: original.notificarNovoLead,
     mensagemNotificacao: original.mensagemNotificacao,
+    bufferMensagens: original.bufferMensagens,
+    bufferSegundos: original.bufferSegundos,
   });
 }
 
