@@ -1,5 +1,32 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Disparos — Fase B: wizard + worker + relatório; próximo: teste fim a ponta com paciente real; Fase 6 segue em paralelo)
+
+**Fase B do módulo "Ferramentas → Disparos" completa e em produção**, fechando o que a Fase A abriu
+(opt-out, mensagens salvas, motor de públicos — sem UI nem tabela de campanha ainda). Planejamento
+formal (`EnterPlanMode`/`ExitPlanMode`, plano em
+`C:\Users\rafaelviriato\.claude\plans\stateless-pondering-prism.md`), com 2 perguntas fechadas antes
+de codar — as 2 recomendadas: sem agendamento no v1 (só "salvar rascunho" ou "criar e iniciar
+agora") e sem janela de horário comercial no worker. Decisão completa em `_memoria/decisoes.md`.
+
+Entregue: migração `v17` (`campanhas`, `campanha_destinatarios`, reaproveitando `integration_locks`
+com `provider = 'disparos'`); `src/lib/campanhas.ts` (CRUD + regra pura testável);
+`src/lib/disparos-worker.ts` (worker in-process, mesmo desenho do poll de buffer dos Agentes de IA —
+`setTimeout` recursivo via `instrumentation.ts`, só em produção — porque GitHub Actions não serve
+pro intervalo de 15-25s entre mensagens que o WhatsApp via Evolution exige pra não levar shadowban;
+reconfere opt-out/telefone AO VIVO antes de cada envio, grava no Chat ao Vivo quando há conversa, só
+paga o intervalo cheio quando manda mensagem de verdade); `src/lib/disparos-lock.ts`. Rotas
+`api/disparos/*` e telas `/disparos` (lista), `/disparos/nova` (wizard de 3 passos: público →
+mensagem → revisão) e `/disparos/[id]` (relatório com ações e auto-refresh). Item novo no
+`SidebarNav`.
+
+332 testes (4 novos)/typecheck/lint/build limpos. Migração aplicada em produção pelo MCP do
+Supabase, confirmada lendo o schema. Deploy no Railway (`railway up`) confirmado `SUCCESS`, logs sem
+erro nos dois workers, smoke test em produção ok.
+
+Falta o teste fim a ponta com paciente real (decisão do Rafael, não feito nesta sessão por envolver
+mandar mensagem de verdade). Ainda não commitado nem sincronizado no GitHub.
+
 ## Onde está (2026-09-16, Disparos — Fase A: fundamentos; próximo: Fase B)
 
 **Fase A da evolução do módulo "Ferramentas → Disparos" completa e em produção**, a partir de um
@@ -377,9 +404,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   `crm/docs/integrations/controle-odonto.md`. Não bloqueia a Fase 6.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
-- [x] Disparos — Fase A (fundamentos: opt-out, mensagens salvas, motor de públicos): construída,
-  testada e em produção (2026-09-16) — ver "Feito". Falta a Fase B (wizard de criação + worker de
-  envio + relatório) — trilha independente da Fase 6, não bloqueia a demo.
+- [x] Disparos — Fase A (fundamentos) e Fase B (wizard + worker de envio + relatório): construídas,
+  testadas e em produção (2026-09-16) — ver "Feito". Falta o teste fim a ponta com paciente real
+  (decisão do Rafael) — trilha independente da Fase 6, não bloqueia a demo.
 
 ## Plano técnico do CRM (2026-09-14)
 
@@ -430,6 +457,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 
 ## Feito
 
+- 2026-09-16: **Disparos — Fase B (wizard + worker + relatório) completa e em produção.** Ver
+  "Onde está" no topo desta seção pro detalhe.
 - 2026-09-16: **Disparos — Fase A (fundamentos) completa e em produção.** Ver "Onde está" no topo
   desta seção pro detalhe.
 - 2026-09-16: **Integração ControleODONTO — Fase 0 completa e em produção.** Ver "Onde está" no

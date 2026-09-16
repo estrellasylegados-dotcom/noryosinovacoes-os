@@ -295,3 +295,11 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   reativação) — construir a segmentação 1x dentro de Disparos e extrair depois arriscaria a mesma
   regra divergir entre Disparos, Automações e Funil no futuro. Fase A (opt-out, mensagens salvas,
   motor de públicos v1) já em produção; Fase B (wizard + worker de envio) segue depois.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: Disparos v1 (Fase B) nasce **sem
+  agendamento** (campanha só tem "salvar rascunho" ou "criar e iniciar agora" — escolher uma
+  data/hora futura fica pra uma Fase C se fizer falta) e **sem janela de horário comercial** no
+  worker de envio (ele manda a qualquer hora do dia enquanto a campanha estiver "enviando"; a hora
+  de iniciar é responsabilidade de quem opera, não do sistema). Por quê: as 2 perguntas fechadas
+  antes de codar, mesmo critério das fases anteriores — os dois recursos adicionam schema e caminho
+  de teste sem um caso de uso concreto ainda pedindo por eles; mais simples de construir e validar
+  primeiro, reabrir depois é barato.

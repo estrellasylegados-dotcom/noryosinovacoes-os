@@ -13,6 +13,7 @@ const ITENS: Item[] = [
   { href: "/resumo", label: "Relatórios", adminOnly: true },
   { href: "/conexao", label: "Conexão WhatsApp", adminOnly: true },
   { href: "/agentes", label: "Agentes de IA", adminOnly: true, group: "Ferramentas" },
+  { href: "/disparos", label: "Disparos", adminOnly: true, group: "Ferramentas" },
   { href: "/integracoes/controle-odonto", label: "ControleODONTO", adminOnly: true, group: "Ferramentas" },
 ];
 
