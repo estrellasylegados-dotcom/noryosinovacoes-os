@@ -21,6 +21,12 @@ export function formatDuracao(ms: number): string {
   return remH > 0 ? `${d}d${remH}h` : `${d}d`;
 }
 
+/** Igual a `formatDuracao`, mas com precisão de segundos abaixo de 1min — o card "Tempo Médio" dos Agentes de IA, onde a resposta costuma sair em segundos. */
+export function formatTempoResposta(ms: number): string {
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return formatDuracao(ms);
+}
+
 export function formatDataHora(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("pt-BR", {

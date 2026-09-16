@@ -4,6 +4,7 @@ import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } from "@/lib/ia-provedores";
 import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@/lib/agentes-notificacoes";
+import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib/agentes-conhecimento";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -27,7 +28,21 @@ import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@
  * Fase 2B (Buffer de mensagens, opt-in por agente): ver src/lib/agentes-buffer.ts.
  * `responderComoAgente` não sabe nada sobre buffer — recebe o texto (de uma
  * mensagem só, ou já combinado de uma rajada) e responde do mesmo jeito.
+ *
+ * Prompt estruturado + Conhecimento (a pedido do Rafael, print do "Agente 01"
+ * da RoiZap): `modoPrompt` escolhe entre o textarea único de sempre
+ * ('avancado', `promptSistema`) e os campos estruturados ('simples' — persona/
+ * objetivo/fluxoTriagem/guardrails/tomVoz/usarEmojis). `montarPromptSistema`
+ * é quem decide o texto final mandado pro provedor de IA; `responderComoAgente`
+ * chama ela em vez de usar `agente.promptSistema` cru. Conhecimento
+ * (src/lib/agentes-conhecimento.ts) entra nos dois modos, sempre no fim do
+ * prompt.
  */
+
+export type ModoPrompt = "simples" | "avancado";
+export type TomVoz = "amigavel" | "formal" | "entusiasmado" | "direto";
+
+export type ItemConhecimento = { titulo: string; conteudo: string };
 
 export type AgenteIA = {
   id: string;
@@ -39,6 +54,13 @@ export type AgenteIA = {
   provider: ProvedorId;
   modelo: string;
   promptSistema: string;
+  modoPrompt: ModoPrompt;
+  persona: string;
+  objetivo: string;
+  fluxoTriagem: string;
+  guardrails: string;
+  tomVoz: TomVoz;
+  usarEmojis: boolean;
   temperatura: number;
   maxTokens: number;
   maxMensagensResposta: number;
@@ -71,6 +93,13 @@ export type DadosAgente = {
   provider: ProvedorId;
   modelo: string;
   promptSistema?: string;
+  modoPrompt?: ModoPrompt;
+  persona?: string;
+  objetivo?: string;
+  fluxoTriagem?: string;
+  guardrails?: string;
+  tomVoz?: TomVoz;
+  usarEmojis?: boolean;
   temperatura?: number;
   maxTokens?: number;
   maxMensagensResposta?: number;
@@ -97,7 +126,7 @@ export type DadosAgente = {
 };
 
 const SELECT_AGENTE =
-  "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
+  "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, modo_prompt, persona, objetivo, fluxo_triagem, guardrails, tom_voz, usar_emojis, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
   "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,6 +141,13 @@ function mapAgente(row: any): AgenteIA {
     provider: row.provider,
     modelo: row.modelo,
     promptSistema: row.prompt_sistema ?? "",
+    modoPrompt: (row.modo_prompt as ModoPrompt) ?? "avancado",
+    persona: row.persona ?? "",
+    objetivo: row.objetivo ?? "",
+    fluxoTriagem: row.fluxo_triagem ?? "",
+    guardrails: row.guardrails ?? "",
+    tomVoz: (row.tom_voz as TomVoz) ?? "amigavel",
+    usarEmojis: row.usar_emojis ?? true,
     temperatura: Number(row.temperatura),
     maxTokens: row.max_tokens,
     maxMensagensResposta: row.max_mensagens_resposta,
@@ -138,10 +174,15 @@ function mapAgente(row: any): AgenteIA {
   };
 }
 
+const MODOS_PROMPT: ModoPrompt[] = ["simples", "avancado"];
+const TONS_VOZ: TomVoz[] = ["amigavel", "formal", "entusiasmado", "direto"];
+
 function validarDados(dados: DadosAgente): string | null {
   if (!dados.nome?.trim()) return "nome_obrigatorio";
   if (!buscarModelo(dados.provider, dados.modelo)) return "modelo_invalido";
   if (dados.temperatura !== undefined && (dados.temperatura < 0 || dados.temperatura > 1)) return "temperatura_invalida";
+  if (dados.modoPrompt !== undefined && !MODOS_PROMPT.includes(dados.modoPrompt)) return "modo_prompt_invalido";
+  if (dados.tomVoz !== undefined && !TONS_VOZ.includes(dados.tomVoz)) return "tom_voz_invalido";
   return null;
 }
 
@@ -153,6 +194,13 @@ function payloadDados(dados: DadosAgente) {
     provider: dados.provider,
     modelo: dados.modelo,
     prompt_sistema: dados.promptSistema ?? "",
+    modo_prompt: dados.modoPrompt ?? "simples",
+    persona: dados.persona?.trim() ?? "",
+    objetivo: dados.objetivo?.trim() ?? "",
+    fluxo_triagem: dados.fluxoTriagem?.trim() ?? "",
+    guardrails: dados.guardrails?.trim() ?? "",
+    tom_voz: dados.tomVoz ?? "amigavel",
+    usar_emojis: dados.usarEmojis ?? true,
     temperatura: dados.temperatura ?? 0.7,
     max_tokens: dados.maxTokens ?? 700,
     max_mensagens_resposta: dados.maxMensagensResposta ?? 3,
@@ -246,6 +294,13 @@ export async function atualizarAgente(
     provider: dados.provider ?? atual.provider,
     modelo: dados.modelo ?? atual.modelo,
     promptSistema: dados.promptSistema !== undefined ? dados.promptSistema : atual.promptSistema,
+    modoPrompt: dados.modoPrompt ?? atual.modoPrompt,
+    persona: dados.persona !== undefined ? dados.persona : atual.persona,
+    objetivo: dados.objetivo !== undefined ? dados.objetivo : atual.objetivo,
+    fluxoTriagem: dados.fluxoTriagem !== undefined ? dados.fluxoTriagem : atual.fluxoTriagem,
+    guardrails: dados.guardrails !== undefined ? dados.guardrails : atual.guardrails,
+    tomVoz: dados.tomVoz ?? atual.tomVoz,
+    usarEmojis: dados.usarEmojis ?? atual.usarEmojis,
     temperatura: dados.temperatura ?? atual.temperatura,
     maxTokens: dados.maxTokens ?? atual.maxTokens,
     maxMensagensResposta: dados.maxMensagensResposta ?? atual.maxMensagensResposta,
@@ -327,13 +382,20 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
   const original = await buscarAgente(clinicaId, id);
   if (!original) return { ok: false, error: "not_found" };
 
-  return criarAgente(clinicaId, {
+  const resultado = await criarAgente(clinicaId, {
     nome: `${original.nome} (cópia)`,
     descricao: original.descricao,
     etiquetaGatilhoId: original.etiquetaGatilhoId,
     provider: original.provider,
     modelo: original.modelo,
     promptSistema: original.promptSistema,
+    modoPrompt: original.modoPrompt,
+    persona: original.persona,
+    objetivo: original.objetivo,
+    fluxoTriagem: original.fluxoTriagem,
+    guardrails: original.guardrails,
+    tomVoz: original.tomVoz,
+    usarEmojis: original.usarEmojis,
     temperatura: original.temperatura,
     maxTokens: original.maxTokens,
     maxMensagensResposta: original.maxMensagensResposta,
@@ -358,6 +420,15 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
     bufferMensagens: original.bufferMensagens,
     bufferSegundos: original.bufferSegundos,
   });
+
+  if (resultado.ok && resultado.agente) {
+    const itens = await listarConhecimento(clinicaId, original.id);
+    for (const item of itens) {
+      await criarConhecimento(clinicaId, resultado.agente.id, item.titulo, item.conteudo);
+    }
+  }
+
+  return resultado;
 }
 
 /** Etiqueta acabou de ser aplicada numa conversa: qual agente ativo (se algum) deve passar a escutar essa conversa. */
@@ -431,6 +502,94 @@ export function dividirMensagem(texto: string, maxBlocos: number): string[] {
   const inicio = blocos.slice(0, limite - 1);
   const resto = blocos.slice(limite - 1).join(" ");
   return [...inicio, resto];
+}
+
+const TOM_VOZ_LABEL: Record<TomVoz, string> = {
+  amigavel: "amigável e acolhedor",
+  formal: "formal e profissional",
+  entusiasmado: "entusiasmado e caloroso",
+  direto: "direto e objetivo, sem rodeios",
+};
+
+/**
+ * Monta o prompt final mandado pro provedor de IA. Modo 'avancado' mantém o
+ * comportamento de sempre (textarea único, `promptSistema` cru). Modo
+ * 'simples' compõe os campos estruturados do print de referência — guardrails
+ * primeiro, "prioridade máxima sobre qualquer outra instrução" (mesmo aviso
+ * do print: "Guardrails são injetados com prioridade máxima no topo do
+ * prompt"). Conhecimento entra nos dois modos, sempre por último, pra reduzir
+ * a IA inventando informação que a clínica não confirmou.
+ */
+export function montarPromptSistema(
+  agente: Pick<
+    AgenteIA,
+    "modoPrompt" | "promptSistema" | "persona" | "objetivo" | "fluxoTriagem" | "guardrails" | "tomVoz" | "usarEmojis"
+  >,
+  conhecimento: ItemConhecimento[]
+): string {
+  const blocoConhecimento = conhecimento.length
+    ? `Fatos que você pode usar pra responder (nunca invente além disso):\n${conhecimento
+        .map((c) => `- ${c.titulo}: ${c.conteudo}`)
+        .join("\n")}`
+    : "";
+
+  if (agente.modoPrompt === "avancado") {
+    return [agente.promptSistema, blocoConhecimento].filter(Boolean).join("\n\n");
+  }
+
+  const partes = [
+    agente.guardrails.trim() &&
+      `Regras que você NUNCA deve quebrar, prioridade máxima sobre qualquer outra instrução:\n${agente.guardrails.trim()}`,
+    agente.persona.trim(),
+    agente.objetivo.trim() && `Seu objetivo nesta conversa: ${agente.objetivo.trim()}`,
+    agente.fluxoTriagem.trim(),
+    `Tom de voz: ${TOM_VOZ_LABEL[agente.tomVoz] ?? agente.tomVoz}. ${
+      agente.usarEmojis ? "Pode usar emojis com moderação." : "Não use emojis."
+    }`,
+    blocoConhecimento,
+  ];
+  return partes.filter(Boolean).join("\n\n");
+}
+
+export type MensagemParaTempoResposta = {
+  conversaId: string;
+  direcao: "recebida" | "enviada";
+  createdAt: string;
+  geradaPorAgenteId: string | null;
+};
+
+/**
+ * Tempo médio (ms) entre uma mensagem recebida e a próxima resposta desse
+ * agente na mesma conversa — o card "Tempo Médio" do print de referência.
+ * `mensagens` precisa vir em ordem cronológica (created_at crescente); função
+ * pura e testável, mesmo padrão de `resumo.ts`/`funil.ts`. Retorna `null` sem
+ * nenhum par recebida→resposta do agente.
+ */
+export function calcularTempoMedioRespostaMs(mensagens: MensagemParaTempoResposta[], agenteId: string): number | null {
+  const porConversa = new Map<string, MensagemParaTempoResposta[]>();
+  for (const m of mensagens) {
+    const lista = porConversa.get(m.conversaId) ?? [];
+    lista.push(m);
+    porConversa.set(m.conversaId, lista);
+  }
+
+  const deltas: number[] = [];
+  for (const lista of porConversa.values()) {
+    let recebidaPendenteEm: number | null = null;
+    for (const m of lista) {
+      if (m.direcao === "recebida") {
+        recebidaPendenteEm = new Date(m.createdAt).getTime();
+        continue;
+      }
+      if (m.direcao === "enviada" && m.geradaPorAgenteId === agenteId && recebidaPendenteEm !== null) {
+        deltas.push(new Date(m.createdAt).getTime() - recebidaPendenteEm);
+        recebidaPendenteEm = null;
+      }
+    }
+  }
+
+  if (deltas.length === 0) return null;
+  return deltas.reduce((soma, d) => soma + d, 0) / deltas.length;
 }
 
 /**
@@ -669,8 +828,10 @@ export async function responderComoAgente(
       .map((m) => ({ direcao: m.direcao as "recebida" | "enviada", texto: m.conteudo as string }));
   }
 
+  const conhecimento = await listarConhecimento(clinicaId, agente.id);
+
   const resposta = await gerarResposta(modelo, {
-    promptSistema: agente.promptSistema,
+    promptSistema: montarPromptSistema(agente, conhecimento),
     historico,
     mensagem: mensagemRecebida,
     temperatura: agente.temperatura,
@@ -707,4 +868,51 @@ export async function responderComoAgente(
   );
 
   return { ok: true };
+}
+
+export type EstatisticasAgente = {
+  mensagens: number;
+  conversas: number;
+  tempoMedioRespostaMs: number | null;
+  conhecimentos: number;
+};
+
+/** Os 4 cards do cabeçalho de `/agentes/[id]` — dado de verdade, não decorativo. */
+export async function buscarEstatisticasAgente(clinicaId: string, agenteId: string): Promise<EstatisticasAgente> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { mensagens: 0, conversas: 0, tempoMedioRespostaMs: null, conhecimentos: 0 };
+
+  const [{ data: enviadas }, conhecimentos] = await Promise.all([
+    supabase.from("mensagens").select("conversa_id").eq("clinica_id", clinicaId).eq("gerada_por_agente_id", agenteId),
+    contarConhecimento(clinicaId, agenteId),
+  ]);
+
+  const conversaIds = Array.from(new Set((enviadas ?? []).map((m) => m.conversa_id as string)));
+  const mensagens = enviadas?.length ?? 0;
+
+  if (conversaIds.length === 0) {
+    return { mensagens, conversas: 0, tempoMedioRespostaMs: null, conhecimentos };
+  }
+
+  const { data: relevantes } = await supabase
+    .from("mensagens")
+    .select("conversa_id, direcao, created_at, gerada_por_agente_id")
+    .eq("clinica_id", clinicaId)
+    .in("conversa_id", conversaIds)
+    .or(`direcao.eq.recebida,gerada_por_agente_id.eq.${agenteId}`)
+    .order("created_at", { ascending: true });
+
+  const paraTempo: MensagemParaTempoResposta[] = (relevantes ?? []).map((m) => ({
+    conversaId: m.conversa_id as string,
+    direcao: m.direcao as "recebida" | "enviada",
+    createdAt: m.created_at as string,
+    geradaPorAgenteId: (m.gerada_por_agente_id as string | null) ?? null,
+  }));
+
+  return {
+    mensagens,
+    conversas: conversaIds.length,
+    tempoMedioRespostaMs: calcularTempoMedioRespostaMs(paraTempo, agenteId),
+    conhecimentos,
+  };
 }

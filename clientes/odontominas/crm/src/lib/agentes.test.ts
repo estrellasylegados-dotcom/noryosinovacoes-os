@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  calcularTempoMedioRespostaMs,
   decidirAgenteElegivel,
   decidirAtivarAgentePorEtiqueta,
   dentroDoHorario,
   deveResponder,
   dividirMensagem,
+  montarPromptSistema,
   type AgenteIA,
+  type MensagemParaTempoResposta,
 } from "@/lib/agentes";
 
 function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
@@ -19,6 +22,13 @@ function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
     provider: "google",
     modelo: "gemini-flash-lite-latest",
     promptSistema: "",
+    modoPrompt: "avancado",
+    persona: "",
+    objetivo: "",
+    fluxoTriagem: "",
+    guardrails: "",
+    tomVoz: "amigavel",
+    usarEmojis: true,
     temperatura: 0.7,
     maxTokens: 700,
     maxMensagensResposta: 3,
@@ -160,5 +170,104 @@ describe("dividirMensagem", () => {
   it("teto de 1 bloco devolve o texto inteiro", () => {
     const texto = "Um. Dois. Três.";
     expect(dividirMensagem(texto, 1)).toEqual([texto]);
+  });
+});
+
+describe("montarPromptSistema", () => {
+  it("modo avançado usa o promptSistema cru, sem os campos estruturados", () => {
+    const agente = criarAgente({
+      modoPrompt: "avancado",
+      promptSistema: "Prompt livre de sempre.",
+      persona: "Isso não deveria aparecer",
+    });
+    expect(montarPromptSistema(agente, [])).toBe("Prompt livre de sempre.");
+  });
+
+  it("modo avançado ainda acrescenta o bloco de conhecimento no fim", () => {
+    const agente = criarAgente({ modoPrompt: "avancado", promptSistema: "Prompt livre." });
+    const resultado = montarPromptSistema(agente, [{ titulo: "Convênios", conteudo: "Bradesco e SulAmérica" }]);
+    expect(resultado).toBe("Prompt livre.\n\nFatos que você pode usar pra responder (nunca invente além disso):\n- Convênios: Bradesco e SulAmérica");
+  });
+
+  it("modo simples compõe guardrails, persona, objetivo, fluxo e traços de personalidade", () => {
+    const agente = criarAgente({
+      modoPrompt: "simples",
+      guardrails: "Nunca prometa resultado.",
+      persona: "Você é a Ana, recepcionista da clínica.",
+      objetivo: "Agendar avaliação.",
+      fluxoTriagem: "Pergunte o motivo do contato primeiro.",
+      tomVoz: "formal",
+      usarEmojis: false,
+    });
+    const resultado = montarPromptSistema(agente, []);
+    const posicaoGuardrails = resultado.indexOf("Nunca prometa resultado.");
+    const posicaoPersona = resultado.indexOf("Você é a Ana");
+
+    expect(posicaoGuardrails).toBeGreaterThanOrEqual(0);
+    expect(posicaoPersona).toBeGreaterThan(posicaoGuardrails);
+    expect(resultado).toContain("prioridade máxima");
+    expect(resultado).toContain("Agendar avaliação.");
+    expect(resultado).toContain("Pergunte o motivo do contato primeiro.");
+    expect(resultado).toContain("formal e profissional");
+    expect(resultado).toContain("Não use emojis.");
+  });
+
+  it("modo simples pula campos vazios sem deixar linhas em branco sobrando", () => {
+    const agente = criarAgente({ modoPrompt: "simples", persona: "", guardrails: "", objetivo: "", fluxoTriagem: "" });
+    const resultado = montarPromptSistema(agente, []);
+    expect(resultado).not.toContain("prioridade máxima");
+    expect(resultado.startsWith("Tom de voz:")).toBe(true);
+  });
+
+  it("modo simples também acrescenta o bloco de conhecimento", () => {
+    const agente = criarAgente({ modoPrompt: "simples" });
+    const resultado = montarPromptSistema(agente, [{ titulo: "Horário", conteudo: "Seg-sex 8h-18h" }]);
+    expect(resultado).toContain("- Horário: Seg-sex 8h-18h");
+  });
+});
+
+describe("calcularTempoMedioRespostaMs", () => {
+  function msg(overrides: Partial<MensagemParaTempoResposta>): MensagemParaTempoResposta {
+    return { conversaId: "conversa-1", direcao: "recebida", createdAt: "2026-09-16T12:00:00Z", geradaPorAgenteId: null, ...overrides };
+  }
+
+  it("sem nenhuma mensagem, devolve null", () => {
+    expect(calcularTempoMedioRespostaMs([], "agente-1")).toBeNull();
+  });
+
+  it("calcula o delta entre recebida e a resposta do agente", () => {
+    const mensagens = [
+      msg({ createdAt: "2026-09-16T12:00:00Z", direcao: "recebida" }),
+      msg({ createdAt: "2026-09-16T12:00:05Z", direcao: "enviada", geradaPorAgenteId: "agente-1" }),
+    ];
+    expect(calcularTempoMedioRespostaMs(mensagens, "agente-1")).toBe(5000);
+  });
+
+  it("ignora resposta enviada por um agente diferente", () => {
+    const mensagens = [
+      msg({ createdAt: "2026-09-16T12:00:00Z", direcao: "recebida" }),
+      msg({ createdAt: "2026-09-16T12:00:05Z", direcao: "enviada", geradaPorAgenteId: "outro-agente" }),
+    ];
+    expect(calcularTempoMedioRespostaMs(mensagens, "agente-1")).toBeNull();
+  });
+
+  it("tira a média entre várias conversas", () => {
+    const mensagens = [
+      msg({ conversaId: "c1", createdAt: "2026-09-16T12:00:00Z", direcao: "recebida" }),
+      msg({ conversaId: "c1", createdAt: "2026-09-16T12:00:04Z", direcao: "enviada", geradaPorAgenteId: "agente-1" }),
+      msg({ conversaId: "c2", createdAt: "2026-09-16T12:00:00Z", direcao: "recebida" }),
+      msg({ conversaId: "c2", createdAt: "2026-09-16T12:00:08Z", direcao: "enviada", geradaPorAgenteId: "agente-1" }),
+    ];
+    expect(calcularTempoMedioRespostaMs(mensagens, "agente-1")).toBe(6000);
+  });
+
+  it("uma resposta manual (sem agente) no meio não conta, mas não quebra o par seguinte", () => {
+    const mensagens = [
+      msg({ createdAt: "2026-09-16T12:00:00Z", direcao: "recebida" }),
+      msg({ createdAt: "2026-09-16T12:00:03Z", direcao: "enviada", geradaPorAgenteId: null }),
+      msg({ createdAt: "2026-09-16T12:05:00Z", direcao: "recebida" }),
+      msg({ createdAt: "2026-09-16T12:05:02Z", direcao: "enviada", geradaPorAgenteId: "agente-1" }),
+    ];
+    expect(calcularTempoMedioRespostaMs(mensagens, "agente-1")).toBe(2000);
   });
 });

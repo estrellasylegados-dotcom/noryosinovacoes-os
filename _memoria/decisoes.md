@@ -251,3 +251,9 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   caso mais comum hoje) só acrescenta ~10-15s de espera sem ganho nenhum; o próximo marco é a demo
   pro marido, onde resposta rápida pesa mais que combinar uma rajada rara. Liga quando o atendimento
   for pro ar com paciente de verdade, ou de propósito pra mostrar a funcionalidade na demo.
+- **2026-09-16** (Rafael) [odontominas]: das 4 abas novas do print da RoiZap (Conhecimento,
+  Qualificação, Ferramentas, Pixel), só **Conhecimento** entrou de verdade nos Agentes de IA agora.
+  Por quê: mesmo critério já usado no Chat ao Vivo — nunca copiar aba de referência sem
+  funcionalidade real por trás. Qualificação não tinha um fluxo de perguntas definido pra construir;
+  Ferramentas esbarraria em `consultas`, tabela que ainda ninguém escreve (nem webhook nem painel);
+  Pixel só faz sentido quando o tráfego pago começar, o que ainda não aconteceu neste projeto.

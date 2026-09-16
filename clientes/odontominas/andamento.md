@@ -1,5 +1,25 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Agentes de IA — prompt estruturado + Conhecimento; próximo: Fase 6)
+
+**Prompt do Agente virou 3 abas (Configuração / Prompt do Agente / Conhecimento)**, a pedido do
+Rafael (print do "Agente 01" da RoiZap). Perguntado quais das 4 abas novas do print (Conhecimento,
+Qualificação, Ferramentas, Pixel) valiam construir de verdade agora — mesmo critério já usado no
+Chat ao Vivo, sem copiar aba sem funcionalidade real por trás — Rafael escolheu só
+**Conhecimento**. Modo Avançado (textarea único, `prompt_sistema`) preserva o "Recepção Virtual"
+exatamente como estava; modo Simples estrutura Persona/Objetivo/Fluxo e Triagem/Guardrails
+(prioridade máxima no prompt final, igual ao aviso do print)/Traços de Personalidade (Tom de Voz,
+Usar Emojis). Conhecimento (`agentes_conhecimento`, tabela nova) guarda fatos curtos por agente que
+entram no prompt automaticamente. Cabeçalho do agente ganhou os 4 cards do print (Mensagens,
+Conversas, Tempo Médio, Conhecimentos, dado real) e o Ativar/Pausar. Migração `v12` rodada em
+produção — **1ª vez aplicada direto pelo MCP do Supabase** (`apply_migration`), sem precisar do SQL
+Editor manual (ver `ferramentas.md`). Deploy no Railway confirmado (`✓ Ready in 772ms`). 198
+testes/typecheck/lint/build limpos. Validado ao vivo: página do "Recepção Virtual" intacta em modo
+Avançado; agente de teste criado em modo Simples + 1 item de Conhecimento pela API, dado conferido
+certo no Supabase, e apagado em seguida (banco voltou ao estado de antes). Ainda não
+commitado/sincronizado no GitHub nesta sessão. Próximo passo volta a ser a Fase 6 (demo pro
+marido) — não sobra mais nenhuma fase técnica antes dela.
+
 ## Onde está (2026-09-16, Agentes de IA — Fase 2B validada e desligada de novo; próximo: Fase 6)
 
 **Fase 2B (Buffer de mensagens) completa, com um bug real achado e corrigido em produção,
@@ -208,6 +228,9 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   ponta a ponta com envio real (resposta, transferência, aviso à equipe) (2026-09-15).
 - [x] Agentes de IA — Fase 2B (Buffer de mensagens): completa, bug real corrigido, validada de
   ponta a ponta com WhatsApp real e desligada de novo por decisão consciente (2026-09-16).
+- [x] Agentes de IA — Prompt estruturado (Simples/Avançado) + aba Conhecimento: construído,
+  testado e em produção (2026-09-16) — ver "Feito". Qualificação/Ferramentas/Pixel do print da
+  RoiZap ficaram de fora por decisão do Rafael, sem funcionalidade real por trás ainda.
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
@@ -766,3 +789,32 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   - Commitado (`13378d5`) e deployado no Railway (`railway up`, sucesso, smoke HTTP 200). **Rafael
     testou em produção e confirmou que funcionou.**
   - Escolheu seguir agora para a Fase 2B (Buffer de mensagens) em vez da Fase 6 (demo pro marido).
+- 2026-09-16: **Agentes de IA — prompt estruturado (Simples/Avançado) + aba Conhecimento**, a
+  pedido do Rafael (print do "Agente 01" da RoiZap). Perguntado quais das 4 abas novas do print
+  (Conhecimento, Qualificação, Ferramentas, Pixel) valiam construir de verdade agora — mesmo
+  critério já usado no Chat ao Vivo, sem copiar aba sem funcionalidade real por trás — Rafael
+  escolheu só **Conhecimento**.
+  - `AgenteForm.tsx` virou 3 abas (Configuração / Prompt do Agente / Conhecimento). Modo Avançado
+    preserva o textarea único de sempre (`prompt_sistema`) — o "Recepção Virtual" em produção
+    continua exatamente como estava. Modo Simples estrutura Persona, Objetivo, Fluxo e Triagem,
+    Guardrails (`src/lib/agentes.ts`, `montarPromptSistema` — guardrails entram primeiro no prompt
+    final, prioridade máxima, igual ao aviso do print) e Traços de Personalidade (Tom de Voz, Usar
+    Emojis).
+  - `src/lib/agentes-conhecimento.ts` (novo, mesmo padrão de `etiquetas.ts`): CRUD dos itens de
+    Conhecimento (título + conteúdo), tabela nova `agentes_conhecimento`. Entram no prompt final
+    automaticamente, nos dois modos, pra reduzir a IA inventando informação. `duplicarAgente`
+    também passa a copiar os itens de conhecimento do agente original.
+  - Cabeçalho de `/agentes/[id]` ganhou os 4 cards do print (Mensagens, Conversas, Tempo Médio,
+    Conhecimentos — `buscarEstatisticasAgente`, dado real, não decorativo) e o Ativar/Pausar subiu
+    pro topo (`AgenteStatusHeader.tsx`, novo).
+  - Migração `2026-09-16_v12_agentes_prompt_conhecimento.sql`. **1ª vez que uma migração de schema
+    foi aplicada direto pelo MCP do Supabase** (`apply_migration`), sem precisar do SQL Editor
+    manual do Rafael — confirma que o MCP recém-autorizado (ver Fase 2B acima) cobre schema
+    também, não só dado. `ferramentas.md` atualizado.
+  - Validado: typecheck/lint/198 testes (7 novos: `montarPromptSistema`,
+    `calcularTempoMedioRespostaMs`)/build limpos. Deploy no Railway confirmado (`railway up`,
+    `✓ Ready in 772ms`, status `SUCCESS` via MCP). Testado ao vivo em produção: página do "Recepção
+    Virtual" renderiza certo com a nova UI e o agente segue em modo Avançado intacto; criado agente
+    de teste em modo Simples com 1 item de Conhecimento pela API, dado conferido certo direto no
+    Supabase, e apagado em seguida — banco voltou ao estado de antes (1 agente, 0 conhecimento).
+  - Ainda não commitado nem enviado ao GitHub nesta sessão.

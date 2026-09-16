@@ -1,11 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import type { AgenteIA, DadosAgente } from "@/lib/agentes";
+import { useEffect, useState } from "react";
+import type { AgenteIA, DadosAgente, ModoPrompt, TomVoz } from "@/lib/agentes";
 import type { ModeloIA } from "@/lib/ia-provedores";
+import type { ConhecimentoItem } from "@/lib/agentes-conhecimento";
 
 type Etiqueta = { id: string; nome: string; cor: string };
+type Aba = "configuracao" | "prompt" | "conhecimento";
+
+const TOM_VOZ_OPCOES: { valor: TomVoz; label: string }[] = [
+  { valor: "amigavel", label: "Amigável" },
+  { valor: "formal", label: "Formal" },
+  { valor: "entusiasmado", label: "Entusiasmado" },
+  { valor: "direto", label: "Direto" },
+];
 
 const PROMPT_SUGERIDO =
   "Você é a assistente virtual da OdontoMinas, respondendo pacientes pelo WhatsApp. Seja " +
@@ -26,6 +35,8 @@ export function AgenteForm({
   const router = useRouter();
   const editando = Boolean(agente);
 
+  const [aba, setAba] = useState<Aba>("configuracao");
+
   const [nome, setNome] = useState(agente?.nome ?? "");
   const [descricao, setDescricao] = useState(agente?.descricao ?? "");
   const [etiquetas, setEtiquetas] = useState(etiquetasIniciais);
@@ -39,6 +50,13 @@ export function AgenteForm({
   const [maxTokens, setMaxTokens] = useState(agente?.maxTokens ?? 700);
 
   const [promptSistema, setPromptSistema] = useState(agente?.promptSistema ?? PROMPT_SUGERIDO);
+  const [modoPrompt, setModoPrompt] = useState<ModoPrompt>(agente?.modoPrompt ?? "simples");
+  const [persona, setPersona] = useState(agente?.persona ?? "");
+  const [objetivo, setObjetivo] = useState(agente?.objetivo ?? "");
+  const [fluxoTriagem, setFluxoTriagem] = useState(agente?.fluxoTriagem ?? "");
+  const [guardrails, setGuardrails] = useState(agente?.guardrails ?? "");
+  const [tomVoz, setTomVoz] = useState<TomVoz>(agente?.tomVoz ?? "amigavel");
+  const [usarEmojis, setUsarEmojis] = useState(agente?.usarEmojis ?? true);
 
   const [incluirHistorico, setIncluirHistorico] = useState(agente?.incluirHistorico ?? true);
   const [qtdHistorico, setQtdHistorico] = useState(agente?.qtdHistorico ?? 10);
@@ -103,6 +121,13 @@ export function AgenteForm({
       provider: provider as DadosAgente["provider"],
       modelo: modeloId,
       promptSistema,
+      modoPrompt,
+      persona,
+      objetivo,
+      fluxoTriagem,
+      guardrails,
+      tomVoz,
+      usarEmojis,
       temperatura,
       maxTokens,
       incluirHistorico,
@@ -146,6 +171,19 @@ export function AgenteForm({
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-1 border-b border-neutral-200">
+        <AbaBotao label="Configuração" ativa={aba === "configuracao"} onClick={() => setAba("configuracao")} />
+        <AbaBotao label="Prompt do Agente" ativa={aba === "prompt"} onClick={() => setAba("prompt")} />
+        <AbaBotao
+          label="Conhecimento"
+          ativa={aba === "conhecimento"}
+          onClick={() => editando && setAba("conhecimento")}
+          desabilitada={!editando}
+        />
+      </div>
+
+      {aba === "configuracao" && (
+    <>
       <section className="rounded-xl border border-neutral-200 bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold text-neutral-900">Configuração Básica</h2>
         <div className="space-y-3">
@@ -263,17 +301,6 @@ export function AgenteForm({
             </div>
           )}
         </div>
-      </section>
-
-      <section className="rounded-xl border border-neutral-200 bg-white p-5">
-        <h2 className="mb-1 text-sm font-semibold text-neutral-900">Prompt do Agente</h2>
-        <p className="mb-3 text-xs text-neutral-500">As instruções que moldam como a IA responde — a parte mais importante.</p>
-        <textarea
-          value={promptSistema}
-          onChange={(e) => setPromptSistema(e.target.value)}
-          rows={7}
-          className={campoClasses}
-        />
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-5">
@@ -448,6 +475,111 @@ export function AgenteForm({
           </p>
         </div>
       </section>
+    </>
+      )}
+
+      {aba === "prompt" && (
+        <section className="rounded-xl border border-neutral-200 bg-white p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900">Prompt do Agente</h2>
+              <p className="text-xs text-neutral-500">As instruções que moldam como a IA responde — a parte mais importante.</p>
+            </div>
+            <div className="flex shrink-0 rounded-lg border border-neutral-200 p-0.5 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setModoPrompt("simples")}
+                className={`rounded-md px-3 py-1.5 ${modoPrompt === "simples" ? "bg-teal-700 text-white" : "text-neutral-600"}`}
+              >
+                Simples
+              </button>
+              <button
+                type="button"
+                onClick={() => setModoPrompt("avancado")}
+                className={`rounded-md px-3 py-1.5 ${modoPrompt === "avancado" ? "bg-teal-700 text-white" : "text-neutral-600"}`}
+              >
+                Avançado
+              </button>
+            </div>
+          </div>
+
+          {modoPrompt === "avancado" ? (
+            <textarea
+              value={promptSistema}
+              onChange={(e) => setPromptSistema(e.target.value)}
+              rows={7}
+              className={campoClasses}
+            />
+          ) : (
+            <div className="space-y-4">
+              <Campo label="Persona (Identidade) — quem é o agente? nome, cargo, tom de voz geral">
+                <textarea
+                  value={persona}
+                  onChange={(e) => setPersona(e.target.value)}
+                  rows={3}
+                  placeholder="Ex.: Você é a assistente virtual da OdontoMinas, respondendo pacientes pelo WhatsApp."
+                  className={campoClasses}
+                />
+              </Campo>
+              <Campo label="Objetivo — o que o agente deve realizar nesta conversa?">
+                <textarea
+                  value={objetivo}
+                  onChange={(e) => setObjetivo(e.target.value)}
+                  rows={2}
+                  placeholder="Ex.: Tirar dúvidas sobre os tratamentos e encaminhar quem quer agendar."
+                  className={campoClasses}
+                />
+              </Campo>
+              <Campo label="Fluxo e Triagem — regras de atendimento, perguntas e como conduzir o paciente">
+                <textarea
+                  value={fluxoTriagem}
+                  onChange={(e) => setFluxoTriagem(e.target.value)}
+                  rows={4}
+                  placeholder="Ex.: Comece perguntando o motivo do contato. Se for dúvida sobre preço, explique que varia por avaliação..."
+                  className={campoClasses}
+                />
+              </Campo>
+
+              <div className="rounded-lg border border-red-100 bg-red-50/40 p-3">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-neutral-700">Guardrails (Regras e Limites) — o que o agente NUNCA deve fazer ou dizer</span>
+                  <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                    Alta Prioridade
+                  </span>
+                </div>
+                <textarea
+                  value={guardrails}
+                  onChange={(e) => setGuardrails(e.target.value)}
+                  rows={4}
+                  placeholder={"Ex.: Nunca prometa resultado de tratamento.\nNunca invente preço ou convênio.\nNunca peça dado sensível do paciente."}
+                  className={campoClasses}
+                />
+                <p className="mt-1 text-[11px] text-red-700">
+                  Guardrails são injetados com prioridade máxima no topo do prompt.
+                </p>
+              </div>
+
+              <div className="border-t border-neutral-100 pt-4">
+                <h3 className="mb-3 text-xs font-semibold text-neutral-700">Traços de Personalidade</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo label="Tom de Voz">
+                    <select value={tomVoz} onChange={(e) => setTomVoz(e.target.value as TomVoz)} className={campoClasses}>
+                      {TOM_VOZ_OPCOES.map((opcao) => (
+                        <option key={opcao.valor} value={opcao.valor}>
+                          {opcao.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Campo>
+                  <Toggle label="Usar Emojis" descricao="Incluir emojis nas respostas" valor={usarEmojis} onChange={setUsarEmojis} />
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {aba === "conhecimento" && editando && <ConhecimentoTab agenteId={agente!.id} />}
 
       {erro && <p className="text-sm text-red-600">{erro}</p>}
 
@@ -526,4 +658,136 @@ function mensagemErro(codigo: string): string {
     backend_unavailable: "Não consegui conectar ao banco agora, tenta de novo.",
   };
   return mapa[codigo] ?? "Não consegui salvar, tenta de novo.";
+}
+
+function AbaBotao({
+  label,
+  ativa,
+  onClick,
+  desabilitada,
+}: {
+  label: string;
+  ativa: boolean;
+  onClick: () => void;
+  desabilitada?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={desabilitada}
+      title={desabilitada ? "Salva o agente primeiro" : undefined}
+      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        ativa ? "border-teal-700 text-teal-700" : "border-transparent text-neutral-500 hover:text-neutral-700"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Só monta com o agente já salvo (itens de conhecimento precisam de agente_id). */
+function ConhecimentoTab({ agenteId }: { agenteId: string }) {
+  const [itens, setItens] = useState<ConhecimentoItem[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [titulo, setTitulo] = useState("");
+  const [conteudo, setConteudo] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const resposta = await fetch(`/api/agentes/${agenteId}/conhecimento`);
+      const dados = (await resposta.json()) as { ok: boolean; itens?: ConhecimentoItem[] };
+      if (!cancelado && dados.ok && dados.itens) setItens(dados.itens);
+      if (!cancelado) setCarregando(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [agenteId]);
+
+  async function adicionar() {
+    if (!titulo.trim() || !conteudo.trim() || salvando) return;
+    setSalvando(true);
+    try {
+      const resposta = await fetch(`/api/agentes/${agenteId}/conhecimento`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, conteudo }),
+      });
+      const dados = (await resposta.json()) as { ok: boolean; item?: ConhecimentoItem };
+      if (dados.ok && dados.item) {
+        setItens((atual) => [...atual, dados.item as ConhecimentoItem]);
+        setTitulo("");
+        setConteudo("");
+      }
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function excluir(id: string) {
+    setItens((atual) => atual.filter((i) => i.id !== id));
+    await fetch(`/api/agentes/${agenteId}/conhecimento/${id}`, { method: "DELETE" });
+  }
+
+  return (
+    <section className="rounded-xl border border-neutral-200 bg-white p-5">
+      <h2 className="mb-1 text-sm font-semibold text-neutral-900">Conhecimento</h2>
+      <p className="mb-3 text-xs text-neutral-500">
+        Fatos curtos que o agente pode usar pra responder (convênios, horário, endereço…) — entram
+        no prompt automaticamente, pra ele nunca inventar o que não sabe.
+      </p>
+
+      {carregando ? (
+        <p className="text-xs text-neutral-400">Carregando…</p>
+      ) : itens.length === 0 ? (
+        <p className="mb-4 text-xs text-neutral-400">Nenhum item cadastrado ainda.</p>
+      ) : (
+        <ul className="mb-4 space-y-2">
+          {itens.map((item) => (
+            <li key={item.id} className="flex items-start justify-between gap-3 rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+              <div>
+                <p className="text-sm font-medium text-neutral-900">{item.titulo}</p>
+                <p className="text-xs text-neutral-600">{item.conteudo}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => excluir(item.id)}
+                className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
+              >
+                Excluir
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid gap-2 border-t border-neutral-100 pt-4 sm:grid-cols-[1fr_2fr_auto]">
+        <input
+          type="text"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Título (ex.: Convênios)"
+          className={campoClasses}
+        />
+        <input
+          type="text"
+          value={conteudo}
+          onChange={(e) => setConteudo(e.target.value)}
+          placeholder="Conteúdo (ex.: Aceitamos Bradesco e SulAmérica)"
+          className={campoClasses}
+        />
+        <button
+          type="button"
+          onClick={adicionar}
+          disabled={!titulo.trim() || !conteudo.trim() || salvando}
+          className="shrink-0 rounded-lg bg-teal-700 px-3 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Adicionar
+        </button>
+      </div>
+    </section>
+  );
 }
