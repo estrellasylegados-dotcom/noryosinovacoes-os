@@ -1,5 +1,24 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Agentes de IA — Qualificação Automática de Leads; próximo: Fase 6)
+
+**Qualificação Automática de Leads construída, migrada e em produção**, a pedido do Rafael —
+revertendo, na mesma sessão em que perguntei, a decisão registrada horas antes de deixar essa aba
+fora por falta de critério (print da RoiZap, ver decisão 2026-09-16 substituída em
+`_memoria/decisoes.md`). Critério fechado antes de codar (2 perguntas): escala fixa
+Quente/Morno/Frio (etiquetas nascem automaticamente por clínica, cores fixas) em vez de etiquetas
+livres, reavaliada depois de cada resposta do agente em vez de só na 1ª mensagem.
+`src/lib/agentes-qualificacao.ts` (novo): reaproveita o mesmo provider/modelo do agente pra
+classificar (1 palavra, sem custo de infraestrutura extra); aplica só a etiqueta que bate,
+removendo as outras duas — a etiqueta é sempre a temperatura ATUAL do lead, não um histórico
+acumulado. Opt-in por agente (toggle novo na aba Qualificação do formulário,
+`qualificacaoAutomatica`, nasce `false` — não muda nada no "Recepção Virtual" até alguém ligar).
+Migração `v13` (coluna `agentes_ia.qualificacao_automatica`) aplicada em produção pelo MCP do
+Supabase, confirmada lendo o schema depois. 202 testes (4 novos)/typecheck/lint/build limpos.
+Deploy no Railway confirmado `SUCCESS`/Online. Ainda não commitado nem sincronizado no GitHub
+nesta sessão. Próximo passo continua sendo a Fase 6 (demo pro marido) — não sobra mais nenhuma
+fase técnica antes dela.
+
 ## Onde está (2026-09-16, Agentes de IA — prompt estruturado + Conhecimento; próximo: Fase 6)
 
 **Prompt do Agente virou 3 abas (Configuração / Prompt do Agente / Conhecimento)**, a pedido do
@@ -229,8 +248,11 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Agentes de IA — Fase 2B (Buffer de mensagens): completa, bug real corrigido, validada de
   ponta a ponta com WhatsApp real e desligada de novo por decisão consciente (2026-09-16).
 - [x] Agentes de IA — Prompt estruturado (Simples/Avançado) + aba Conhecimento: construído,
-  testado e em produção (2026-09-16) — ver "Feito". Qualificação/Ferramentas/Pixel do print da
-  RoiZap ficaram de fora por decisão do Rafael, sem funcionalidade real por trás ainda.
+  testado e em produção (2026-09-16) — ver "Feito". Ferramentas/Pixel do print da RoiZap ficaram de
+  fora por decisão do Rafael, sem funcionalidade real por trás ainda.
+- [x] Agentes de IA — Qualificação Automática de Leads: construída, testada e em produção
+  (2026-09-16) — ver "Feito". Revertendo a decisão de horas antes; critério que faltava (escala
+  fixa Quente/Morno/Frio) fechado com o Rafael antes de codar.
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
@@ -817,4 +839,30 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     Virtual" renderiza certo com a nova UI e o agente segue em modo Avançado intacto; criado agente
     de teste em modo Simples com 1 item de Conhecimento pela API, dado conferido certo direto no
     Supabase, e apagado em seguida — banco voltou ao estado de antes (1 agente, 0 conhecimento).
+  - Ainda não commitado nem enviado ao GitHub nesta sessão.
+- 2026-09-16: **Qualificação Automática de Leads construída e em produção**, a pedido do Rafael —
+  revertendo a decisão de horas antes de deixar essa aba fora dos Agentes de IA por falta de
+  critério (print da RoiZap). Antes de codar, 2 perguntas resolvidas com o Rafael: escala fixa
+  Quente/Morno/Frio (não etiquetas livres por clínica) e reavaliar depois de cada resposta do
+  agente (não só na 1ª mensagem) — as 2 recomendadas.
+  - `src/lib/agentes-qualificacao.ts` (novo): `classificarQualificacao` reaproveita o mesmo
+    provider/modelo já configurado no agente (via `gerarResposta` de `ia-provedores.ts`, prompt
+    pedindo 1 palavra só, temperatura 0) — sem infraestrutura nova, só mais uma chamada de IA na
+    mesma rodada que já gera a resposta. `parseClassificacao` pura e testada.
+    `aplicarQualificacaoAutomatica` garante as 3 etiquetas na clínica (cria a que faltar, cor fixa
+    por classificação; reaproveita se já existir uma com o mesmo nome — `etiquetas.ts` ganhou
+    `buscarOuCriarEtiqueta`) e aplica só a que bate, removendo as outras duas da conversa — a
+    etiqueta mostra sempre a temperatura ATUAL, nunca o histórico de por onde o lead já passou.
+  - `src/lib/agentes.ts`: `responderComoAgente` chama a classificação depois de enviar a resposta,
+    isolada em try/catch (nunca derruba o envio, que já aconteceu antes) — opt-in por agente
+    (`qualificacaoAutomatica`, nasce `false`, não muda nada no Recepção Virtual até alguém ligar).
+  - UI (`AgenteForm.tsx`): aba nova "Qualificação" — o toggle do print + as 3 etiquetas explicadas
+    quando ligado.
+  - Migração `2026-09-16_v13_agentes_qualificacao.sql` (1 coluna em `agentes_ia`, tabela já com
+    grant desde a v9). Aplicada direto pelo MCP do Supabase (`apply_migration`), confirmada lendo o
+    schema depois — 2ª vez seguida sem precisar do SQL Editor manual do Rafael.
+  - Validado: typecheck/lint/202 testes (4 novos: `parseClassificacao`)/build limpos. Deploy no
+    Railway (`railway up`) confirmado `SUCCESS` via MCP e `/login` respondendo 200 em produção. Sem
+    clique real numa tela (sem `chromium-cli` nesta máquina, limitação já conhecida) — a aba segue
+    o mesmo padrão já validado da aba Conhecimento.
   - Ainda não commitado nem enviado ao GitHub nesta sessão.

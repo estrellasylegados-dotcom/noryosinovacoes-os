@@ -257,3 +257,12 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   funcionalidade real por trás. Qualificação não tinha um fluxo de perguntas definido pra construir;
   Ferramentas esbarraria em `consultas`, tabela que ainda ninguém escreve (nem webhook nem painel);
   Pixel só faz sentido quando o tráfego pago começar, o que ainda não aconteceu neste projeto.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas] — Substitui: 2026-09-16: da decisão
+  de deixar Qualificação/Ferramentas/Pixel fora dos Agentes de IA por falta de critério,
+  **Qualificação Automática de Leads entrou de verdade** (Ferramentas e Pixel continuam de fora,
+  motivo original inalterado). Critério fechado antes de codar, 2 perguntas: escala fixa
+  Quente/Morno/Frio (etiquetas nascem automaticamente por clínica, cor fixa por classificação) em
+  vez de deixar a IA escolher entre etiquetas livres; reavaliada depois de cada resposta do agente,
+  em vez de só na 1ª mensagem do lead. Por quê: o "fluxo de perguntas" que faltava na decisão
+  anterior valia pra um questionário de qualificação — classificar a temperatura do lead pelo
+  histórico da conversa não depende disso, e fecha a lacuna que tinha deixado a aba de fora.

@@ -14,12 +14,12 @@ CRM em produção de verdade: Fases 1-5 (painel, ficha, resumo, reativação), V
 atendente, Equipe, Conexão), Chat ao Vivo + Relatórios + dark mode, Agentes de IA (Fase 1+2A
 validada com o agente real "Recepção Virtual"; Fase 2B/buffer de mensagens validada e desligada por
 decisão consciente). **Agentes de IA ganharam prompt estruturado (Simples/Avançado) + aba
-Conhecimento (2026-09-16)**, a pedido do Rafael (print da RoiZap) — Qualificação/Ferramentas/Pixel
-do print ficaram de fora por decisão dele, sem funcionalidade real por trás ainda (detalhe em
-`clientes/odontominas/andamento.md`). No caminho, confirmado que o MCP do Supabase recém-autorizado
-já cobre schema também, não só dado (testado aplicando a migração v12 direto por ele, sem SQL
-Editor manual — ver `ferramentas.md`). **Próximo passo: Fase 6 (demo pro marido)** — não sobra mais
-nenhuma fase técnica antes dela.
+Conhecimento e, na mesma data, Qualificação Automática de Leads (2026-09-16)** — escala
+Quente/Morno/Frio aplicada como etiqueta, reavaliada a cada resposta do agente, desligada por
+padrão. Ferramentas/Pixel do print da RoiZap continuam de fora, mesmo motivo de antes (detalhe em
+`clientes/odontominas/andamento.md`). MCP do Supabase confirmado aplicando schema direto em
+produção 2x seguidas (v12 e v13), sem SQL Editor manual — ver `ferramentas.md`. **Próximo passo:
+Fase 6 (demo pro marido)** — não sobra mais nenhuma fase técnica antes dela.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -50,8 +50,9 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 - Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
   agente real rodando (Fase 1+2A), automação de reativação (Fase 5), buffer de mensagens (Fase 2B,
-  desligado por decisão) e agora prompt estruturado + aba Conhecimento (2026-09-16) — tudo testado
-  em produção. Fase 6 (demo pro marido) é o próximo passo — não falta mais nenhuma fase técnica.
+  desligado por decisão), prompt estruturado + aba Conhecimento e Qualificação Automática de Leads
+  (2026-09-16, desligada por padrão) — tudo testado em produção. Fase 6 (demo pro marido) é o
+  próximo passo — não falta mais nenhuma fase técnica.
   Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto

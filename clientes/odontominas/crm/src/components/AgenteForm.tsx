@@ -7,7 +7,7 @@ import type { ModeloIA } from "@/lib/ia-provedores";
 import type { ConhecimentoItem } from "@/lib/agentes-conhecimento";
 
 type Etiqueta = { id: string; nome: string; cor: string };
-type Aba = "configuracao" | "prompt" | "conhecimento";
+type Aba = "configuracao" | "prompt" | "conhecimento" | "qualificacao";
 
 const TOM_VOZ_OPCOES: { valor: TomVoz; label: string }[] = [
   { valor: "amigavel", label: "Amigável" },
@@ -71,6 +71,7 @@ export function AgenteForm({
   const [dividirEmMensagensCurtas, setDividirEmMensagensCurtas] = useState(agente?.dividirEmMensagensCurtas ?? false);
   const [bufferMensagens, setBufferMensagens] = useState(agente?.bufferMensagens ?? false);
   const [bufferSegundos, setBufferSegundos] = useState(agente?.bufferSegundos ?? 8);
+  const [qualificacaoAutomatica, setQualificacaoAutomatica] = useState(agente?.qualificacaoAutomatica ?? false);
 
   const [ativarTransferencia, setAtivarTransferencia] = useState(agente?.ativarTransferencia ?? false);
   const [mensagemTransferencia, setMensagemTransferencia] = useState(agente?.mensagemTransferencia ?? "");
@@ -143,6 +144,7 @@ export function AgenteForm({
       dividirEmMensagensCurtas,
       bufferMensagens,
       bufferSegundos,
+      qualificacaoAutomatica,
       ativarTransferencia,
       notificarNumeros: notificarNumeros || null,
       notificarPedidoHumano,
@@ -180,6 +182,7 @@ export function AgenteForm({
           onClick={() => editando && setAba("conhecimento")}
           desabilitada={!editando}
         />
+        <AbaBotao label="Qualificação" ativa={aba === "qualificacao"} onClick={() => setAba("qualificacao")} />
       </div>
 
       {aba === "configuracao" && (
@@ -580,6 +583,43 @@ export function AgenteForm({
       )}
 
       {aba === "conhecimento" && editando && <ConhecimentoTab agenteId={agente!.id} />}
+
+      {aba === "qualificacao" && (
+        <section className="rounded-xl border border-neutral-200 bg-white p-5">
+          <h2 className="mb-1 text-sm font-semibold text-neutral-900">Qualificação Automática de Leads</h2>
+          <p className="mb-3 text-xs text-neutral-500">
+            A IA analisa a conversa depois de cada resposta e aplica uma etiqueta de temperatura no
+            Chat ao Vivo — só uma por vez, sempre a mais atual.
+          </p>
+          <Toggle
+            label="Qualificação Automática de Leads"
+            descricao="A IA analisa as conversas e aplica tags automaticamente para qualificar leads"
+            valor={qualificacaoAutomatica}
+            onChange={setQualificacaoAutomatica}
+          />
+          {qualificacaoAutomatica && (
+            <div className="mt-4 flex gap-2 border-t border-neutral-100 pt-4">
+              {(
+                [
+                  ["#dc2626", "Lead Quente", "quer agendar, pediu preço/horário"],
+                  ["#d97706", "Lead Morno", "interessado, ainda tirando dúvida"],
+                  ["#2563eb", "Lead Frio", "sem interesse, parou de responder"],
+                ] as const
+              ).map(([cor, nome, descricao]) => (
+                <div key={nome} className="flex-1 rounded-lg border border-neutral-100 bg-neutral-50 p-3">
+                  <span
+                    className="mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+                    style={{ backgroundColor: cor }}
+                  >
+                    {nome}
+                  </span>
+                  <p className="text-xs text-neutral-500">{descricao}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {erro && <p className="text-sm text-red-600">{erro}</p>}
 

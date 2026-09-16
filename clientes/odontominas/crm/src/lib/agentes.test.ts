@@ -52,6 +52,7 @@ function criarAgente(overrides: Partial<AgenteIA> = {}): AgenteIA {
     mensagemNotificacao: null,
     bufferMensagens: false,
     bufferSegundos: 8,
+    qualificacaoAutomatica: false,
     ...overrides,
   };
 }

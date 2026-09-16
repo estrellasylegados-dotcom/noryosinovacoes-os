@@ -5,6 +5,7 @@ import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/st
 import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } from "@/lib/ia-provedores";
 import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@/lib/agentes-notificacoes";
 import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib/agentes-conhecimento";
+import { aplicarQualificacaoAutomatica, classificarQualificacao } from "@/lib/agentes-qualificacao";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -37,6 +38,12 @@ import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib
  * chama ela em vez de usar `agente.promptSistema` cru. Conhecimento
  * (src/lib/agentes-conhecimento.ts) entra nos dois modos, sempre no fim do
  * prompt.
+ *
+ * Qualificação Automática de Leads (opt-in por agente, `qualificacaoAutomatica`):
+ * depois de responder, `responderComoAgente` chama
+ * src/lib/agentes-qualificacao.ts pra classificar a conversa em
+ * Quente/Morno/Frio e aplicar a etiqueta correspondente — nunca derruba a
+ * resposta já enviada se a classificação falhar (try/catch isolado ali).
  */
 
 export type ModoPrompt = "simples" | "avancado";
@@ -84,6 +91,7 @@ export type AgenteIA = {
   mensagemNotificacao: string | null;
   bufferMensagens: boolean;
   bufferSegundos: number;
+  qualificacaoAutomatica: boolean;
 };
 
 export type DadosAgente = {
@@ -123,11 +131,12 @@ export type DadosAgente = {
   mensagemNotificacao?: string | null;
   bufferMensagens?: boolean;
   bufferSegundos?: number;
+  qualificacaoAutomatica?: boolean;
 };
 
 const SELECT_AGENTE =
   "id, clinica_id, nome, descricao, ativo, etiqueta_gatilho_id, provider, modelo, prompt_sistema, modo_prompt, persona, objetivo, fluxo_triagem, guardrails, tom_voz, usar_emojis, temperatura, max_tokens, max_mensagens_resposta, incluir_historico, qtd_historico, pausar_ao_responder_humano, tempo_pausa_min, mensagem_transferencia, " +
-  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos";
+  "responder_apenas_horario, horario_inicio, horario_fim, max_caracteres_resposta, pausar_apos_concluir_fluxo, dividir_em_mensagens_curtas, ativar_transferencia, notificar_numeros, notificar_pedido_humano, notificar_fallback, notificar_intencao_compra, notificar_novo_lead, mensagem_notificacao, buffer_mensagens, buffer_segundos, qualificacao_automatica";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapAgente(row: any): AgenteIA {
@@ -171,6 +180,7 @@ function mapAgente(row: any): AgenteIA {
     mensagemNotificacao: row.mensagem_notificacao ?? null,
     bufferMensagens: row.buffer_mensagens ?? false,
     bufferSegundos: row.buffer_segundos ?? 8,
+    qualificacaoAutomatica: row.qualificacao_automatica ?? false,
   };
 }
 
@@ -224,6 +234,7 @@ function payloadDados(dados: DadosAgente) {
     mensagem_notificacao: dados.mensagemNotificacao?.trim() || null,
     buffer_mensagens: dados.bufferMensagens ?? false,
     buffer_segundos: dados.bufferSegundos ?? 8,
+    qualificacao_automatica: dados.qualificacaoAutomatica ?? false,
   };
 }
 
@@ -324,6 +335,7 @@ export async function atualizarAgente(
     mensagemNotificacao: dados.mensagemNotificacao !== undefined ? dados.mensagemNotificacao : atual.mensagemNotificacao,
     bufferMensagens: dados.bufferMensagens ?? atual.bufferMensagens,
     bufferSegundos: dados.bufferSegundos ?? atual.bufferSegundos,
+    qualificacaoAutomatica: dados.qualificacaoAutomatica ?? atual.qualificacaoAutomatica,
   };
 
   const erroValidacao = validarDados(mesclado);
@@ -419,6 +431,7 @@ export async function duplicarAgente(clinicaId: string, id: string): Promise<{ o
     mensagemNotificacao: original.mensagemNotificacao,
     bufferMensagens: original.bufferMensagens,
     bufferSegundos: original.bufferSegundos,
+    qualificacaoAutomatica: original.qualificacaoAutomatica,
   });
 
   if (resultado.ok && resultado.agente) {
@@ -866,6 +879,15 @@ export async function responderComoAgente(
     "resposta_automatica_ia",
     agente.pausarAposConcluirFluxo
   );
+
+  if (agente.qualificacaoAutomatica) {
+    try {
+      const classificacao = await classificarQualificacao(agente, historico, mensagemRecebida);
+      if (classificacao) await aplicarQualificacaoAutomatica(clinicaId, conversaId, classificacao);
+    } catch (e) {
+      console.error("[agentes] qualificacao_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
+    }
+  }
 
   return { ok: true };
 }

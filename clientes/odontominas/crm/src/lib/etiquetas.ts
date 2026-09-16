@@ -47,7 +47,8 @@ export async function listarEtiquetas(clinicaId: string): Promise<Etiqueta[]> {
 
 export async function criarEtiqueta(
   clinicaId: string,
-  nomeBruto: string
+  nomeBruto: string,
+  corForcada?: string
 ): Promise<{ ok: boolean; etiqueta?: Etiqueta; error?: string }> {
   const nome = nomeBruto.trim();
   if (!nome) return { ok: false, error: "nome_vazio" };
@@ -55,11 +56,14 @@ export async function criarEtiqueta(
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
 
-  const { count } = await supabase
-    .from("etiquetas")
-    .select("id", { count: "exact", head: true })
-    .eq("clinica_id", clinicaId);
-  const cor = PALETA_CORES[(count ?? 0) % PALETA_CORES.length];
+  let cor = corForcada;
+  if (!cor) {
+    const { count } = await supabase
+      .from("etiquetas")
+      .select("id", { count: "exact", head: true })
+      .eq("clinica_id", clinicaId);
+    cor = PALETA_CORES[(count ?? 0) % PALETA_CORES.length];
+  }
 
   const { data, error } = await supabase
     .from("etiquetas")
@@ -74,6 +78,49 @@ export async function criarEtiqueta(
   }
 
   return { ok: true, etiqueta: { id: data.id as string, nome: data.nome as string, cor: data.cor as string } };
+}
+
+/**
+ * Acha a etiqueta pelo nome (case-insensitive) nesta clínica, ou cria com a
+ * cor forçada se ainda não existir — usado pra Qualificação Automática
+ * (src/lib/agentes-qualificacao.ts) garantir Quente/Morno/Frio sem duplicar
+ * se a clínica já tiver criado uma etiqueta com o mesmo nome.
+ */
+export async function buscarOuCriarEtiqueta(
+  clinicaId: string,
+  nome: string,
+  corForcada: string
+): Promise<{ ok: boolean; etiqueta?: Etiqueta; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const { data: existente } = await supabase
+    .from("etiquetas")
+    .select("id, nome, cor")
+    .eq("clinica_id", clinicaId)
+    .ilike("nome", nome)
+    .maybeSingle();
+  if (existente) {
+    return { ok: true, etiqueta: { id: existente.id as string, nome: existente.nome as string, cor: existente.cor as string } };
+  }
+
+  const criada = await criarEtiqueta(clinicaId, nome, corForcada);
+  if (criada.ok) return criada;
+
+  // corrida rara (duas requisições criando ao mesmo tempo): a que perdeu busca de novo.
+  if (criada.error === "ja_existe") {
+    const { data: agoraExiste } = await supabase
+      .from("etiquetas")
+      .select("id, nome, cor")
+      .eq("clinica_id", clinicaId)
+      .ilike("nome", nome)
+      .maybeSingle();
+    if (agoraExiste) {
+      return { ok: true, etiqueta: { id: agoraExiste.id as string, nome: agoraExiste.nome as string, cor: agoraExiste.cor as string } };
+    }
+  }
+
+  return criada;
 }
 
 export async function adicionarEtiquetaConversa(
