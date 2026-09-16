@@ -20,6 +20,7 @@ const CHAVE_LARGURA_LISTA = "chat-largura-lista";
 const LARGURA_MIN = 280;
 const LARGURA_MAX = 560;
 const LARGURA_PADRAO = 360;
+const CHAVE_SOM_NOTIFICACAO = "chat-som-notificacao";
 
 const ABAS_PRINCIPAIS: { valor: Exclude<AbaChat, "arquivadas">; label: string; Icone: () => ReactNode }[] = [
   { valor: "todos", label: "Todos", Icone: IconeTodos },
@@ -103,6 +104,10 @@ export function ChatAoVivo({
   const arrastandoRef = useRef(false);
   const [larguraLista, setLarguraLista] = useState(LARGURA_PADRAO);
 
+  const [somAtivo, setSomAtivo] = useState(true);
+  const somAtivoRef = useRef(somAtivo);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
   const contagens = useMemo(() => contarAbasChat(conversas, atendenteAtualId), [conversas, atendenteAtualId]);
   const conversasFiltradas = useMemo(
     () =>
@@ -118,15 +123,57 @@ export function ChatAoVivo({
 
   const selecionada = conversas.find((c) => c.id === selecionadaId) ?? null;
 
+  // Toca só quando a lista de novo tem uma mensagem RECEBIDA mais recente que a
+  // que já estava ali — nunca na carga inicial nem quando a mudança é o
+  // próprio atendente enviando (evita "ding" pra ação da própria pessoa).
+  function tocarSomNotificacao() {
+    if (!somAtivoRef.current || typeof window === "undefined") return;
+    try {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+      if (!audioContextRef.current) audioContextRef.current = new Ctor();
+      const ctx = audioContextRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const agora = ctx.currentTime;
+      const oscilador = ctx.createOscillator();
+      const ganho = ctx.createGain();
+      oscilador.type = "sine";
+      oscilador.frequency.setValueAtTime(880, agora);
+      oscilador.frequency.setValueAtTime(1175, agora + 0.09);
+      ganho.gain.setValueAtTime(0, agora);
+      ganho.gain.linearRampToValueAtTime(0.18, agora + 0.01);
+      ganho.gain.exponentialRampToValueAtTime(0.001, agora + 0.28);
+      oscilador.connect(ganho);
+      ganho.connect(ctx.destination);
+      oscilador.start(agora);
+      oscilador.stop(agora + 0.3);
+    } catch {
+      // navegador sem suporte a Web Audio — silencioso, mesmo padrão da notificação do navegador.
+    }
+  }
+
   async function atualizarListaAgora() {
     const dados = await chamarApi<{ ok: boolean; conversas?: ConversaChat[] }>("/api/chat/conversas");
-    if (dados.ok && dados.conversas) setConversas(dados.conversas);
+    if (!dados.ok || !dados.conversas) return;
+    const conversasNovas = dados.conversas;
+    setConversas((anterior) => {
+      const porId = new Map(anterior.map((c) => [c.id, c]));
+      const chegouMensagemNova = conversasNovas.some((c) => {
+        if (c.ultimaMensagemDirecao !== "recebida") return false;
+        const antes = porId.get(c.id);
+        return antes ? antes.ultimaMensagemEm !== c.ultimaMensagemEm : true;
+      });
+      if (chegouMensagemNova) tocarSomNotificacao();
+      return conversasNovas;
+    });
   }
 
   // Lista: carga inicial já veio do servidor, então só faz polling a partir daqui.
   useEffect(() => {
     const id = setInterval(atualizarListaAgora, INTERVALO_LISTA_MS);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -164,6 +211,25 @@ export function ChatAoVivo({
     const numero = salva ? parseInt(salva, 10) : NaN;
     if (!Number.isNaN(numero)) setLarguraLista(Math.min(LARGURA_MAX, Math.max(LARGURA_MIN, numero)));
   }, []);
+
+  // Preferência de som é por navegador/pessoa (igual notificacoes-preferencia.ts),
+  // nunca por clínica — carrega uma vez, só no cliente.
+  useEffect(() => {
+    const salvo = localStorage.getItem(CHAVE_SOM_NOTIFICACAO);
+    if (salvo !== null) setSomAtivo(salvo === "1");
+  }, []);
+
+  useEffect(() => {
+    somAtivoRef.current = somAtivo;
+  }, [somAtivo]);
+
+  function alternarSom() {
+    setSomAtivo((atual) => {
+      const novo = !atual;
+      localStorage.setItem(CHAVE_SOM_NOTIFICACAO, novo ? "1" : "0");
+      return novo;
+    });
+  }
 
   useEffect(() => {
     function mover(e: MouseEvent) {
@@ -322,14 +388,27 @@ export function ChatAoVivo({
             <h1 className="text-lg font-semibold text-neutral-900">Chat ao Vivo</h1>
             <p className="text-xs text-neutral-500">OdontoMinas · WhatsApp</p>
           </div>
-          <button
-            type="button"
-            title="Nova conversa"
-            onClick={() => setMostrarNovaConversa(true)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-lg font-medium text-white hover:bg-teal-800"
-          >
-            +
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              title={somAtivo ? "Som de mensagem ligado — clique pra desligar" : "Som de mensagem desligado — clique pra ligar"}
+              aria-pressed={somAtivo}
+              onClick={alternarSom}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-neutral-100 ${
+                somAtivo ? "text-neutral-500" : "text-neutral-300"
+              }`}
+            >
+              {somAtivo ? <IconeSom /> : <IconeSomMudo />}
+            </button>
+            <button
+              type="button"
+              title="Nova conversa"
+              onClick={() => setMostrarNovaConversa(true)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-700 text-lg font-medium text-white hover:bg-teal-800"
+            >
+              +
+            </button>
+          </div>
         </header>
 
         <div className="border-b border-neutral-200 px-4 py-3">
@@ -902,6 +981,25 @@ function IconeEtiqueta() {
     <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M12.6 3.5 20 4l.5 7.4-9.1 9.1a1.5 1.5 0 0 1-2.1 0L3.5 14.7a1.5 1.5 0 0 1 0-2.1Z" />
       <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconeSom() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M19 6a8 8 0 0 1 0 12" />
+    </svg>
+  );
+}
+
+function IconeSomMudo() {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" />
+      <path d="m17 9 4 6M21 9l-4 6" />
     </svg>
   );
 }

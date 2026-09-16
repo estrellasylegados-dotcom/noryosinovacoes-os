@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import type { Papel } from "@/lib/sessao";
 
 type Item = { href: string; label: string; adminOnly?: boolean; group?: string };
@@ -36,8 +37,35 @@ function ItemLink({ item, ativo, naoLidas }: { item: Item; ativo: boolean; naoLi
   );
 }
 
+function IconeRaio() {
+  return (
+    <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
+    </svg>
+  );
+}
+
+function IconeChevron({ aberto }: { aberto: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={14}
+      height={14}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`shrink-0 transition-transform duration-150 ${aberto ? "" : "rotate-180"}`}
+    >
+      <path d="M6 15l6-6 6 6" />
+    </svg>
+  );
+}
+
 export function SidebarNav({ papel, naoLidas = 0 }: { papel: Papel; naoLidas?: number }) {
   const pathname = usePathname();
+  const [gruposFechados, setGruposFechados] = useState<Record<string, boolean>>({});
   const visiveis = ITENS.filter((item) => !item.adminOnly || papel === "admin");
   const soltos = visiveis.filter((item) => !item.group);
   const grupos = new Map<string, Item[]>();
@@ -56,14 +84,30 @@ export function SidebarNav({ papel, naoLidas = 0 }: { papel: Papel; naoLidas?: n
       {soltos.map((item) => (
         <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} />
       ))}
-      {Array.from(grupos.entries()).map(([nome, itens]) => (
-        <div key={nome} className="flex gap-1 sm:mt-2 sm:flex-col">
-          <p className="hidden px-3 pt-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400 sm:block">{nome}</p>
-          {itens.map((item) => (
-            <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} />
-          ))}
-        </div>
-      ))}
+      {Array.from(grupos.entries()).map(([nome, itens]) => {
+        const aberto = !gruposFechados[nome];
+        return (
+          <div key={nome} className="flex flex-wrap gap-1 sm:mt-2 sm:flex-col">
+            <button
+              type="button"
+              onClick={() => setGruposFechados((prev) => ({ ...prev, [nome]: aberto }))}
+              aria-expanded={aberto}
+              className="hidden w-full items-center justify-between gap-2 rounded-lg px-3 pt-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-400 hover:text-neutral-600 sm:flex"
+            >
+              <span className="flex items-center gap-1.5">
+                <IconeRaio />
+                {nome}
+              </span>
+              <IconeChevron aberto={aberto} />
+            </button>
+            <div className={`contents ${aberto ? "" : "sm:hidden"}`}>
+              {itens.map((item) => (
+                <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </nav>
   );
 }
