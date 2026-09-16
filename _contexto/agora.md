@@ -10,21 +10,14 @@ de graça (site + CRM de captação + tráfego pago, verba de mídia por conta d
 conceito pra depois oferecer aos contatos do marido com outros dentistas (detalhe em
 `clientes/odontominas/contexto.md`). **Foco atual do projeto: construir o CRM até funcionar de
 verdade** — Ariadna só avança em projeto que vê rodando, então a "proposta" vai ser uma
-demonstração ao vivo pro marido, não um documento formal. Fases 1-5 do CRM (painel, ficha,
-resumo, reativação automática) + V1 do painel (menu, login por atendente, Equipe, Conexão) em
-produção. **CRM ganhou Chat ao Vivo, Relatórios e dark mode em produção de verdade (2026-09-15)**
-(a pedido do Rafael, inspirado na RoiZap): inbox real com envio pelo painel, contador de mensagens
-não lidas, dashboard de relatórios com gráficos, tema claro/escuro em todo o painel, Conexão do
-WhatsApp com apelido interno e desconectar — detalhe completo em
-`clientes/odontominas/andamento.md`. **Agentes de IA — Fase 1 e Fase 2A em produção de verdade
-(2026-09-15)**: sidebar com "Ferramentas" > "Agentes de IA", 5 provedores (Gemini/Groq grátis,
-GPT/Claude/DeepSeek pagos), gatilho por etiqueta, horário de atendimento, transferência pra humano
-real e "Avisar Membro da Equipe" (a rede de segurança). Rafael pediu escopo maior depois de
-comparar com o print de referência de novo; aprovou minha recomendação em 3 blocos — Fase 2A
-(pronta), Fase 2B (Buffer de mensagens, ainda não construída) e Fase 2C (decide depois do piloto
-rodar). Chave do Gemini configurada (Railway + local) — a IA já funciona de ponta a ponta, falta
-só criar e ativar um agente de verdade. Próximo passo: criar o 1º agente de teste, depois Fase 6
-(demo pro marido).
+demonstração ao vivo pro marido, não um documento formal. CRM em produção de verdade: Fases 1-5
+(painel, ficha, resumo, reativação), V1 do painel (login por atendente, Equipe, Conexão), Chat ao
+Vivo + Relatórios + dark mode. **Agentes de IA Fase 1+2A validados de ponta a ponta com o 1º agente
+real (2026-09-15)**: "Recepção Virtual" (Gemini) respondeu, transferiu pra humano e avisou a equipe
+de verdade num teste ao vivo — ver `clientes/odontominas/andamento.md`. CRM também ganhou
+"Pausar IA"/"Retomar IA"/"Finalizar Atendimento" no Chat ao Vivo e notificação real do navegador
+(não só o sino do painel). Próximo passo: Fase 2B (Buffer de mensagens) ou Fase 6 (demo pro
+marido) — nenhuma fase técnica falta mais pra demo.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -55,10 +48,9 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): site no ar, CRM com Chat ao Vivo + Relatórios + dark mode +
-  Conexão redesenhada, tudo validado em produção de verdade. Fase 6 (demo pro marido) é o próximo
-  passo. Painel tem 5 conversas fictícias semeadas pra demonstração — falta decidir se apaga ou
-  mantém.
+- Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
+  agente real rodando (Fase 1+2A). Fase 6 (demo pro marido) é o próximo passo. Painel tem 5
+  conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

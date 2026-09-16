@@ -223,3 +223,24 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   é a rede de segurança (avisar a equipe + ceder pra humano quando a IA não sabe), não
   funcionalidade extra; a peça mais arriscada (IA mexendo sozinha no CRM) fica pro fim de propósito,
   só depois de tudo o resto validado com uso real.
+- **2026-09-15** (Rafael) [odontominas]: modelo de IA do Google no catálogo (`ia-provedores.ts`)
+  passou a usar o alias `gemini-flash-lite-latest` em vez de um id de modelo fixo
+  (`gemini-2.5-flash-lite`). Por quê: o Google descontinuou esse modelo pra chaves novas sem aviso
+  (404 "no longer available to new users") bem no meio do 1º teste real do agente — um id fixo
+  quebra em produção sempre que o provedor aposentar aquele modelo pontual; o alias se atualiza
+  sozinho e evita repetir esse mesmo incidente.
+- **2026-09-15** (Rafael) [odontominas]: "Pausar IA"/"Retomar IA" no Chat ao Vivo desligam e
+  reconectam o agente de vez (`agente_ativo_id`), não uma pausa temporizada nova. Por quê: já existe
+  uma pausa automática (`pausarAgenteSeConfigurado`, dispara quando um atendente responde na mão e
+  expira sozinha); o pedido do Rafael era controle manual e imediato ("um humano assume"), que pede
+  um desligamento de verdade, não mais uma janela de tempo pra gerenciar. "Retomar" reconecta pelo
+  agente cuja etiqueta-gatilho já está na conversa, em vez de exigir tirar e recolocar a etiqueta —
+  não precisou de coluna nova no banco.
+- **2026-09-15** (Rafael) [odontominas]: notificação de mensagem no CRM passou a ter 2 caminhos —
+  Notification API do navegador (som que só o Rafael confirmou explicitamente na sessão) além do
+  sino do painel (que já existia, só conta com a aba em foco), com controle de 3 posições
+  (Desligadas/Todas/Só esfriando) em vez de um liga/desliga comum. Por quê: referência era um
+  banner da RoiZap ("ative notificações pra não perder mensagem") que resolve um problema real que
+  o sino sozinho não resolve; as 3 posições aproveitam as 2 categorias que a notificação já
+  distinguia (mensagem não lida vs. lead esfriando) em vez de inventar uma terceira coisa. Preferência
+  fica em localStorage (é por navegador/pessoa, nunca no Supabase).

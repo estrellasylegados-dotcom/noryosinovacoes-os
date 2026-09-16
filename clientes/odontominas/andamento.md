@@ -1,5 +1,21 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-15, Agentes de IA validado + Pausar IA/Finalizar Atendimento + notificação)
+
+**1º Agente de IA real criado e validado de ponta a ponta em produção**: "Recepção Virtual"
+(Gemini), etiqueta-gatilho "Atendimento IA" criada, prompt detalhado e compliance-safe. Testado com
+mensagem simulada pelo webhook: respondeu certo, reconheceu sozinha "pronta pra marcar horário"
+como gatilho de transferência, e "Avisar Membro da Equipe" chegou de verdade no WhatsApp do Rafael.
+Fase 1 e Fase 2A do CRM estão, agora sim, funcionais de ponta a ponta com uso real — não só
+deployadas. No caminho, achado e corrigido um bug real: `gemini-2.5-flash-lite` foi descontinuado
+pelo Google (404 "no longer available to new users"), trocado pelo alias `gemini-flash-lite-latest`
+(commit `b699685`). CRM também ganhou, na mesma sessão: **"Pausar IA"/"Retomar IA"/"Finalizar
+Atendimento"** no Chat ao Vivo (commit `63ac13f`, sem migração nova) e **notificação real do
+navegador** — Notification API com permissão pedida por gesto do usuário, controle de 3 posições
+arrastável (Desligadas/Todas/Só esfriando), adaptado do banner da RoiZap (commit `5551897`).
+Detalhe completo em "Feito" abaixo. Próximo passo de sempre: Fase 2B (Buffer de mensagens) ou Fase
+6 (demo pro marido) — nenhuma fase técnica falta mais pra demo.
+
 ## Onde está (2026-09-15, Agentes de IA — Fase 1 + Fase 2A em produção)
 
 CRM: Fase 1 (schema, CRUD, 5 provedores, gatilho por etiqueta) e Fase 2A (horário de atendimento,
@@ -147,8 +163,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   produção — ver "Feito". Trocar usuário/senha das 3 contas de demo
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
   demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
-- [ ] Agentes de IA: criar e ativar o 1º agente de teste (chave do Gemini já configurada em
-  Railway + local, redeploy confirmado — falta só o agente existir no banco) (2026-09-15).
+- [x] Agentes de IA: criar e ativar o 1º agente de teste. "Recepção Virtual" criado e validado de
+  ponta a ponta com envio real (resposta, transferência, aviso à equipe) (2026-09-15).
 - [ ] Agentes de IA — Fase 2B (Buffer de mensagens): construir quando der — plano já aprovado
   (arquitetura de debounce por coluna + poll no processo, não timer em memória), migração separada
   `v11` (2026-09-15).
@@ -564,3 +580,66 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   - Achado técnico: o loop de checagem de deploy que eu tinha deixado em segundo plano ficou preso
     porque usava `python3`, que não existe nesta máquina — trocado por `awk`. Registrado no diário
     pra próxima sessão não repetir.
+- 2026-09-15: **1º Agente de IA criado e validado de ponta a ponta em produção.** Chave do Gemini
+  já configurada na sessão anterior; faltava o agente existir de verdade no banco. Sem MCP/CLI de
+  escrita neste projeto Supabase, criado via REST direto (service role key de `.env.local`, mesmo
+  caminho já usado pra semear dado fictício na Fase 4/6) — etiqueta "Atendimento IA" (não existia
+  etiqueta nenhuma ainda) e o agente "Recepção Virtual": Gemini, temperatura 0,4, transferência
+  ligada, "avisar equipe" apontando pro número do Rafael, horário de atendimento pré-preenchido mas
+  desligado de propósito (pra poder testar em qualquer hora). Prompt de sistema reescrito mais
+  detalhado e profissional a pedido do Rafael (o rascunho inicial foi considerado raso) — puxa
+  conteúdo real e já compliance-safe do site (`tratamentos.ts`/`faq.ts`: só os 4 tratamentos
+  confirmados, nunca preço, nunca opinião clínica, regras da CFO-196/2019 explícitas).
+  - **Bug real achado no meio do teste**: `gemini-2.5-flash-lite` (fixo no catálogo de
+    `ia-provedores.ts`) passou a devolver 404 "no longer available to new users" — o Google
+    descontinuou o modelo pra chaves novas. Trocado pelo alias `gemini-flash-lite-latest`
+    (confirmado por `ListModels` da API que funciona com esta chave) — evita quebrar nesse mesmo
+    jeito quando o próximo modelo pontual for aposentado. Corrigido no código e no agente já
+    criado; 176→180 testes/typecheck/lint/build limpos. Commitado (`b699685`) e deployado no
+    Railway (sucesso).
+  - **Validado com envio real de ponta a ponta**: primeiro teste (ativar o agente sem aplicar a
+    etiqueta na conversa) não respondeu — achado de que o agente só escuta a conversa onde a
+    etiqueta-gatilho foi de fato aplicada, ativar o agente sozinho não basta. Aplicada a etiqueta
+    numa conversa real (o próprio número de teste do Rafael) e mandada mensagem de verdade pelo
+    WhatsApp: a IA respondeu certo. Simulado depois, direto pelo webhook de produção (payload
+    Baileys real, mesma rota que a Evolution usa), "Quero marcar uma consulta" — a IA reconheceu
+    sozinha (pelo prompt, não por palavra-chave) que "pronta pra marcar horário" é gatilho de
+    passar pra humano, respondeu em 2 blocos, e a notificação "avisar equipe" (intenção de
+    agendar) chegou de verdade no WhatsApp do Rafael. Fase 1 e Fase 2A do CRM estão, agora sim,
+    funcionais de ponta a ponta com uso real — não só deployadas.
+- 2026-09-15: **"Pausar IA" / "Retomar IA" / "Finalizar Atendimento" no Chat ao Vivo** (a pedido do
+  Rafael, print da RoiZap com esses 2 botões ao lado do status da conversa como referência).
+  - `src/lib/agentes.ts`: `pausarAgenteManual` desliga o agente da conversa na hora
+    (`agente_ativo_id = null`) — diferente da pausa temporária automática já existente
+    (`pausarAgenteSeConfigurado`), que só entra quando um atendente responde na mão e expira
+    sozinha. `retomarAgente`/`decidirAgenteElegivel` (pura, testada) reconectam pelo agente ativo
+    cuja etiqueta-gatilho bate com alguma etiqueta que a conversa já tem — sem precisar tirar e
+    recolocar a etiqueta pra reativar.
+  - `src/lib/chat.ts`: `finalizarAtendimento` fecha o status (só força "respondido" se ainda não
+    estiver num status resolvido — não regride "agendado"/"perdido" de volta) e desliga a IA, num
+    clique só. `ConversaChat` ganhou `agenteAtivoId` pro Chat ao Vivo saber se mostra "Pausar" ou
+    "Retomar".
+  - **Sem migração nova** — tudo reaproveita `agente_ativo_id`/`agente_pausado_ate`, colunas que já
+    existiam desde a v9. 2 rotas novas (`/api/chat/conversas/[id]/agente`,
+    `.../[id]/finalizar`). 183 testes (7 novos), typecheck/lint/build limpos. Commitado (`63ac13f`)
+    e deployado no Railway (sucesso).
+- 2026-09-15: **Notificação real do navegador** (referência: banner "Ative as notificações pra não
+  perder mensagens" da RoiZap, print mandado pelo Rafael). Antes de construir, perguntei 2 coisas
+  que mudavam a implementação inteira — Rafael confirmou as duas: (1) é pra ser notificação de
+  verdade do sistema operacional (Notification API), não só o sino do painel (que só conta com a
+  aba aberta e em foco); (2) o controle de arrastar é de 3 posições, não um liga/desliga comum —
+  esquerda desliga tudo, centro (padrão) liga tudo, direita desliga só "mensagem recebida" e
+  mantém "lead esfriando" (as 2 categorias que a notificação já distinguia).
+  - `src/lib/notificacoes-preferencia.ts` (novo, com testes): preferência em `localStorage` (é por
+    navegador/pessoa, não por clínica — nunca no Supabase). `deveNotificar(tipo, pref)` pura.
+  - `src/components/Notificacoes.tsx`: adaptado ao que o painel tem (sem sidebar sobrando como a
+    RoiZap pro banner) — o aviso e o slider entraram dentro do próprio dropdown do sino, no topo,
+    antes da lista. Slider de 3 posições arrastável via Pointer Events (sem lib nova), com clique
+    direto também funcionando. Permissão do navegador só é pedida por gesto real do usuário
+    (clique/arraste) — nunca sozinho ao carregar a página. Notificação nova detectada comparando
+    contra o que já foi visto entre um poll e outro (20s), com `tag` pra nunca duplicar a mesma;
+    clicar na notificação foca a aba e navega pro Chat ao Vivo.
+  - 183 testes (3 novos), typecheck/lint/build limpos. Commitado (`5551897`) e deployado no
+    Railway (sucesso). Limite conhecido e aceito: só funciona com o navegador aberto (mesmo em
+    segundo plano) — navegador fechado de vez não notifica, exigiria service worker + servidor de
+    push, infra desproporcional ao tamanho da operação hoje.
