@@ -21,14 +21,17 @@ de ponta a ponta pela 1ª vez** — achado e corrigido um bug real (secret do Gi
 desalinhado do Railway). CRM também ganhou 2 ajustes de UI a pedido do Rafael (prints da RoiZap de
 referência): menu "Ferramentas" da sidebar abre/recolhe, e som de notificação (liga/desliga) pra
 mensagem nova no Chat ao Vivo — deployados e confirmados funcionando em produção pelo próprio
-Rafael. **Próximo passo em andamento: Agentes de IA — Fase 2B (Buffer de mensagens)**, escolhida
-por ele em vez da Fase 6 (demo pro marido) por enquanto.
+Rafael. **Agentes de IA — Fase 2B (Buffer de mensagens) completa e validada de ponta a ponta em
+produção (2026-09-16)**: 3 mensagens seguidas no WhatsApp viraram 1 resposta só, combinada. No
+caminho, achado e corrigido um bug real (a janela do buffer abria um instante depois da mensagem
+que a disparava — resposta nunca saía, sem erro no log). Por decisão consciente (nenhum paciente
+real ainda, resposta rápida pesa mais que combinar rajada rara), o buffer ficou **desligado** no
+"Recepção Virtual" — liga quando tiver uso real ou quiser mostrar na demo. **Próximo passo volta a
+ser a Fase 6 (demo pro marido)** — não sobra mais nenhuma fase técnica antes dela.
 Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
 
-- Agentes de IA — Fase 2B (Buffer de mensagens): em construção agora, plano já aprovado
-  (2026-09-15).
 - Trocar usuário/senha das 3 contas de demo do painel do CRM
   (`admin`/`recepcao1`/`recepcao2`, senha `<usuario>-temp-2026`) pelas secretárias reais antes da
   demo (2026-09-15).
@@ -54,10 +57,10 @@ Compliance jurídico: risco de exclusividade Mirante/Sicoob aceito conscientemen
 ## Quente agora
 
 - Cliente-piloto #1 (OdontoMinas): site + CRM completo em produção, Agentes de IA validados com
-  agente real rodando (Fase 1+2A), automação de reativação (Fase 5) validada de ponta a ponta,
-  menu/som de notificação no ar. Fase 2B (Buffer de mensagens) em construção agora; Fase 6 (demo
-  pro marido) fica pra depois. Painel tem 5 conversas fictícias semeadas pra demonstração — falta
-  decidir se apaga ou mantém.
+  agente real rodando (Fase 1+2A), automação de reativação (Fase 5) e buffer de mensagens (Fase
+  2B) validados de ponta a ponta — buffer desligado por decisão consciente até ter uso real. Fase
+  6 (demo pro marido) é o próximo passo — não falta mais nenhuma fase técnica. Painel tem 5
+  conversas fictícias semeadas pra demonstração — falta decidir se apaga ou mantém.
 - CNAE/MEI: não trava mais o piloto, mas segue pendente antes de cobrar o próximo odonto.
 - Kaptar (ver `ferramentas.md`): liberado só pra busca/mapeamento de nicho, baixo volume; resto
   pausado até Twenty ativo (2026-09-14).

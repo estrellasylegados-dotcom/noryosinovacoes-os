@@ -1,5 +1,20 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Agentes de IA — Fase 2B validada e desligada de novo; próximo: Fase 6)
+
+**Fase 2B (Buffer de mensagens) completa, com um bug real achado e corrigido em produção,
+validada de ponta a ponta com WhatsApp real, e desligada de novo por decisão consciente.**
+Planejada formalmente (`EnterPlanMode`, mesma prática das Fases 1/2A). Migração `v11`
+(`agentes_ia.buffer_mensagens`/`buffer_segundos`, `conversas.agente_buffer_desde`/`_ate`/
+`_novo_paciente`), `src/lib/agentes-buffer.ts` novo (abre/estende a janela, poll que fecha janela
+vencida e responde), `src/instrumentation.ts` novo (liga o poll só em produção). Bug real no 1º
+teste ao vivo: a janela abria um instante depois da mensagem que a disparava, resposta nunca saía
+sem erro no log — corrigido com 10s de folga na marca de abertura. Validado com 3 mensagens
+seguidas → 1 resposta combinada só. Buffer ficou desligado no "Recepção Virtual" (nenhum paciente
+real ainda, resposta rápida pesa mais que combinar rajada rara) — liga quando fizer sentido.
+Detalhe completo em "Feito" abaixo. Próximo passo volta a ser a Fase 6 (demo pro marido) — não
+sobra mais nenhuma fase técnica antes dela.
+
 ## Onde está (2026-09-15, menu colapsável + som de notificação; próximo: Fase 2B)
 
 **2 ajustes de UI no CRM**, a pedido do Rafael (prints de referência da RoiZap: um menu
@@ -191,9 +206,8 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   demo. RBAC fino por permissão (não só por tela) segue pra depois que o piloto validar.
 - [x] Agentes de IA: criar e ativar o 1º agente de teste. "Recepção Virtual" criado e validado de
   ponta a ponta com envio real (resposta, transferência, aviso à equipe) (2026-09-15).
-- [ ] Agentes de IA — Fase 2B (Buffer de mensagens): construir quando der — plano já aprovado
-  (arquitetura de debounce por coluna + poll no processo, não timer em memória), migração separada
-  `v11` (2026-09-15).
+- [x] Agentes de IA — Fase 2B (Buffer de mensagens): completa, bug real corrigido, validada de
+  ponta a ponta com WhatsApp real e desligada de novo por decisão consciente (2026-09-16).
 - [ ] Fase 6 — demo pro marido; se validar, demo pra Ariadna.
 - [ ] Decidir se apaga os 5 dados fictícios de demo (Camila, Rodrigo, Fernanda, Marcos, Beatriz —
   telefones 556199990001-5) antes da demo real, ou mantém como demonstração fixa (2026-09-15).
@@ -680,6 +694,58 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   sucesso). De bônus, confirmado que leitura de workflows/runs/jobs/logs do GitHub Actions funciona
   direto por REST com o `GITHUB_PERSONAL_ACCESS_TOKEN`, sem precisar de `gh` CLI — só disparo manual
   e escrita de secret continuam fora do alcance (ver `ferramentas.md`).
+- 2026-09-16: **Agentes de IA — Fase 2B (Buffer de mensagens) completa, validada de ponta a ponta e
+  desligada de novo.** Planejada formalmente (`EnterPlanMode`, dado o tamanho — mesma prática das
+  Fases 1/2A). Arquitetura aprovada em `_memoria/decisoes.md` (2026-09-15): debounce por coluna +
+  poll dentro do próprio processo Next. Duas perguntas resolvidas antes de codar: buffer opt-in por
+  agente (desligado por padrão, o Recepção Virtual continua respondendo na hora até alguém ligar) e
+  poll só em produção (`NODE_ENV === "production"`), nunca em `npm run dev`.
+  - Migração `2026-09-15_v11_agentes_buffer.sql`: `agentes_ia.buffer_mensagens`/`buffer_segundos`
+    (toggle + segundos, mesmo padrão de todo campo da Fase 2A) e `conversas.agente_buffer_desde`/
+    `agente_buffer_ate`/`agente_buffer_novo_paciente`.
+  - `src/lib/agentes-buffer.ts` (novo): `processarMensagemRecebida` (chamada pelo webhook no lugar
+    de `responderComoAgente` direto — sem buffer ligado no agente, responde na hora igual sempre;
+    com buffer, só abre/estende a janela), `processarBuffersVencidos` (o poll — fecha a janela
+    ANTES de ler as mensagens, pra uma mensagem que chegar durante o processamento abrir uma janela
+    nova em vez de ficar perdida; chama `responderComoAgente` DIRETO, nunca `processarMensagemRecebida`
+    de volta, senão reabriria o buffer em loop sem nunca responder), `juntarMensagensBuffer` (pura,
+    testada). `responderComoAgente` não mudou nada — já era genérica sobre "uma string do que o
+    paciente disse", o texto combinado da rajada entra nela igual a uma mensagem única.
+  - `src/instrumentation.ts` (novo): liga o poll (`iniciarPollBuffer`) quando o processo Next sobe —
+    único jeito padrão do Next.js de rodar código uma vez no boot, sem custom server.
+  - Validado: typecheck/lint/188 testes (5 novos)/build limpos. Commitado (`07ded19`), Rafael rodou
+    a migração v11 no SQL Editor, deployado no Railway (`6525a599`, sucesso).
+  - **Bug real achado no 1º teste ao vivo pelo WhatsApp**: mandei mensagem de teste, o buffer abriu
+    e fechou certo (colunas confirmavam), mas nenhuma resposta saiu — e nenhum erro apareceu no log.
+    Causa: `agente_buffer_desde` gravava o relógio no instante em que `abrirOuEstenderBuffer` rodava
+    — sempre um pouco DEPOIS do `created_at` da própria mensagem que abriu a janela (ela já tinha
+    sido inserida por outra query, no webhook, momentos antes). A busca do poll
+    (`created_at >= agente_buffer_desde`) nunca encontrava a mensagem; `juntarMensagensBuffer`
+    recebia lista vazia; o código tratava "nada pra responder" como caso normal — silencioso, sem
+    log de erro nenhum (por isso não apareceu como falha, só como silêncio).
+  - Corrigido: `MARGEM_ABERTURA_MS` (10s) gravada pra trás na abertura da janela, garantindo que a
+    mensagem que disparou a rajada sempre entra na busca. 188 testes/typecheck/lint/build limpos.
+    Commitado (`ec3d768`) e deployado (`b2dc46d7`, sucesso).
+  - **Validado de ponta a ponta com WhatsApp real**: 3 mensagens seguidas em ~3s ("Oie", "Oie",
+    "Ola") → 1 resposta só da IA (2 bolhas curtas — "dividir em mensagens curtas" normal, não 3
+    respostas separadas).
+  - **Decisão**: Rafael pediu ajuda pra decidir se deixava ligado. Recomendei desligar — nenhum
+    paciente real usa o número ainda, o buffer só ajuda com rajada de mensagens (pra mensagem
+    única, o caso mais comum, só acrescenta ~10-15s de espera sem ganho), e o próximo marco é a
+    demo pro marido, onde resposta rápida pesa mais. Buffer desligado de novo
+    (`buffer_mensagens: false`, `buffer_segundos: 10` fica salvo pra quando quiser religar).
+    Decisão completa em `_memoria/decisoes.md`.
+  - Achado técnico: sessão de admin mintada localmente (mesmo script de sempre) foi **rejeitada
+    pela produção** (401) — `SESSAO_SECRET` de `crm/.env.local` provavelmente diverge do Railway
+    (mesmo tipo de problema já visto com o `CRON_SECRET` da Fase 5). Contornado lendo/escrevendo
+    direto no Supabase via REST com `SUPABASE_SERVICE_ROLE_KEY` — mesmo caminho já documentado em
+    `ferramentas.md`. Sincronizar os dois `SESSAO_SECRET` fica como pendência menor, não bloqueou o
+    teste desta vez.
+  - Achado técnico: guiei o Rafael passo a passo (interativo, no VS Code) pra autorizar o MCP
+    oficial do Supabase (`supabase-crm-odontominas`, já configurado em `.mcp.json` da raiz) via
+    OAuth — funcionou (`/mcp` numa sessão interativa nova). A autorização não apareceu nesta sessão
+    em andamento (conexão de MCP carrega só no início da sessão) — deve valer a partir de uma
+    sessão nova. `ferramentas.md` atualizado.
 - 2026-09-15: **menu "Ferramentas" abre/recolhe + som de notificação no Chat ao Vivo.** A pedido do
   Rafael, 2 prints de referência da RoiZap (o menu com ícone de raio + chevron, e um controle de som
   que não veio anexado — perguntei o formato via 3 opções, ele escolheu liga/desliga simples).

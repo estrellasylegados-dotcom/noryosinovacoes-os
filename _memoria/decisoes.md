@@ -244,3 +244,10 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   o sino sozinho não resolve; as 3 posições aproveitam as 2 categorias que a notificação já
   distinguia (mensagem não lida vs. lead esfriando) em vez de inventar uma terceira coisa. Preferência
   fica em localStorage (é por navegador/pessoa, nunca no Supabase).
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: Fase 2B (Buffer de mensagens)
+  validada de ponta a ponta em produção, mas fica **desligada** no agente "Recepção Virtual" por
+  enquanto — o toggle já existe, é só ligar quando quiser. Por quê: nenhum paciente real usa o
+  número ainda; o buffer só ajuda quando chegam várias mensagens seguidas, e pra mensagem única (o
+  caso mais comum hoje) só acrescenta ~10-15s de espera sem ganho nenhum; o próximo marco é a demo
+  pro marido, onde resposta rápida pesa mais que combinar uma rajada rara. Liga quando o atendimento
+  for pro ar com paciente de verdade, ou de propósito pra mostrar a funcionalidade na demo.
