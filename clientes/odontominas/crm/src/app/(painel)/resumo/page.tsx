@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarResumoExecutivo } from "@/lib/resumo";
 import { buscarStatsAtendentes } from "@/lib/equipe";
@@ -59,7 +59,7 @@ export default async function ResumoPage({
   const periodo: PeriodoRelatorio = periodoBruto && isPeriodoValido(periodoBruto) ? periodoBruto : "7d";
 
   const agora = new Date();
-  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes] = await Promise.all([
+  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes, clinicaAtual] = await Promise.all([
     buscarResumoExecutivo(clinicaId),
     buscarRelatorioAtendimento(clinicaId, periodo),
     listarNovosPacientes(clinicaId, periodo),
@@ -67,6 +67,7 @@ export default async function ResumoPage({
     contarNaoLidas(clinicaId),
     montarRelatorioMarketing(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
     listarAtendentes(clinicaId),
+    buscarClinicaAtual(),
   ]);
   const nomesAtendentes = Object.fromEntries(atendentes.map((a) => [a.id, a.nome]));
 
@@ -80,7 +81,7 @@ export default async function ResumoPage({
         <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-neutral-900">Relatórios</h1>
-            <p className="text-sm text-neutral-500">OdontoMinas — desempenho de atendimento</p>
+            <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — desempenho de atendimento</p>
           </div>
           <FiltroPeriodo ativo={periodo} />
         </header>

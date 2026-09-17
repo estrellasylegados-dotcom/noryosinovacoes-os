@@ -107,15 +107,17 @@ export async function excluirMensagemSalva(clinicaId: string, id: string): Promi
   return { ok: true, id };
 }
 
-export type DadosVariaveis = { nome?: string | null; telefone?: string | null };
+/** `clinicaNome` (Fase 3, branding dinâmico) — opcional: quem não passa continua recebendo `{clinica_nome}` resolvido pra vazio, nunca "undefined". */
+export type DadosVariaveis = { nome?: string | null; telefone?: string | null; clinicaNome?: string | null };
 
 const FALLBACK_SEM_NOME = "";
 
 /**
- * Nunca deixa `{nome}`/`{primeiro_nome}` virar "undefined" quando o paciente
- * não tem nome cadastrado: substitui por vazio e limpa a pontuação órfã que
- * sobra (", !" → "!", " ," → ","), pra funcionar com o template escrito do
- * jeito que a recepção quiser ("Oi {primeiro_nome}, tudo bem?", "Oi, {nome}!"...).
+ * Nunca deixa `{nome}`/`{primeiro_nome}`/`{clinica_nome}` virar "undefined"
+ * quando o dado não está disponível: substitui por vazio e limpa a pontuação
+ * órfã que sobra (", !" → "!", " ," → ","), pra funcionar com o template
+ * escrito do jeito que a recepção quiser ("Oi {primeiro_nome}, tudo bem?",
+ * "Aqui é da {clinica_nome}!"...).
  */
 export function resolverVariaveis(texto: string, dados: DadosVariaveis): string {
   const nome = dados.nome?.trim() || null;
@@ -123,6 +125,7 @@ export function resolverVariaveis(texto: string, dados: DadosVariaveis): string 
     "{nome}": nome ?? FALLBACK_SEM_NOME,
     "{primeiro_nome}": nome ? primeiroNome(nome) : FALLBACK_SEM_NOME,
     "{telefone}": dados.telefone?.trim() ?? "",
+    "{clinica_nome}": dados.clinicaNome?.trim() || FALLBACK_SEM_NOME,
   };
 
   const resolvido = Object.entries(substituicoes).reduce(

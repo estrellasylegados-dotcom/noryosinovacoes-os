@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { buscarClinicaAtual } from "@/lib/clinica";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,10 +13,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "CRM OdontoMinas",
-  description: "Captação e relacionamento — OdontoMinas",
-};
+/**
+ * `generateMetadata` (não `export const metadata` estático) — Fase 3,
+ * branding dinâmico: o nome da clínica só é conhecido em runtime
+ * (`buscarClinicaAtual`, cacheado em processo). Fallback genérico se a busca
+ * falhar (Supabase fora do ar) — nunca quebra o render da página por causa
+ * do título.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const clinica = await buscarClinicaAtual();
+  const nome = clinica?.nome ?? "clínica";
+  return {
+    title: `CRM ${nome}`,
+    description: `Captação e relacionamento — ${nome}`,
+  };
+}
 
 /**
  * Aplica a classe `dark` antes do 1º paint, direto do localStorage — sem

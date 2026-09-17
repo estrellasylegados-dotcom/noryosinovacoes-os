@@ -44,6 +44,33 @@ export async function getClinicaId(): Promise<string | null> {
   return cachedId;
 }
 
+export type ClinicaAtual = { id: string; nome: string; slug: string };
+
+// Mesmo critério de `cachedId` acima: só sucesso fica em cache (nome de
+// clínica não muda em runtime, mas uma falha transiente do Supabase não pode
+// travar o processo com "sem nome" pra sempre).
+let cachedClinicaAtual: ClinicaAtual | null = null;
+
+/**
+ * Fase 3 (white-label — ver _memoria/decisoes.md): fonte única do nome de
+ * exibição da clínica, pra `resolverVariaveis`/`resolverVariaveisFluxo`
+ * (`{clinica_nome}`) e pras poucas telas que hoje têm "OdontoMinas" fixo.
+ * Não é multi-tenant runtime — só elimina o hardcode, mesma arquitetura
+ * "path B" de `getClinicaId`.
+ */
+export async function buscarClinicaAtual(): Promise<ClinicaAtual | null> {
+  if (cachedClinicaAtual) return cachedClinicaAtual;
+
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase.from("clinicas").select("id, nome, slug").eq("slug", CLINICA_SLUG).maybeSingle();
+  if (error || !data) return null;
+
+  cachedClinicaAtual = { id: data.id as string, nome: data.nome as string, slug: data.slug as string };
+  return cachedClinicaAtual;
+}
+
 /**
  * Apelido interno da instância de WhatsApp (sidebar + página Conexão) —
  * nunca é enviado pra Evolution API, é só rótulo local (migração

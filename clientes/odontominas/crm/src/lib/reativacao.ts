@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
+import { buscarClinicaAtual } from "@/lib/clinica";
 
 /**
  * Fase 5 do CRM: automação de reativação de paciente inativo. Regra de
@@ -51,11 +52,16 @@ export function primeiroNome(nomeCompleto: string): string {
   return nomeCompleto.trim().split(/\s+/)[0];
 }
 
-/** Sem promessa de resultado, sem superlativo — check-in simples (Resolução CFO-196/2019, ver contexto.md). */
-export function montarMensagemReativacao(pacienteNome: string | null): string {
+/**
+ * Sem promessa de resultado, sem superlativo — check-in simples (Resolução
+ * CFO-196/2019, ver contexto.md). `clinicaNome` tem valor padrão pra não
+ * quebrar chamador que ainda não busca a clínica (branding dinâmico, Fase 3
+ * — ver _memoria/decisoes.md); `executarReativacao` sempre passa o nome real.
+ */
+export function montarMensagemReativacao(pacienteNome: string | null, clinicaNome: string = "nossa clínica"): string {
   const saudacao = pacienteNome ? `Oi, ${primeiroNome(pacienteNome)}!` : "Oi!";
   return (
-    `${saudacao} Aqui é da OdontoMinas 😊 Faz um tempo que a gente não conversa — ` +
+    `${saudacao} Aqui é da ${clinicaNome} 😊 Faz um tempo que a gente não conversa — ` +
     `ainda posso te ajudar com alguma coisa? Se quiser retomar, é só responder por aqui.`
   );
 }
@@ -97,8 +103,11 @@ export async function executarReativacao(clinicaId: string): Promise<ResultadoRe
   const detalhes: ResultadoReativacao["detalhes"] = [];
   let enviados = 0;
 
+  const clinicaAtual = await buscarClinicaAtual();
+  const clinicaNome = clinicaAtual?.nome ?? "nossa clínica";
+
   for (const candidato of candidatos) {
-    const texto = montarMensagemReativacao(candidato.pacienteNome);
+    const texto = montarMensagemReativacao(candidato.pacienteNome, clinicaNome);
     const envio = await enviarMensagemWhatsapp(candidato.telefone, texto);
 
     if (envio.ok) {

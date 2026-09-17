@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { contarPorStatus, listarConversas } from "@/lib/conversas";
 import { isStatusValido, LIMITE_ESPERA_MS, type StatusConversa } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
@@ -29,9 +29,10 @@ export default async function PainelPage({
     );
   }
 
-  const [conversas, contagens] = await Promise.all([
+  const [conversas, contagens, clinicaAtual] = await Promise.all([
     listarConversas(clinicaId, filtroStatus),
     contarPorStatus(clinicaId),
+    buscarClinicaAtual(),
   ]);
   const total = Object.values(contagens).reduce((a, b) => a + b, 0);
 
@@ -40,7 +41,7 @@ export default async function PainelPage({
       <div className="mx-auto max-w-5xl">
         <header className="mb-6">
           <h1 className="text-xl font-semibold text-neutral-900">Painel de Atendimento</h1>
-          <p className="text-sm text-neutral-500">OdontoMinas — conversas do WhatsApp</p>
+          <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — conversas do WhatsApp</p>
         </header>
 
         <div className="mb-6">

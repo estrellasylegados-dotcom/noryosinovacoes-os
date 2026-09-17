@@ -81,4 +81,13 @@ describe("montarMensagemReativacao", () => {
       expect(texto).not.toContain(termo);
     }
   });
+
+  it("usa o nome da clínica passado, nunca um hardcode (Fase 3, branding dinâmico)", () => {
+    expect(montarMensagemReativacao("Ana", "Sorriso Feliz")).toContain("Aqui é da Sorriso Feliz");
+    expect(montarMensagemReativacao("Ana", "Sorriso Feliz")).not.toContain("OdontoMinas");
+  });
+
+  it("sem clínica informada, cai num fallback genérico (nunca quebra o chamador antigo)", () => {
+    expect(montarMensagemReativacao("Ana")).toContain("Aqui é da nossa clínica");
+  });
 });

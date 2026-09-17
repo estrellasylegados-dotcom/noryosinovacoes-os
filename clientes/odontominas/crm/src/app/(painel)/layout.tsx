@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatusConexao } from "@/lib/evolution-status";
-import { buscarApelidoInstancia, getClinicaId } from "@/lib/clinica";
+import { buscarApelidoInstancia, buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { contarNaoLidas } from "@/lib/chat";
 import { buscarNotificacoes } from "@/lib/notificacoes";
 import { formatTelefone } from "@/lib/tempo";
@@ -27,10 +27,11 @@ export default async function PainelLayout({ children }: { children: ReactNode }
   if (!sessao) redirect("/login");
 
   const clinicaId = await getClinicaId();
-  const [naoLidas, notificacoes, apelidoInstancia] = await Promise.all([
+  const [naoLidas, notificacoes, apelidoInstancia, clinicaAtual] = await Promise.all([
     clinicaId ? contarNaoLidas(clinicaId) : Promise.resolve(0),
     clinicaId ? buscarNotificacoes(clinicaId) : Promise.resolve([]),
     clinicaId ? buscarApelidoInstancia(clinicaId) : Promise.resolve(null),
+    buscarClinicaAtual(),
   ]);
 
   return (
@@ -39,7 +40,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
       <aside className="flex flex-col gap-4 border-b border-neutral-200 bg-white px-4 py-4 sm:h-screen sm:w-60 sm:shrink-0 sm:justify-between sm:border-b-0 sm:border-r sm:px-5 sm:py-6">
         <div>
           <div className="mb-5">
-            <p className="text-sm font-semibold tracking-tight text-teal-800">OdontoMinas</p>
+            <p className="text-sm font-semibold tracking-tight text-teal-800">{clinicaAtual?.nome ?? "Clínica"}</p>
             <p className="text-xs text-neutral-400">CRM · Atendimento</p>
           </div>
           <SidebarNav papel={sessao.papel} naoLidas={naoLidas} />

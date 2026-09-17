@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatsAtendentes } from "@/lib/equipe";
 import { formatDataHora, formatDuracao } from "@/lib/tempo";
@@ -24,14 +24,14 @@ export default async function EquipePage() {
     );
   }
 
-  const stats = await buscarStatsAtendentes(clinicaId);
+  const [stats, clinicaAtual] = await Promise.all([buscarStatsAtendentes(clinicaId), buscarClinicaAtual()]);
 
   return (
     <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6">
           <h1 className="text-xl font-semibold text-neutral-900">Equipe</h1>
-          <p className="text-sm text-neutral-500">OdontoMinas — atendimento por secretária</p>
+          <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — atendimento por secretária</p>
         </header>
 
         {stats.length === 0 ? (

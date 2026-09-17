@@ -29,4 +29,13 @@ describe("resolverVariaveis", () => {
     expect(texto.toLowerCase()).not.toContain("null");
     expect(texto.toLowerCase()).not.toContain("undefined");
   });
+
+  it("substitui {clinica_nome} (Fase 3, branding dinâmico)", () => {
+    expect(resolverVariaveis("Aqui é da {clinica_nome} 😊", { clinicaNome: "Sorriso Feliz" })).toBe("Aqui é da Sorriso Feliz 😊");
+  });
+
+  it("{clinica_nome} sem valor vira vazio, nunca 'undefined'", () => {
+    const texto = resolverVariaveis("Aqui é da {clinica_nome}!", {});
+    expect(texto.toLowerCase()).not.toContain("undefined");
+  });
 });
