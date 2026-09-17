@@ -7,6 +7,7 @@ import { listarCampanhas } from "@/lib/campanhas";
 import { LIMITE_ESPERA_MS, STATUS_CONFIG, labelStatus } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
 import { PacienteCampanhaOrigem } from "@/components/campanhas/PacienteCampanhaOrigem";
+import { PacienteDataNascimento } from "@/components/pacientes/PacienteDataNascimento";
 
 export const dynamic = "force-dynamic";
 
@@ -64,15 +65,16 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
           )}
         </header>
 
-        {sessao?.papel === "admin" && (
-          <div className="mb-6">
+        <div className="mb-6 space-y-2">
+          <PacienteDataNascimento pacienteId={ficha.id} dataNascimentoAtual={ficha.dataNascimento} />
+          {sessao?.papel === "admin" && (
             <PacienteCampanhaOrigem
               pacienteId={ficha.id}
               campanhaAtualId={ficha.campanhaId}
               campanhas={campanhas.map((c) => ({ id: c.id, nome: c.nome }))}
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {ficha.eventos.length > 0 && (
           <section className="mb-6">

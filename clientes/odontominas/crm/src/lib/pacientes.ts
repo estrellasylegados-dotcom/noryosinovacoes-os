@@ -26,6 +26,8 @@ export type FichaPaciente = {
   email: string | null;
   criadoEm: string;
   campanhaId: string | null;
+  /** `date` (YYYY-MM-DD) ou null — Fase 3, ver _memoria/decisoes.md. Nunca preenchido com dado falso. */
+  dataNascimento: string | null;
   conversa: {
     id: string;
     status: StatusConversa;
@@ -48,7 +50,7 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
 
   const { data: paciente, error: erroPaciente } = await supabase
     .from("pacientes")
-    .select("id, nome, telefone, email, created_at, campanha_id")
+    .select("id, nome, telefone, email, created_at, campanha_id, data_nascimento")
     .eq("id", pacienteId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -111,6 +113,7 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
     email: paciente.email as string | null,
     criadoEm: paciente.created_at as string,
     campanhaId: (paciente.campanha_id as string | null) ?? null,
+    dataNascimento: (paciente.data_nascimento as string | null) ?? null,
     conversa,
     mensagens,
     eventos,
@@ -167,5 +170,36 @@ export async function vincularCampanhaPaciente(
     }
   }
 
+  return { ok: true };
+}
+
+const FORMATO_DATA = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Fase 3 — edição direta na ficha (src/components/pacientes/
+ * PacienteDataNascimento.tsx). `null` limpa o campo (paciente sem data
+ * cadastrada ainda é estado válido, nunca obrigatório). Nunca aceita data no
+ * futuro — não tem como nascer amanhã.
+ */
+export async function atualizarDataNascimento(
+  clinicaId: string,
+  pacienteId: string,
+  dataNascimento: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  if (dataNascimento !== null) {
+    if (!FORMATO_DATA.test(dataNascimento)) return { ok: false, error: "formato_invalido" };
+    if (new Date(dataNascimento).getTime() > Date.now()) return { ok: false, error: "data_futura" };
+  }
+
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const { error } = await supabase
+    .from("pacientes")
+    .update({ data_nascimento: dataNascimento, updated_at: new Date().toISOString() })
+    .eq("id", pacienteId)
+    .eq("clinica_id", clinicaId);
+
+  if (error) return { ok: false, error: "persist_failed" };
   return { ok: true };
 }
