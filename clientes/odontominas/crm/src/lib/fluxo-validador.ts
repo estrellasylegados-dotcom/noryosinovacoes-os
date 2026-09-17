@@ -9,9 +9,15 @@ import { encontrarNoInicio, type FluxoDefinicao, type NoFluxo } from "@/lib/flux
  * negócio compartilhada não mora na UI).
  *
  * Erros bloqueiam publicação; avisos não.
+ *
+ * `mensagem` é o mesmo texto livre de sempre (log/auditoria); `noIds` é
+ * metadado adicionado pro editor visual (Fase 2b/3) destacar no canvas
+ * exatamente quais nós um problema envolve, sem precisar fazer parsing do
+ * texto — alguns problemas (ciclo, início duplicado) envolvem mais de 1 nó.
  */
 
-export type ResultadoValidacaoGrafo = { erros: string[]; avisos: string[] };
+export type ProblemaGrafo = { noIds: string[]; mensagem: string };
+export type ResultadoValidacaoGrafo = { erros: ProblemaGrafo[]; avisos: ProblemaGrafo[] };
 
 /** Ids que este nó pode levar a seguir — usado tanto pra alcançabilidade quanto pra detecção de ciclo. */
 function proximosDe(no: NoFluxo): string[] {
@@ -37,20 +43,26 @@ function ehNoDeGuarda(no: NoFluxo): boolean {
 }
 
 export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo {
-  const erros: string[] = [];
-  const avisos: string[] = [];
+  const erros: ProblemaGrafo[] = [];
+  const avisos: ProblemaGrafo[] = [];
 
   const porId = new Map(definicao.nodes.map((n) => [n.id, n] as const));
 
   // 1. Início único.
   const inicios = definicao.nodes.filter((n) => n.tipo === "inicio");
-  if (inicios.length === 0) erros.push("nenhum nó de início encontrado");
-  else if (inicios.length > 1) erros.push(`mais de um nó de início: ${inicios.map((n) => n.id).join(", ")}`);
+  if (inicios.length === 0) {
+    erros.push({ noIds: [], mensagem: "nenhum nó de início encontrado" });
+  } else if (inicios.length > 1) {
+    const ids = inicios.map((n) => n.id);
+    erros.push({ noIds: ids, mensagem: `mais de um nó de início: ${ids.join(", ")}` });
+  }
 
   // 2. Toda referência aponta pra nó existente.
   for (const no of definicao.nodes) {
     for (const alvo of proximosDe(no)) {
-      if (!porId.has(alvo)) erros.push(`nó ${no.id}: aponta pra nó inexistente "${alvo}"`);
+      if (!porId.has(alvo)) {
+        erros.push({ noIds: [no.id], mensagem: `nó ${no.id}: aponta pra nó inexistente "${alvo}"` });
+      }
     }
   }
   if (erros.length > 0) {
@@ -73,12 +85,16 @@ export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo
     for (const alvo of proximosDe(atual)) pilha.push(alvo);
   }
   for (const no of definicao.nodes) {
-    if (!alcancados.has(no.id)) avisos.push(`nó ${no.id}: inalcançável a partir do início`);
+    if (!alcancados.has(no.id)) {
+      avisos.push({ noIds: [no.id], mensagem: `nó ${no.id}: inalcançável a partir do início` });
+    }
   }
 
   // 4. Ao menos um "finalizar" alcançável (caminho que sempre termina em algum ponto).
-  const temFinalizarAlcancavel = definicao.nodes.some((n) => n.tipo === "finalizar" && alcancados.has(n.id));
-  if (!temFinalizarAlcancavel) avisos.push("nenhum nó de finalizar alcançável — este fluxo pode nunca terminar");
+  const finalizaresAlcancados = definicao.nodes.filter((n) => n.tipo === "finalizar" && alcancados.has(n.id));
+  if (finalizaresAlcancados.length === 0) {
+    avisos.push({ noIds: [], mensagem: "nenhum nó de finalizar alcançável — este fluxo pode nunca terminar" });
+  }
 
   // 5. Ciclo sem nó de guarda (espera/menu) — DFS com pilha de recursão; ao achar
   // um back-edge, o trecho da pilha entre o ancestral e o nó atual É o ciclo.
@@ -105,7 +121,10 @@ export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo
             });
             if (!temGuarda) {
               ciclosSemGuardaReportados.add(chave);
-              erros.push(`loop sem espera/menu de guarda: ${ciclo.join(" → ")} → ${alvo}`);
+              erros.push({
+                noIds: ciclo,
+                mensagem: `loop sem espera/menu de guarda: ${ciclo.join(" → ")} → ${alvo}`,
+              });
             }
           }
         } else if (situacao !== "concluido") {

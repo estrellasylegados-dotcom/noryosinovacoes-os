@@ -21,10 +21,10 @@ describe("validarGrafo", () => {
 
   it("sem nó de início: erro", () => {
     const resultado = validarGrafo(def([{ id: "fim", tipo: "finalizar" }]));
-    expect(resultado.erros).toEqual(["nenhum nó de início encontrado"]);
+    expect(resultado.erros).toEqual([{ noIds: [], mensagem: "nenhum nó de início encontrado" }]);
   });
 
-  it("mais de um nó de início: erro nomeando os dois", () => {
+  it("mais de um nó de início: erro nomeando os dois, noIds com ambos", () => {
     const resultado = validarGrafo(
       def([
         { id: "i1", tipo: "inicio", proximo: "fim" },
@@ -32,16 +32,19 @@ describe("validarGrafo", () => {
         { id: "fim", tipo: "finalizar" },
       ])
     );
-    expect(resultado.erros[0]).toContain("i1, i2");
+    expect(resultado.erros[0].mensagem).toContain("i1, i2");
+    expect(resultado.erros[0].noIds).toEqual(["i1", "i2"]);
   });
 
-  it("referência pra nó inexistente: erro, sem tentar mais análise", () => {
+  it("referência pra nó inexistente: erro, sem tentar mais análise, noIds aponta o nó de origem", () => {
     const resultado = validarGrafo(def([{ id: "inicio", tipo: "inicio", proximo: "nao_existe" }]));
-    expect(resultado.erros).toEqual(['nó inicio: aponta pra nó inexistente "nao_existe"']);
+    expect(resultado.erros).toEqual([
+      { noIds: ["inicio"], mensagem: 'nó inicio: aponta pra nó inexistente "nao_existe"' },
+    ]);
     expect(resultado.avisos).toEqual([]);
   });
 
-  it("nó inalcançável a partir do início: aviso, não erro", () => {
+  it("nó inalcançável a partir do início: aviso, não erro, noIds aponta o nó solto", () => {
     const resultado = validarGrafo(
       def([
         { id: "inicio", tipo: "inicio", proximo: "fim" },
@@ -50,7 +53,7 @@ describe("validarGrafo", () => {
       ])
     );
     expect(resultado.erros).toEqual([]);
-    expect(resultado.avisos).toContain("nó solto: inalcançável a partir do início");
+    expect(resultado.avisos).toContainEqual({ noIds: ["solto"], mensagem: "nó solto: inalcançável a partir do início" });
   });
 
   it("nenhum finalizar alcançável: aviso de caminho sem fim", () => {
@@ -60,10 +63,13 @@ describe("validarGrafo", () => {
         { id: "espera", tipo: "espera", duracaoSegundos: 60, proximo: "espera" },
       ])
     );
-    expect(resultado.avisos).toContain("nenhum nó de finalizar alcançável — este fluxo pode nunca terminar");
+    expect(resultado.avisos).toContainEqual({
+      noIds: [],
+      mensagem: "nenhum nó de finalizar alcançável — este fluxo pode nunca terminar",
+    });
   });
 
-  it("loop de mensagem→condição→mensagem sem espera/menu: erro (loop perigoso)", () => {
+  it("loop de mensagem→condição→mensagem sem espera/menu: erro (loop perigoso), noIds com o ciclo", () => {
     const resultado = validarGrafo(
       def([
         { id: "inicio", tipo: "inicio", proximo: "msg" },
@@ -72,7 +78,9 @@ describe("validarGrafo", () => {
         { id: "fim", tipo: "finalizar" },
       ])
     );
-    expect(resultado.erros.some((e) => e.includes("loop sem espera/menu"))).toBe(true);
+    const erroLoop = resultado.erros.find((e) => e.mensagem.includes("loop sem espera/menu"));
+    expect(erroLoop).toBeDefined();
+    expect(erroLoop?.noIds.sort()).toEqual(["cond", "msg"]);
   });
 
   it("loop passando por um nó de espera: permitido, sem erro de loop", () => {
@@ -84,7 +92,7 @@ describe("validarGrafo", () => {
         { id: "fim", tipo: "finalizar" },
       ])
     );
-    expect(resultado.erros.some((e) => e.includes("loop"))).toBe(false);
+    expect(resultado.erros.some((e) => e.mensagem.includes("loop"))).toBe(false);
   });
 
   it("loop passando por um nó de menu: permitido, sem erro de loop", () => {
@@ -103,10 +111,10 @@ describe("validarGrafo", () => {
         { id: "fim", tipo: "finalizar" },
       ])
     );
-    expect(resultado.erros.some((e) => e.includes("loop"))).toBe(false);
+    expect(resultado.erros.some((e) => e.mensagem.includes("loop"))).toBe(false);
   });
 
-  it("auto-loop (nó apontando pra si mesmo) sem guarda: erro", () => {
+  it("auto-loop (nó apontando pra si mesmo) sem guarda: erro, noIds com o próprio nó", () => {
     const resultado = validarGrafo(
       def([
         { id: "inicio", tipo: "inicio", proximo: "cond" },
@@ -114,6 +122,8 @@ describe("validarGrafo", () => {
         { id: "fim", tipo: "finalizar" },
       ])
     );
-    expect(resultado.erros.some((e) => e.includes("loop"))).toBe(true);
+    const erroLoop = resultado.erros.find((e) => e.mensagem.includes("loop"));
+    expect(erroLoop).toBeDefined();
+    expect(erroLoop?.noIds).toEqual(["cond"]);
   });
 });

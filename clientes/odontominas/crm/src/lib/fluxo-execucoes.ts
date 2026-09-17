@@ -390,7 +390,13 @@ export async function iniciarExecucaoFluxo(
   gatilho: GatilhoExecucao,
   podeInterromperAgenteIa: boolean,
   isTest = false,
-  conversaEraNova = false
+  conversaEraNova = false,
+  // Só tem efeito quando isTest===true (ver checagem abaixo) — permite ao
+  // editor visual (Fase 2b/3) testar o RASCUNHO (fluxo_versoes.status=
+  // 'rascunho'), não só a versão publicada. Uma execução real nunca pode
+  // rodar uma versão não publicada: estruturalmente impossível, porque o
+  // parâmetro é ignorado sempre que isTest é false.
+  versaoIdForcada: string | null = null
 ): Promise<{ ok: boolean; execucaoId?: string; error?: string }> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
@@ -402,15 +408,18 @@ export async function iniciarExecucaoFluxo(
     .eq("clinica_id", clinicaId)
     .maybeSingle();
   const donoAtual = (conversa?.dono_conversa as string | null) ?? "humano";
-  if (donoAtual === "humano" && !conversaEraNova) return { ok: false, error: "conversa_com_humano" };
+  // `&& !isTest`: sem isso, o contato de teste do editor fica bloqueado a
+  // partir do 2º teste — toda execução termina devolvendo dono_conversa pra
+  // 'humano' (correto em produção), e essa conversa não é "nova", então o
+  // teste seguinte seria sempre recusado por essa guarda. A guarda em si
+  // (impedir iniciar fluxo sobre atendimento humano genuinamente ativo)
+  // continua valendo à risca pra execução real (isTest=false).
+  if (donoAtual === "humano" && !conversaEraNova && !isTest) return { ok: false, error: "conversa_com_humano" };
   if (donoAtual === "agente_ia" && !podeInterromperAgenteIa) return { ok: false, error: "agente_ia_ativo" };
 
-  const { data: versao } = await supabase
-    .from("fluxo_versoes")
-    .select("id, definicao")
-    .eq("fluxo_id", fluxoId)
-    .eq("status", "publicada")
-    .maybeSingle();
+  const { data: versao } = await (isTest && versaoIdForcada
+    ? supabase.from("fluxo_versoes").select("id, definicao").eq("id", versaoIdForcada).eq("fluxo_id", fluxoId).maybeSingle()
+    : supabase.from("fluxo_versoes").select("id, definicao").eq("fluxo_id", fluxoId).eq("status", "publicada").maybeSingle());
   if (!versao) return { ok: false, error: "sem_versao_publicada" };
 
   const forma = validarFormaDefinicao(versao.definicao);

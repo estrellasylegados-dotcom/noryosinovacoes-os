@@ -1,0 +1,36 @@
+import { notFound, redirect } from "next/navigation";
+import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { getClinicaId } from "@/lib/clinica";
+import { buscarFluxoParaEditor } from "@/lib/fluxo-versoes";
+import { listarExecucoesFluxo } from "@/lib/fluxo-execucoes-consulta";
+import { getControleOdontoConfig } from "@/lib/controle-odonto/config";
+import { FluxoEditor } from "@/components/fluxos/FluxoEditor";
+
+export const dynamic = "force-dynamic";
+
+export default async function EditarFluxoPage({ params }: { params: Promise<{ id: string }> }) {
+  const sessao = await getSessaoAtual();
+  if (sessao?.papel !== "admin") redirect("/");
+
+  const clinicaId = await getClinicaId();
+  if (!clinicaId) {
+    return <main className="px-4 py-8 sm:px-8">Não consegui conectar ao banco agora.</main>;
+  }
+
+  const { id } = await params;
+  const fluxo = await buscarFluxoParaEditor(clinicaId, id);
+  if (!fluxo) notFound();
+
+  const [execucoesTeste, controleOdontoConfig] = await Promise.all([
+    listarExecucoesFluxo(clinicaId, id, { isTest: true, limit: 5 }),
+    Promise.resolve(getControleOdontoConfig()),
+  ]);
+
+  return (
+    <FluxoEditor
+      fluxo={fluxo}
+      execucoesTesteIniciais={execucoesTeste}
+      controleOdontoConfigurado={controleOdontoConfig.enabled}
+    />
+  );
+}
