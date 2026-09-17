@@ -1,5 +1,62 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-17, Fluxo de Conversa — Ações CRM + Humano/IA, paleta ampliada)
+
+**2 fatias novas da ampliação da paleta do editor, seguindo a mesma disciplina das fases
+anteriores** (typecheck/lint/build/testes a cada corte, sem tocar produção real). Não são novas
+"fases" numeradas do plano original de 6 — são a continuação natural depois da Fase 2b/3, seguindo
+as 4 categorias extras da visão original (`crm/docs/fluxo-conversa-visao.md`): Odonto, Ações CRM,
+Humano, IA, Integração.
+
+**Ações CRM (5 blocos): adicionar/remover etiqueta, mover no funil, marcar prioridade, atribuir
+atendente.** Auditoria de `src/lib/controle-odonto/capabilities.ts` confirmou que a categoria Odonto
+está 100% bloqueada — as 7 capabilities do ControleODONTO estão todas `false`, sem meio-termo — e
+que Ações CRM/Humano/IA não dependem disso, só escrevem em tabelas que o CRM já usa em produção.
+Novos tipos em `fluxo-tipos.ts` (união discriminada), campo `acaoCrm` em `fluxo-motor.ts` (lógica
+pura), aplicado de verdade em `fluxo-execucoes.ts`. Achado evitado na implementação: reusar
+`chat.ts:atualizarConversaChat` pra prioridade/atendente criaria um ciclo de import (`chat.ts` já
+importa `transferirExecucaoAtivaParaHumano` de `fluxo-execucoes.ts`) — escrito direto em `conversas`
+em vez disso, ganhando de graça o Pixel de Conversão/evento de Campanha já ligados a
+`atualizarStatus`. Sem migration nenhuma (nenhuma coluna nova). typecheck/lint/build limpos; 449
+testes (19 novos). Commit `c3d04e8`.
+
+**Humano + IA (4 dos 8 blocos da visão original): transferir p/ humano, criar alerta interno,
+pausar automação, iniciar agente de IA.** Auditoria de `dono-conversa.ts`/`agentes.ts` achou que
+"Enviar contexto pra agente"/"Retomar fluxo após IA"/"Encerrar IA" pressupõem um protocolo de
+handoff `agentes.ts` ↔ motor do fluxo que não existe — enquanto um nó do fluxo executa,
+`dono_conversa` já é `'fluxo'` (invariante do próprio `iniciarExecucaoFluxo`), não há "IA ativa
+durante um passo" pra encerrar ou retomar. Rafael confirmou o corte pros 4 blocos seguros; os outros
+3 ficam documentados como fase separada, a tratar com protocolo de retorno IA→motor, preservação de
+contexto, idempotência e concorrência.
+
+2 bugs reais achados e corrigidos durante a implementação, antes de qualquer deploy:
+1. O `liberarControle` genérico que já roda ao terminar qualquer execução (`fluxo-execucoes.ts`)
+   sempre devolvia a conversa pro humano — sem ajuste, ele stompearia a entrega pro agente um
+   instante depois de `iniciar_agente_ia` acontecer. Corrigido: `aplicarAcaoCrm` devolve se ela
+   mesma já transferiu o dono (só `true` nesse caso, com sucesso), e a terminação pula o
+   `liberarControle` quando for `true` — se o agente não existir ou a atribuição falhar, cai no
+   `liberarControle` normal (nunca deixa `dono_conversa='fluxo'` com execução encerrada).
+2. A checagem "algum finalizar alcançável" do validador de grafo (`fluxo-validador.ts`) só olhava
+   `tipo==='finalizar'`, o que geraria aviso falso ("este fluxo pode nunca terminar") em todo fluxo
+   terminando por `transferir_humano`/`iniciar_agente_ia`. Corrigido com um novo helper
+   `ehNoTerminal` cobrindo os 3 tipos terminais.
+
+Sem migration. typecheck/lint/build limpos; 464 testes (15 novos). Commit `0fad463`.
+
+**Categoria Integração (Webhook/Chamada API/Consultar sistema/Aguardar callback) pausada por decisão
+do Rafael** — diferente das duas fatias acima (que só religaram coisa que já existia com
+segurança), Integração precisa de um cofre de credenciais novo (schema/migration — não existe hoje
+nenhum genérico pra integrações de terceiros) e abre risco real de SSRF (o servidor passaria a
+chamar URLs configuradas dentro de um fluxo). Fica documentada como próxima fase específica, a
+desenhar com calma.
+
+**Nada disso foi aplicado em produção real**: 3 commits locais nesta sessão (o rename do kit e as 2
+fatias), ainda não sincronizados com o GitHub nem deployados no Railway. O teste robusto ponta a
+ponta (navegador real + WhatsApp real — criação no editor, publicação, execução pelo motor, Ações
+CRM, Humano+IA, waits/condições, persistência após restart, idempotência, ausência de duplicidade,
+opt-out, tratamento de erro, logs) continua reservado pro fim de todas as fases da ampliação da
+paleta.
+
 ## Onde está (2026-09-17, Fluxo de Conversa — Fase 2b/3 completa, editor visual em produção)
 
 **Fase 2b/3 (editor visual do Fluxo de Conversa) construída, deployada e validada em produção com
@@ -743,13 +800,24 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   e corrigido (polling do painel "Testar" preso por closure desatualizado); teste real de ponta a
   ponta feito pelo próprio editor (criar fluxo, arrastar bloco, conectar, testar) — mensagem
   confirmada chegando no WhatsApp. Ver "Onde está" no topo.
+- [x] Fluxo de Conversa — paleta Ações CRM (5 blocos: etiqueta, funil, prioridade, atendente):
+  construída (2026-09-17), sem migration, typecheck/lint/build limpos, 449 testes (19 novos).
+  Commit local `c3d04e8`, ainda não sincronizado nem deployado. Ver "Onde está" no topo.
+- [x] Fluxo de Conversa — paleta Humano + IA (4 dos 8 blocos: transferir humano, alerta interno,
+  pausar automação, iniciar agente de IA): construída (2026-09-17), sem migration,
+  typecheck/lint/build limpos, 464 testes (15 novos), 2 bugs reais achados e corrigidos (corrida do
+  `liberarControle`, aviso falso "sem finalizar"). Commit local `0fad463`, ainda não sincronizado
+  nem deployado. Ver "Onde está" no topo.
 - [ ] Fluxo de Conversa — reconstrução do módulo "Ferramentas → Fluxo de Conversa" como motor de
   automação conversacional determinístico (infraestrutura crítica), fatiada em 6 fases com
   checkpoint do Rafael entre elas — decisão completa em `_memoria/decisoes.md` (2026-09-16). Fases
-  0, 1, 2a e 2b/3 completas, deployadas e validadas com envio real (2026-09-17). Falta apagar os 2
-  fluxos de teste "TESTE - Fluxo Odonto" (ambos arquivados, não apagados) e os dados vinculados
-  antes da produção real com clientes — mesma pendência de Disparos/Campanhas, ver `agora.md`.
-  Próximo passo: ampliar a paleta (blocos Odonto reais) ou Fase 6 (demo), sem data definida ainda.
+  0, 1, 2a e 2b/3 completas, deployadas e validadas com envio real (2026-09-17), mais as fatias de
+  Ações CRM e Humano+IA da ampliação da paleta (2026-09-17, commitadas localmente, não deployadas).
+  Odonto segue 100% bloqueado (ControleODONTO sem capability validada); Integração pausada (cofre
+  de credenciais + mitigação de SSRF, fase separada). Falta apagar os 2 fluxos de teste "TESTE -
+  Fluxo Odonto" (ambos arquivados, não apagados) e os dados vinculados antes da produção real com
+  clientes — mesma pendência de Disparos/Campanhas, ver `agora.md`. Próximo passo: seguir ampliando
+  a paleta (Integração) ou Fase 6 (demo), sem data definida ainda.
 
 ## Plano técnico do CRM (2026-09-14)
 

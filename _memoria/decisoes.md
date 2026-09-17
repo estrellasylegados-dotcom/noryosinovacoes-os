@@ -478,3 +478,37 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   antecipava "React Flow ou similar" pra este momento. O motor (`fluxo-motor.ts`/`fluxo-tipos.ts`)
   não muda: arestas do xyflow são sempre derivadas dos 6 tipos de `NoFluxo` existentes, nunca uma
   fonte de verdade paralela.
+- **2026-09-17** (Rafael): `.ratosos` rebatizado pra `.noryosinovacoes` de vez (Rafael já tinha
+  renomeado o arquivo manualmente; a decisão foi se as referências do kit deveriam seguir esse nome
+  ou reverter). Por quê: alinhar o marcador de versão do kit ao nome que o próprio sistema já usa
+  (`OS_noryosinovacoes_OS`), em vez do nome genérico antigo. Atualizadas as 3 referências ativas
+  (`AGENTS.md`, `sistema/scripts/conferir-kit.sh`, `.claude/skills/setup/SKILL.md`);
+  `sistema/changelog/` ficou intocado de propósito — é o gabarito genérico do kit, sobrescrito a
+  cada atualização futura, e o próprio `COMO-ATUALIZAR.md` já instrui o agente a adaptar aos nomes
+  locais em vez de assumir `.ratosos` fixo. Commit `2fff7ed`.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: ampliar a paleta do editor do
+  Fluxo de Conversa começando pela categoria Ações CRM (adicionar/remover etiqueta, mover no funil,
+  marcar prioridade, atribuir atendente), não por Odonto. Por quê: auditoria de
+  `src/lib/controle-odonto/capabilities.ts` confirmou que as 7 capabilities do ControleODONTO estão
+  100% em `false` — nenhuma validada contra API real, sem meio-termo possível — enquanto Ações
+  CRM/Humano/IA (as outras 3 categorias da visão original em `crm/docs/fluxo-conversa-visao.md`) só
+  dependem de tabelas que o CRM já usa em produção. Construída sem migration. Commit `c3d04e8`.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: 2ª fatia da ampliação da paleta —
+  Humano + IA, só com 4 dos 8 blocos da visão original (transferir p/ humano, criar alerta interno,
+  pausar automação, iniciar agente de IA). Por quê: "Enviar contexto pra agente"/"Retomar fluxo após
+  IA"/"Encerrar IA" pressupõem um protocolo de handoff `agentes.ts` ↔ motor do fluxo que não existe —
+  enquanto um nó do fluxo executa, `dono_conversa` já é `'fluxo'` (invariante de
+  `iniciarExecucaoFluxo`), não há "IA ativa durante um passo" pra encerrar ou retomar. Rafael
+  confirmou o corte; os 3 blocos de fora ficam documentados como fase separada (protocolo de
+  retorno IA→motor, contexto, idempotência, concorrência). 2 bugs reais achados e corrigidos antes
+  de qualquer deploy: `liberarControle` genérico stompearia a entrega pro agente logo após
+  `iniciar_agente_ia` (corrigido em `fluxo-execucoes.ts`); aviso falso "sem finalizar alcançável" em
+  fluxo terminando por `transferir_humano`/`iniciar_agente_ia` (corrigido em `fluxo-validador.ts`
+  com o helper `ehNoTerminal`). Sem migration. Commit `0fad463`.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: categoria Integração (Webhook/
+  Chamada API/Consultar sistema/Aguardar callback) pausada, não entra nesta rodada de ampliação da
+  paleta. Por quê: diferente de Ações CRM e Humano+IA (que só religaram coisa que já existia com
+  segurança), Integração precisa de um cofre de credenciais novo (schema/migration — não existe hoje
+  nenhum genérico pra integrações de terceiros) e abre risco real de SSRF (o servidor passaria a
+  chamar URLs configuradas dentro de um fluxo). Fica documentada como próxima fase específica, a
+  desenhar com calma.
