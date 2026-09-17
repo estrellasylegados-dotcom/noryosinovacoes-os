@@ -15,14 +15,23 @@ import { validarFormaDefinicao } from "@/lib/fluxo-tipos";
 import type { NoCondicao, NoMenu } from "@/lib/fluxo-tipos";
 
 describe("criarNoPadrao", () => {
-  it.each(["inicio", "mensagem", "espera", "menu", "condicao", "finalizar"] as const)(
-    "tipo %s nasce sintaticamente válido (passa validarFormaDefinicao)",
-    (tipo) => {
-      const no = criarNoPadrao(tipo, "novo");
-      const resultado = validarFormaDefinicao({ nodes: [no], edges: [], config: {} });
-      expect(resultado.ok).toBe(true);
-    }
-  );
+  it.each([
+    "inicio",
+    "mensagem",
+    "espera",
+    "menu",
+    "condicao",
+    "finalizar",
+    "adicionar_etiqueta",
+    "remover_etiqueta",
+    "mudar_status",
+    "marcar_prioridade",
+    "atribuir_atendente",
+  ] as const)("tipo %s nasce sintaticamente válido (passa validarFormaDefinicao)", (tipo) => {
+    const no = criarNoPadrao(tipo, "novo");
+    const resultado = validarFormaDefinicao({ nodes: [no], edges: [], config: {} });
+    expect(resultado.ok).toBe(true);
+  });
 
   it("nasce auto-referenciado quando tem destino", () => {
     expect(criarNoPadrao("mensagem", "m1")).toMatchObject({ proximo: "m1" });
@@ -30,6 +39,14 @@ describe("criarNoPadrao", () => {
     const cond = criarNoPadrao("condicao", "c1") as NoCondicao;
     expect(cond.seVerdadeiro).toBe("c1");
     expect(cond.seFalso).toBe("c1");
+  });
+
+  it("Ações CRM nascem auto-referenciadas, etiqueta vazia (tolerada na forma, barrada só na publicação)", () => {
+    expect(criarNoPadrao("adicionar_etiqueta", "a1")).toMatchObject({ etiquetaId: "", proximo: "a1" });
+    expect(criarNoPadrao("remover_etiqueta", "r1")).toMatchObject({ etiquetaId: "", proximo: "r1" });
+    expect(criarNoPadrao("mudar_status", "s1")).toMatchObject({ status: "respondido", proximo: "s1" });
+    expect(criarNoPadrao("marcar_prioridade", "p1")).toMatchObject({ prioridade: "normal", proximo: "p1" });
+    expect(criarNoPadrao("atribuir_atendente", "at1")).toMatchObject({ atendenteId: null, proximo: "at1" });
   });
 });
 
@@ -71,6 +88,15 @@ describe("derivarArestasXyflow", () => {
     const menuComTimeout: NoMenu = { ...menuSemTimeout, proximoTimeout: "timeout_no" };
     const arestas = derivarArestasXyflow([menuComTimeout]);
     expect(arestas).toContainEqual({ id: "m::timeout", source: "m", sourceHandle: "timeout", target: "timeout_no" });
+  });
+
+  it("Ações CRM: 1 aresta 'default', mesmo padrão de mensagem/espera", () => {
+    expect(derivarArestasXyflow([{ id: "et", tipo: "adicionar_etiqueta", etiquetaId: "x", proximo: "fim" }])).toEqual([
+      { id: "et::default", source: "et", sourceHandle: "default", target: "fim" },
+    ]);
+    expect(derivarArestasXyflow([{ id: "at", tipo: "atribuir_atendente", atendenteId: null, proximo: "fim" }])).toEqual([
+      { id: "at::default", source: "at", sourceHandle: "default", target: "fim" },
+    ]);
   });
 
   it("duas opções de menu apontando pro mesmo destino geram 2 arestas com ids distintos", () => {
@@ -130,6 +156,11 @@ describe("aplicarConexao", () => {
   it("finalizar: nunca muta (não tem conector de saída)", () => {
     const nodes = aplicarConexao([{ id: "f", tipo: "finalizar" }], "f", "default", "x");
     expect(nodes[0]).toEqual({ id: "f", tipo: "finalizar" });
+  });
+
+  it("Ações CRM: reconecta 'default', mesmo padrão de mensagem/espera", () => {
+    const nodes = aplicarConexao([{ id: "st", tipo: "mudar_status", status: "respondido", proximo: "st" }], "st", "default", "fim");
+    expect(nodes[0]).toMatchObject({ proximo: "fim" });
   });
 
   it("nó de outro id não é afetado", () => {

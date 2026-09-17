@@ -1,10 +1,12 @@
 /**
  * Tipos do grafo de um Fluxo de Conversa (`fluxo_versoes.definicao`) — Fase
- * 2a, conjunto mínimo de blocos (ver crm/docs/fluxo-conversa-arquitetura.md e
- * crm/docs/fluxo-conversa-visao.md). Paleta completa (Odonto, IA, Humano,
- * Integração) é Fase 3 — os tipos aqui são o contrato que ela vai estender,
- * nunca substituir: um `NoFluxo` novo entra como mais um membro da união
- * discriminada, sem quebrar os 6 que já existem.
+ * 2a, conjunto mínimo de blocos, mais a categoria "Ações CRM" (ampliação da
+ * paleta, ver crm/docs/fluxo-conversa-visao.md) — a 1ª das 4 categorias extras
+ * da visão original (Odonto, IA, Humano, Integração) a entrar, porque não
+ * depende de nenhuma capability externa: só escreve em tabelas que o CRM já
+ * usa em produção (etiquetas, funil/status, prioridade, atendente). Odonto
+ * segue fora enquanto nenhuma capability do ControleODONTO for validada (ver
+ * src/lib/controle-odonto/capabilities.ts).
  *
  * Validação de FORMA (`validarFormaDefinicao`, hand-rolled — este projeto não
  * usa biblioteca de schema, mesmo critério de `isStatusValido`/
@@ -13,6 +15,9 @@
  * guarda, caminho sem saída) é outra coisa — fica em `fluxo-validador.ts`,
  * roda depois que a forma já passou aqui.
  */
+
+import { isStatusValido, type StatusConversa } from "@/lib/status";
+import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 
 export type OperadorCondicao = "igual" | "diferente" | "contem" | "existe" | "nao_existe";
 const OPERADORES_CONDICAO: readonly OperadorCondicao[] = ["igual", "diferente", "contem", "existe", "nao_existe"];
@@ -42,7 +47,32 @@ export type NoCondicao = {
 };
 export type NoFinalizar = { id: string; tipo: "finalizar"; motivo?: string };
 
-export type NoFluxo = NoInicio | NoMensagem | NoEspera | NoMenu | NoCondicao | NoFinalizar;
+/**
+ * `etiquetaId` aceita string vazia na FORMA (ver `validarNo`) — bloco recém-
+ * arrastado da paleta ainda sem etiqueta escolhida não pode falhar o
+ * autosave (mesmo problema que `criarNoPadrao` evita nos outros tipos com um
+ * valor padrão não-vazio; aqui não existe um "padrão" razoável, então o vazio
+ * é tolerado na forma e barrado na publicação por `validarGrafo`).
+ */
+export type NoAdicionarEtiqueta = { id: string; tipo: "adicionar_etiqueta"; etiquetaId: string; proximo: string };
+export type NoRemoverEtiqueta = { id: string; tipo: "remover_etiqueta"; etiquetaId: string; proximo: string };
+export type NoMudarStatus = { id: string; tipo: "mudar_status"; status: StatusConversa; proximo: string };
+export type NoMarcarPrioridade = { id: string; tipo: "marcar_prioridade"; prioridade: Prioridade; proximo: string };
+/** `atendenteId: null` é estado válido de negócio (desatribuir), não "não configurado" — sem tolerância especial na forma. */
+export type NoAtribuirAtendente = { id: string; tipo: "atribuir_atendente"; atendenteId: string | null; proximo: string };
+
+export type NoFluxo =
+  | NoInicio
+  | NoMensagem
+  | NoEspera
+  | NoMenu
+  | NoCondicao
+  | NoFinalizar
+  | NoAdicionarEtiqueta
+  | NoRemoverEtiqueta
+  | NoMudarStatus
+  | NoMarcarPrioridade
+  | NoAtribuirAtendente;
 
 export type FluxoDefinicao = {
   nodes: NoFluxo[];
@@ -76,6 +106,9 @@ function ehNumeroPositivo(v: unknown): v is number {
 }
 function ehNumeroPositivoOpcional(v: unknown): v is number | undefined {
   return v === undefined || ehNumeroPositivo(v);
+}
+function ehStringOuNull(v: unknown): v is string | null {
+  return v === null || (typeof v === "string" && v.length > 0);
 }
 
 function validarNo(bruto: unknown, indice: number): NoFluxo | string {
@@ -149,6 +182,31 @@ function validarNo(bruto: unknown, indice: number): NoFluxo | string {
     case "finalizar":
       if (!ehStringOpcional(n.motivo)) return `nó ${n.id}: "motivo" inválido`;
       return { id: n.id, tipo: "finalizar", motivo: n.motivo };
+
+    case "adicionar_etiqueta":
+      if (typeof n.etiquetaId !== "string") return `nó ${n.id}: "etiquetaId" ausente`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "adicionar_etiqueta", etiquetaId: n.etiquetaId, proximo: n.proximo };
+
+    case "remover_etiqueta":
+      if (typeof n.etiquetaId !== "string") return `nó ${n.id}: "etiquetaId" ausente`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "remover_etiqueta", etiquetaId: n.etiquetaId, proximo: n.proximo };
+
+    case "mudar_status":
+      if (typeof n.status !== "string" || !isStatusValido(n.status)) return `nó ${n.id}: "status" inválido`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "mudar_status", status: n.status, proximo: n.proximo };
+
+    case "marcar_prioridade":
+      if (typeof n.prioridade !== "string" || !isPrioridadeValida(n.prioridade)) return `nó ${n.id}: "prioridade" inválida`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "marcar_prioridade", prioridade: n.prioridade, proximo: n.proximo };
+
+    case "atribuir_atendente":
+      if (!ehStringOuNull(n.atendenteId)) return `nó ${n.id}: "atendenteId" inválido`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "atribuir_atendente", atendenteId: n.atendenteId, proximo: n.proximo };
 
     default:
       return `nó ${n.id}: tipo desconhecido "${String(n.tipo)}"`;

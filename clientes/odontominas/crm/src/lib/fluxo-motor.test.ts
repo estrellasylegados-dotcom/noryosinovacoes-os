@@ -88,6 +88,77 @@ describe("processarNo — finalizar", () => {
   });
 });
 
+describe("processarNo — Ações CRM (não dependem de ControleODONTO)", () => {
+  it("adicionar_etiqueta: acaoCrm com o id da etiqueta, avança, sem mensagem", () => {
+    const definicao = def([{ id: "et", tipo: "adicionar_etiqueta", etiquetaId: "etq-1", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "et", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      novoEstado: "queued",
+      mensagensParaEnviar: [],
+      acaoCrm: { tipo: "adicionar_etiqueta", etiquetaId: "etq-1" },
+      tipoEvento: "etiqueta_adicionada",
+    });
+  });
+
+  it("remover_etiqueta: acaoCrm com o id da etiqueta, avança", () => {
+    const definicao = def([{ id: "et", tipo: "remover_etiqueta", etiquetaId: "etq-2", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "et", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      acaoCrm: { tipo: "remover_etiqueta", etiquetaId: "etq-2" },
+      tipoEvento: "etiqueta_removida",
+    });
+  });
+
+  it("mudar_status: acaoCrm com o status alvo, avança", () => {
+    const definicao = def([{ id: "st", tipo: "mudar_status", status: "agendado", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "st", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      acaoCrm: { tipo: "mudar_status", status: "agendado" },
+      tipoEvento: "status_alterado",
+    });
+  });
+
+  it("marcar_prioridade: acaoCrm com a prioridade escolhida, avança", () => {
+    const definicao = def([{ id: "pr", tipo: "marcar_prioridade", prioridade: "urgente", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "pr", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      acaoCrm: { tipo: "marcar_prioridade", prioridade: "urgente" },
+      tipoEvento: "prioridade_marcada",
+    });
+  });
+
+  it("atribuir_atendente: acaoCrm com o id do atendente, avança", () => {
+    const definicao = def([{ id: "at", tipo: "atribuir_atendente", atendenteId: "atd-1", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "at", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      acaoCrm: { tipo: "atribuir_atendente", atendenteId: "atd-1" },
+      tipoEvento: "atendente_atribuido",
+    });
+  });
+
+  it("atribuir_atendente com null: acaoCrm carrega null (desatribuir é estado válido)", () => {
+    const definicao = def([{ id: "at", tipo: "atribuir_atendente", atendenteId: null, proximo: "fim" }]);
+    const resultado = processarNo(definicao, "at", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({ ok: true, acaoCrm: { tipo: "atribuir_atendente", atendenteId: null } });
+  });
+
+  it("nós que não são Ações CRM devolvem acaoCrm: null", () => {
+    const definicao = def([{ id: "msg", tipo: "mensagem", texto: "oi", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "msg", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({ ok: true, acaoCrm: null });
+  });
+});
+
 describe("processarNo — menu", () => {
   const definicao = def([
     {

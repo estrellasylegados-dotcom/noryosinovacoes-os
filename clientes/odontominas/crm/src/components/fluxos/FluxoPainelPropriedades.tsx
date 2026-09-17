@@ -2,7 +2,24 @@
 
 import { useState, type ReactNode } from "react";
 import { adicionarOpcaoMenu, removerOpcaoMenu } from "@/lib/fluxo-editor-grafo";
-import type { NoCondicao, NoEspera, NoFinalizar, NoFluxo, NoMenu, NoMensagem, OperadorCondicao } from "@/lib/fluxo-tipos";
+import type {
+  NoAdicionarEtiqueta,
+  NoAtribuirAtendente,
+  NoCondicao,
+  NoEspera,
+  NoFinalizar,
+  NoFluxo,
+  NoMarcarPrioridade,
+  NoMenu,
+  NoMensagem,
+  NoMudarStatus,
+  NoRemoverEtiqueta,
+  OperadorCondicao,
+} from "@/lib/fluxo-tipos";
+import type { Etiqueta } from "@/lib/etiquetas";
+import type { Atendente } from "@/lib/atendentes";
+import { STATUS_CONFIG, STATUS_ORDEM } from "@/lib/status";
+import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM } from "@/lib/prioridade";
 
 type Aba = "no" | "gatilho";
 
@@ -103,6 +120,84 @@ function PropriedadesFinalizar({ no, onAtualizar }: { no: NoFinalizar; onAtualiz
   );
 }
 
+function PropriedadesAdicionarEtiqueta({
+  no,
+  etiquetas,
+  onAtualizar,
+}: {
+  no: NoAdicionarEtiqueta | NoRemoverEtiqueta;
+  etiquetas: Etiqueta[];
+  onAtualizar: (no: NoFluxo) => void;
+}) {
+  return (
+    <Campo label="Etiqueta" hint={etiquetas.length === 0 ? "Nenhuma etiqueta cadastrada ainda — crie uma em Ferramentas → Etiquetas" : undefined}>
+      <select value={no.etiquetaId} onChange={(e) => onAtualizar({ ...no, etiquetaId: e.target.value })} className={CLASSE_INPUT}>
+        <option value="">selecione...</option>
+        {etiquetas.map((et) => (
+          <option key={et.id} value={et.id}>
+            {et.nome}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
+function PropriedadesMudarStatus({ no, onAtualizar }: { no: NoMudarStatus; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <Campo label="Novo status da conversa">
+      <select value={no.status} onChange={(e) => onAtualizar({ ...no, status: e.target.value as NoMudarStatus["status"] })} className={CLASSE_INPUT}>
+        {STATUS_ORDEM.map((s) => (
+          <option key={s} value={s}>
+            {STATUS_CONFIG[s].label}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
+function PropriedadesMarcarPrioridade({ no, onAtualizar }: { no: NoMarcarPrioridade; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <Campo label="Prioridade">
+      <select
+        value={no.prioridade}
+        onChange={(e) => onAtualizar({ ...no, prioridade: e.target.value as NoMarcarPrioridade["prioridade"] })}
+        className={CLASSE_INPUT}
+      >
+        {PRIORIDADE_ORDEM.map((p) => (
+          <option key={p} value={p}>
+            {PRIORIDADE_CONFIG[p].label}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
+function PropriedadesAtribuirAtendente({
+  no,
+  atendentes,
+  onAtualizar,
+}: {
+  no: NoAtribuirAtendente;
+  atendentes: Atendente[];
+  onAtualizar: (no: NoFluxo) => void;
+}) {
+  return (
+    <Campo label="Atendente" hint="Deixe em branco pra desatribuir (tira quem estava responsável)">
+      <select value={no.atendenteId ?? ""} onChange={(e) => onAtualizar({ ...no, atendenteId: e.target.value || null })} className={CLASSE_INPUT}>
+        <option value="">(sem atendente)</option>
+        {atendentes.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.nome}
+          </option>
+        ))}
+      </select>
+    </Campo>
+  );
+}
+
 function PropriedadesMenu({ no, onAtualizar }: { no: NoMenu; onAtualizar: (no: NoFluxo) => void }) {
   return (
     <div className="space-y-3">
@@ -185,12 +280,16 @@ export function FluxoPainelPropriedades({
   gatilhoTipo,
   gatilhoPalavras,
   onMudarGatilho,
+  etiquetas,
+  atendentes,
 }: {
   noSelecionado: NoFluxo | null;
   onAtualizarNo: (no: NoFluxo) => void;
   gatilhoTipo: string;
   gatilhoPalavras: string;
   onMudarGatilho: (tipo: string, palavras: string) => void;
+  etiquetas: Etiqueta[];
+  atendentes: Atendente[];
 }) {
   const [aba, setAba] = useState<Aba>("no");
 
@@ -210,6 +309,14 @@ export function FluxoPainelPropriedades({
             {noSelecionado.tipo === "condicao" && <PropriedadesCondicao no={noSelecionado} onAtualizar={onAtualizarNo} />}
             {noSelecionado.tipo === "finalizar" && <PropriedadesFinalizar no={noSelecionado} onAtualizar={onAtualizarNo} />}
             {noSelecionado.tipo === "menu" && <PropriedadesMenu no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {(noSelecionado.tipo === "adicionar_etiqueta" || noSelecionado.tipo === "remover_etiqueta") && (
+              <PropriedadesAdicionarEtiqueta no={noSelecionado} etiquetas={etiquetas} onAtualizar={onAtualizarNo} />
+            )}
+            {noSelecionado.tipo === "mudar_status" && <PropriedadesMudarStatus no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "marcar_prioridade" && <PropriedadesMarcarPrioridade no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "atribuir_atendente" && (
+              <PropriedadesAtribuirAtendente no={noSelecionado} atendentes={atendentes} onAtualizar={onAtualizarNo} />
+            )}
             {noSelecionado.tipo === "inicio" && (
               <p className="text-sm text-neutral-500">O nó de início não tem campos — configure o gatilho na aba ao lado.</p>
             )}

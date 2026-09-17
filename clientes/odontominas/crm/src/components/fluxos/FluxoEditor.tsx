@@ -15,6 +15,8 @@ import { validarGrafo } from "@/lib/fluxo-validador";
 import type { FluxoDefinicao, NoFluxo } from "@/lib/fluxo-tipos";
 import type { ExecucaoFluxoResumo } from "@/lib/fluxo-execucoes-consulta";
 import type { FluxoParaEditor, StatusVersaoFluxo } from "@/lib/fluxo-versoes";
+import type { Etiqueta } from "@/lib/etiquetas";
+import type { Atendente } from "@/lib/atendentes";
 import { FluxoBarraAcoes } from "@/components/fluxos/FluxoBarraAcoes";
 import { FluxoCanvas } from "@/components/fluxos/FluxoCanvas";
 import { FluxoPaletaBlocos } from "@/components/fluxos/FluxoPaletaBlocos";
@@ -44,10 +46,14 @@ export function FluxoEditor({
   fluxo,
   execucoesTesteIniciais,
   controleOdontoConfigurado,
+  etiquetas,
+  atendentes,
 }: {
   fluxo: FluxoParaEditor;
   execucoesTesteIniciais: ExecucaoFluxoResumo[];
   controleOdontoConfigurado: boolean;
+  etiquetas: Etiqueta[];
+  atendentes: Atendente[];
 }) {
   const router = useRouter();
 
@@ -327,6 +333,8 @@ export function FluxoEditor({
             selecionadoId={selecionadoId}
             problemasPorNo={problemasPorNo}
             noEmExecucaoId={noEmExecucaoId}
+            etiquetas={etiquetas}
+            atendentes={atendentes}
             onSelecionar={setSelecionadoId}
             onMoverNo={onMoverNo}
             onConectar={onConectar}
@@ -357,6 +365,8 @@ export function FluxoEditor({
             gatilhoTipo={gatilhoTipo}
             gatilhoPalavras={gatilhoPalavras}
             onMudarGatilho={onMudarGatilho}
+            etiquetas={etiquetas}
+            atendentes={atendentes}
           />
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
 import { encontrarNo, type FluxoDefinicao, type NoMenu, type OperadorCondicao } from "@/lib/fluxo-tipos";
+import type { StatusConversa } from "@/lib/status";
+import type { Prioridade } from "@/lib/prioridade";
 
 /**
  * Interpretador PURO do motor de Fluxo de Conversa — Fase 2a (ver
@@ -34,6 +36,14 @@ export type ContadoresNo = {
   tentativasInvalidas: number;
 };
 
+/** Efeito colateral de CRM de um passo — sempre 0 ou 1 por nó (nunca lista: cada bloco de Ações CRM faz uma coisa só). A camada de I/O (`fluxo-execucoes.ts`) é quem aplica de verdade contra o banco. */
+export type AcaoCrm =
+  | { tipo: "adicionar_etiqueta"; etiquetaId: string }
+  | { tipo: "remover_etiqueta"; etiquetaId: string }
+  | { tipo: "mudar_status"; status: StatusConversa }
+  | { tipo: "marcar_prioridade"; prioridade: Prioridade }
+  | { tipo: "atribuir_atendente"; atendenteId: string | null };
+
 export type ResultadoPasso =
   | {
       ok: true;
@@ -43,6 +53,8 @@ export type ResultadoPasso =
       mensagensParaEnviar: string[];
       variaveisAtualizadas: Record<string, string>;
       motivoFinalizacao?: string;
+      /** null quando o nó não é de Ações CRM — mesmo padrão de "sempre presente, nunca opcional" já usado em `aguardandoAte`. */
+      acaoCrm: AcaoCrm | null;
       /** Pro log em fluxo_execucao_eventos.tipo_evento. */
       tipoEvento: string;
     }
@@ -117,6 +129,7 @@ function fallbackMenu(no: NoMenu, motivo: string): ResultadoPasso {
       aguardandoAte: new Date().toISOString(),
       mensagensParaEnviar: [],
       variaveisAtualizadas: {},
+      acaoCrm: null,
       tipoEvento: motivo,
     };
   }
@@ -127,6 +140,7 @@ function fallbackMenu(no: NoMenu, motivo: string): ResultadoPasso {
     aguardandoAte: null,
     mensagensParaEnviar: [],
     variaveisAtualizadas: {},
+    acaoCrm: null,
     motivoFinalizacao: motivo,
     tipoEvento: motivo,
   };
@@ -159,6 +173,7 @@ export function processarNo(
         aguardandoAte: agora.toISOString(),
         mensagensParaEnviar: [],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         tipoEvento: "inicio",
       };
 
@@ -171,6 +186,7 @@ export function processarNo(
         aguardandoAte: agora.toISOString(),
         mensagensParaEnviar: [texto],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         tipoEvento: "mensagem_enviada",
       };
     }
@@ -183,7 +199,68 @@ export function processarNo(
         aguardandoAte: new Date(agora.getTime() + no.duracaoSegundos * 1000).toISOString(),
         mensagensParaEnviar: [],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         tipoEvento: "espera_iniciada",
+      };
+
+    case "adicionar_etiqueta":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "adicionar_etiqueta", etiquetaId: no.etiquetaId },
+        tipoEvento: "etiqueta_adicionada",
+      };
+
+    case "remover_etiqueta":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "remover_etiqueta", etiquetaId: no.etiquetaId },
+        tipoEvento: "etiqueta_removida",
+      };
+
+    case "mudar_status":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "mudar_status", status: no.status },
+        tipoEvento: "status_alterado",
+      };
+
+    case "marcar_prioridade":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "marcar_prioridade", prioridade: no.prioridade },
+        tipoEvento: "prioridade_marcada",
+      };
+
+    case "atribuir_atendente":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "atribuir_atendente", atendenteId: no.atendenteId },
+        tipoEvento: "atendente_atribuido",
       };
 
     case "menu": {
@@ -196,6 +273,7 @@ export function processarNo(
           aguardandoAte: no.timeoutSegundos ? new Date(agora.getTime() + no.timeoutSegundos * 1000).toISOString() : null,
           mensagensParaEnviar: [texto],
           variaveisAtualizadas: {},
+          acaoCrm: null,
           tipoEvento: "menu_enviado",
         };
       }
@@ -214,6 +292,7 @@ export function processarNo(
           aguardandoAte: agora.toISOString(),
           mensagensParaEnviar: [],
           variaveisAtualizadas: {},
+          acaoCrm: null,
           tipoEvento: "menu_respondido",
         };
       }
@@ -230,6 +309,7 @@ export function processarNo(
         aguardandoAte: no.timeoutSegundos ? new Date(agora.getTime() + no.timeoutSegundos * 1000).toISOString() : null,
         mensagensParaEnviar: [no.mensagemInvalida ? resolverVariaveisFluxo(no.mensagemInvalida, variaveis, paciente) : MENSAGEM_INVALIDA_PADRAO],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         tipoEvento: "menu_invalido",
       };
     }
@@ -243,6 +323,7 @@ export function processarNo(
         aguardandoAte: agora.toISOString(),
         mensagensParaEnviar: [],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         tipoEvento: "condicao_avaliada",
       };
     }
@@ -255,6 +336,7 @@ export function processarNo(
         aguardandoAte: null,
         mensagensParaEnviar: [],
         variaveisAtualizadas: {},
+        acaoCrm: null,
         motivoFinalizacao: no.motivo,
         tipoEvento: "finalizado",
       };

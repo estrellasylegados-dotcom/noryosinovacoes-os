@@ -114,6 +114,52 @@ describe("validarGrafo", () => {
     expect(resultado.erros.some((e) => e.mensagem.includes("loop"))).toBe(false);
   });
 
+  it("Ações CRM válidas (etiqueta escolhida): sem erro", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "et" },
+        { id: "et", tipo: "adicionar_etiqueta", etiquetaId: "etq-1", proximo: "fim" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toEqual([]);
+  });
+
+  it("adicionar_etiqueta sem etiqueta escolhida (etiquetaId vazio): erro bloqueia publicação", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "et" },
+        { id: "et", tipo: "adicionar_etiqueta", etiquetaId: "", proximo: "fim" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toContainEqual({ noIds: ["et"], mensagem: "nó et: selecione uma etiqueta" });
+  });
+
+  it("remover_etiqueta sem etiqueta escolhida: mesmo erro", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "et" },
+        { id: "et", tipo: "remover_etiqueta", etiquetaId: "", proximo: "fim" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toContainEqual({ noIds: ["et"], mensagem: "nó et: selecione uma etiqueta" });
+  });
+
+  it("mudar_status/marcar_prioridade/atribuir_atendente em loop sem guarda: mesmo erro de loop perigoso que qualquer outro nó de passagem", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "st" },
+        { id: "st", tipo: "mudar_status", status: "respondido", proximo: "pr" },
+        { id: "pr", tipo: "marcar_prioridade", prioridade: "alta", proximo: "st" },
+      ])
+    );
+    const erroLoop = resultado.erros.find((e) => e.mensagem.includes("loop sem espera/menu"));
+    expect(erroLoop).toBeDefined();
+    expect(erroLoop?.noIds.sort()).toEqual(["pr", "st"]);
+  });
+
   it("auto-loop (nó apontando pra si mesmo) sem guarda: erro, noIds com o próprio nó", () => {
     const resultado = validarGrafo(
       def([

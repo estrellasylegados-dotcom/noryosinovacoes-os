@@ -32,6 +32,16 @@ export function criarNoPadrao(tipo: NoFluxo["tipo"], id: string): NoFluxo {
       return { id, tipo: "condicao", variavel: "variavel", operador: "existe", seVerdadeiro: id, seFalso: id };
     case "finalizar":
       return { id, tipo: "finalizar" };
+    case "adicionar_etiqueta":
+      return { id, tipo: "adicionar_etiqueta", etiquetaId: "", proximo: id };
+    case "remover_etiqueta":
+      return { id, tipo: "remover_etiqueta", etiquetaId: "", proximo: id };
+    case "mudar_status":
+      return { id, tipo: "mudar_status", status: "respondido", proximo: id };
+    case "marcar_prioridade":
+      return { id, tipo: "marcar_prioridade", prioridade: "normal", proximo: id };
+    case "atribuir_atendente":
+      return { id, tipo: "atribuir_atendente", atendenteId: null, proximo: id };
   }
 }
 
@@ -43,6 +53,11 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
       case "inicio":
       case "mensagem":
       case "espera":
+      case "adicionar_etiqueta":
+      case "remover_etiqueta":
+      case "mudar_status":
+      case "marcar_prioridade":
+      case "atribuir_atendente":
         arestas.push({ id: `${no.id}::default`, source: no.id, sourceHandle: "default", target: no.proximo });
         break;
       case "condicao":
@@ -72,6 +87,11 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
       case "inicio":
       case "mensagem":
       case "espera":
+      case "adicionar_etiqueta":
+      case "remover_etiqueta":
+      case "mudar_status":
+      case "marcar_prioridade":
+      case "atribuir_atendente":
         return sourceHandle === "default" ? { ...no, proximo: target } : no;
       case "condicao":
         if (sourceHandle === "verdadeiro") return { ...no, seVerdadeiro: target };

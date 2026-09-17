@@ -18,16 +18,23 @@ import {
   type NodeChange,
   type NodeTypes,
 } from "@xyflow/react";
+import { NoAdicionarEtiquetaCard } from "@/components/fluxos/nos/NoAdicionarEtiquetaCard";
+import { NoAtribuirAtendenteCard } from "@/components/fluxos/nos/NoAtribuirAtendenteCard";
 import { NoCondicaoCard } from "@/components/fluxos/nos/NoCondicaoCard";
 import { NoEsperaCard } from "@/components/fluxos/nos/NoEsperaCard";
 import { NoFinalizarCard } from "@/components/fluxos/nos/NoFinalizarCard";
 import { NoInicioCard } from "@/components/fluxos/nos/NoInicioCard";
+import { NoMarcarPrioridadeCard } from "@/components/fluxos/nos/NoMarcarPrioridadeCard";
 import { NoMenuCard } from "@/components/fluxos/nos/NoMenuCard";
 import { NoMensagemCard } from "@/components/fluxos/nos/NoMensagemCard";
+import { NoMudarStatusCard } from "@/components/fluxos/nos/NoMudarStatusCard";
+import { NoRemoverEtiquetaCard } from "@/components/fluxos/nos/NoRemoverEtiquetaCard";
 import type { NoCanvasData } from "@/components/fluxos/nos/tipos";
 import { derivarArestasXyflow, podeDeletarAresta } from "@/lib/fluxo-editor-grafo";
 import type { PosicaoNo } from "@/lib/fluxo-editor-layout";
 import type { NoFluxo } from "@/lib/fluxo-tipos";
+import type { Etiqueta } from "@/lib/etiquetas";
+import type { Atendente } from "@/lib/atendentes";
 
 const TIPOS_NO: NodeTypes = {
   inicio: NoInicioCard,
@@ -36,6 +43,11 @@ const TIPOS_NO: NodeTypes = {
   menu: NoMenuCard,
   condicao: NoCondicaoCard,
   finalizar: NoFinalizarCard,
+  adicionar_etiqueta: NoAdicionarEtiquetaCard,
+  remover_etiqueta: NoRemoverEtiquetaCard,
+  mudar_status: NoMudarStatusCard,
+  marcar_prioridade: NoMarcarPrioridadeCard,
+  atribuir_atendente: NoAtribuirAtendenteCard,
 };
 
 /** Formato do arrasto vindo da paleta (`FluxoPaletaBlocos`) — nome de tipo MIME próprio, não colide com nada externo. */
@@ -47,6 +59,8 @@ export type FluxoCanvasProps = {
   selecionadoId: string | null;
   problemasPorNo: Map<string, "erro" | "aviso">;
   noEmExecucaoId?: string | null;
+  etiquetas: Etiqueta[];
+  atendentes: Atendente[];
   onSelecionar: (id: string | null) => void;
   onMoverNo: (id: string, posicao: PosicaoNo) => void;
   onConectar: (source: string, sourceHandle: string, target: string) => void;
@@ -56,10 +70,25 @@ export type FluxoCanvasProps = {
 };
 
 function FluxoCanvasInterno(props: FluxoCanvasProps) {
-  const { nodes, posicoes, selecionadoId, problemasPorNo, noEmExecucaoId, onSelecionar, onMoverNo, onConectar, onDeletarAresta, onDeletarNo, onSoltarBloco } =
-    props;
+  const {
+    nodes,
+    posicoes,
+    selecionadoId,
+    problemasPorNo,
+    noEmExecucaoId,
+    etiquetas,
+    atendentes,
+    onSelecionar,
+    onMoverNo,
+    onConectar,
+    onDeletarAresta,
+    onDeletarNo,
+    onSoltarBloco,
+  } = props;
   const { screenToFlowPosition } = useReactFlow();
   const [xyNodes, setXyNodes] = useNodesState<Node<NoCanvasData>>([]);
+  const etiquetaNomePorId = useMemo(() => new Map(etiquetas.map((e) => [e.id, e.nome])), [etiquetas]);
+  const atendenteNomePorId = useMemo(() => new Map(atendentes.map((a) => [a.id, a.nome])), [atendentes]);
 
   // Reposta a lista de nós do xyflow sempre que a estrutura/seleção/estado
   // de execução muda. Posição vem sempre de `posicoes` (nunca de um estado
@@ -72,12 +101,12 @@ function FluxoCanvasInterno(props: FluxoCanvasProps) {
         id: no.id,
         type: no.tipo,
         position: posicoes[no.id] ?? { x: 0, y: 0 },
-        data: { no, problema: problemasPorNo.get(no.id), emExecucao: no.id === noEmExecucaoId },
+        data: { no, problema: problemasPorNo.get(no.id), emExecucao: no.id === noEmExecucaoId, etiquetaNomePorId, atendenteNomePorId },
         selected: no.id === selecionadoId,
         deletable: no.tipo !== "inicio",
       }))
     );
-  }, [nodes, posicoes, problemasPorNo, noEmExecucaoId, selecionadoId, setXyNodes]);
+  }, [nodes, posicoes, problemasPorNo, noEmExecucaoId, selecionadoId, etiquetaNomePorId, atendenteNomePorId, setXyNodes]);
 
   const arestas = useMemo<Edge[]>(
     () => derivarArestasXyflow(nodes).map((a) => ({ id: a.id, source: a.source, sourceHandle: a.sourceHandle, target: a.target, type: "smoothstep" })),

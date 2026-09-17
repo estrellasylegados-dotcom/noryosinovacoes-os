@@ -32,6 +32,12 @@ function proximosDe(no: NoFluxo): string[] {
       return [...no.opcoes.map((o) => o.proximo), ...(no.proximoTimeout ? [no.proximoTimeout] : [])];
     case "condicao":
       return [no.seVerdadeiro, no.seFalso];
+    case "adicionar_etiqueta":
+    case "remover_etiqueta":
+    case "mudar_status":
+    case "marcar_prioridade":
+    case "atribuir_atendente":
+      return [no.proximo];
     case "finalizar":
       return [];
   }
@@ -65,6 +71,15 @@ export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo
       }
     }
   }
+
+  // 2.1. Ações CRM de etiqueta sem etiqueta escolhida — a FORMA tolera vazio
+  // (bloco recém-arrastado da paleta, ver fluxo-tipos.ts), mas publicar exige.
+  for (const no of definicao.nodes) {
+    if ((no.tipo === "adicionar_etiqueta" || no.tipo === "remover_etiqueta") && !no.etiquetaId) {
+      erros.push({ noIds: [no.id], mensagem: `nó ${no.id}: selecione uma etiqueta` });
+    }
+  }
+
   if (erros.length > 0) {
     // Referência quebrada invalida qualquer análise de alcançabilidade/ciclo abaixo — para aqui.
     return { erros, avisos };
