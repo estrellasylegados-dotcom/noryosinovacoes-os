@@ -5,8 +5,10 @@ import { adicionarOpcaoMenu, removerOpcaoMenu } from "@/lib/fluxo-editor-grafo";
 import type {
   NoAdicionarEtiqueta,
   NoAtribuirAtendente,
+  NoCapturarResposta,
   NoCondicao,
   NoCriarAlertaInterno,
+  NoCriarPesquisa,
   NoEspera,
   NoFinalizar,
   NoFluxo,
@@ -15,9 +17,11 @@ import type {
   NoMenu,
   NoMensagem,
   NoMudarStatus,
+  NoPersistirRespostaPesquisa,
   NoRemoverEtiqueta,
   NoTransferirHumano,
   OperadorCondicao,
+  TipoPesquisa,
 } from "@/lib/fluxo-tipos";
 import type { Etiqueta } from "@/lib/etiquetas";
 import type { Atendente } from "@/lib/atendentes";
@@ -342,6 +346,195 @@ function PropriedadesMenu({ no, onAtualizar }: { no: NoMenu; onAtualizar: (no: N
   );
 }
 
+/**
+ * Fase 3 (motor central de automação — ver _memoria/decisoes.md): entrada
+ * aberta/validada, nunca "capturar_nps" — mesma família de campos de
+ * PropriedadesMenu (texto, timeout), mais validação. Campos de min/max e
+ * regex são MUTUAMENTE EXCLUSIVOS na UI (não só no schema): tipo numero
+ * mostra min/max e esconde regex, tipo texto é o contrário — evita mostrar
+ * configuração incompatível com o tipo escolhido.
+ */
+function PropriedadesCapturarResposta({ no, onAtualizar }: { no: NoCapturarResposta; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Pergunta" hint="Variáveis: {nome}, {primeiro_nome}, {telefone} e as que você definir">
+        <textarea value={no.texto} onChange={(e) => onAtualizar({ ...no, texto: e.target.value })} rows={4} className={CLASSE_INPUT} />
+      </Campo>
+
+      <Campo label="Variável" hint="Nome sem chaves, ex: nps_nota — é onde a resposta fica guardada pra usar depois">
+        <input value={no.variavel} onChange={(e) => onAtualizar({ ...no, variavel: e.target.value })} className={CLASSE_INPUT} />
+      </Campo>
+
+      <Campo label="Tipo de resposta esperada">
+        <select
+          value={no.tipoValor}
+          onChange={(e) => {
+            const tipoValor = e.target.value as NoCapturarResposta["tipoValor"];
+            // Troca de tipo limpa a configuração do tipo anterior — nunca
+            // deixa min/max sobrando configurado pra um nó que virou texto,
+            // nem regex sobrando pra um nó que virou número.
+            onAtualizar(tipoValor === "numero" ? { ...no, tipoValor, regex: undefined } : { ...no, tipoValor, min: undefined, max: undefined });
+          }}
+          className={CLASSE_INPUT}
+        >
+          <option value="texto">Texto</option>
+          <option value="numero">Número</option>
+        </select>
+      </Campo>
+
+      {no.tipoValor === "numero" && (
+        <div className="flex gap-3">
+          <Campo label="Mínimo (opcional)">
+            <input
+              type="number"
+              value={no.min ?? ""}
+              onChange={(e) => onAtualizar({ ...no, min: e.target.value === "" ? undefined : Number(e.target.value) })}
+              className={CLASSE_INPUT}
+            />
+          </Campo>
+          <Campo label="Máximo (opcional)">
+            <input
+              type="number"
+              value={no.max ?? ""}
+              onChange={(e) => onAtualizar({ ...no, max: e.target.value === "" ? undefined : Number(e.target.value) })}
+              className={CLASSE_INPUT}
+            />
+          </Campo>
+        </div>
+      )}
+
+      {no.tipoValor === "texto" && (
+        <Campo label="Formato aceito — regex (opcional)" hint="Só pra quem sabe o que é regex; deixe em branco pra aceitar qualquer texto">
+          <input
+            value={no.regex ?? ""}
+            onChange={(e) => onAtualizar({ ...no, regex: e.target.value || undefined })}
+            placeholder="ex: ^[0-9]{5}-?[0-9]{3}$"
+            className={CLASSE_INPUT}
+          />
+        </Campo>
+      )}
+
+      <label className="flex items-center gap-2 text-xs font-medium text-neutral-600">
+        <input type="checkbox" checked={no.obrigatorio !== false} onChange={(e) => onAtualizar({ ...no, obrigatorio: e.target.checked })} />
+        Resposta obrigatória
+      </label>
+
+      <Campo label="Mensagem se resposta inválida (opcional)">
+        <input
+          value={no.mensagemValidacao ?? ""}
+          onChange={(e) => onAtualizar({ ...no, mensagemValidacao: e.target.value || undefined })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+
+      <Campo label="Máximo de tentativas inválidas (opcional)" hint="Padrão: 3">
+        <input
+          type="number"
+          min={1}
+          value={no.maxTentativasInvalidas ?? ""}
+          onChange={(e) => onAtualizar({ ...no, maxTentativasInvalidas: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+
+      <Campo label="Timeout, em segundos (opcional)" hint="Se não responder a tempo, segue pro caminho de timeout — conecte-o no canvas">
+        <input
+          type="number"
+          min={1}
+          value={no.timeoutSegundos ?? ""}
+          onChange={(e) => onAtualizar({ ...no, timeoutSegundos: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+    </div>
+  );
+}
+
+const LABEL_TIPO_PESQUISA: Record<TipoPesquisa, string> = {
+  nps: "NPS",
+  satisfacao: "Satisfação",
+  avaliacao_google: "Avaliação Google",
+};
+
+/**
+ * Fase 3 — UX pensada pra quem opera a clínica, não pra quem programa: sem
+ * JSON/UUID/payload à vista, só "tipo da pesquisa" e nomes de variável (o
+ * mesmo conceito que Condição já usa). NPS/satisfação são pesquisa interna;
+ * avaliação Google é solicitação externa — nunca a mesma coisa (ver
+ * _memoria/decisoes.md).
+ */
+function PropriedadesCriarPesquisa({ no, onAtualizar }: { no: NoCriarPesquisa; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Tipo da pesquisa">
+        <select
+          value={no.tipoPesquisa}
+          onChange={(e) => onAtualizar({ ...no, tipoPesquisa: e.target.value as TipoPesquisa })}
+          className={CLASSE_INPUT}
+        >
+          {(Object.keys(LABEL_TIPO_PESQUISA) as TipoPesquisa[]).map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {LABEL_TIPO_PESQUISA[tipo]}
+            </option>
+          ))}
+        </select>
+      </Campo>
+
+      <Campo label="Variável com o identificador da pesquisa" hint="Nome sem chaves, ex: pesquisa_id — use esse mesmo nome no bloco 'Salvar resposta da pesquisa'">
+        <input value={no.variavelDestino} onChange={(e) => onAtualizar({ ...no, variavelDestino: e.target.value })} className={CLASSE_INPUT} />
+      </Campo>
+
+      <Campo label="Referência (opcional)" hint="Pra identificar depois a que atendimento/evento essa pesquisa se refere — aceita variáveis">
+        <input
+          value={no.referenciaId ?? ""}
+          onChange={(e) => onAtualizar({ ...no, referenciaId: e.target.value || undefined })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+
+      {no.tipoPesquisa === "avaliacao_google" && (
+        <p className="text-[11px] text-neutral-400">
+          Avaliação Google é uma solicitação externa — nunca vai gerar uma resposta gravada aqui dentro (ligue a um bloco &quot;Salvar resposta
+          da pesquisa&quot; não faz sentido pra esse tipo).
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Fase 3 — único bloco que grava pesquisa_respostas, nunca o mesmo que cria (PropriedadesCriarPesquisa). */
+function PropriedadesPersistirRespostaPesquisa({
+  no,
+  onAtualizar,
+}: {
+  no: NoPersistirRespostaPesquisa;
+  onAtualizar: (no: NoFluxo) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Variável com o identificador da pesquisa" hint="O mesmo nome usado no bloco 'Criar pesquisa', ex: pesquisa_id">
+        <input
+          value={no.variavelPesquisaId}
+          onChange={(e) => onAtualizar({ ...no, variavelPesquisaId: e.target.value })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+
+      <Campo label="Variável com a resposta (nota ou texto)" hint="O nome usado no bloco 'Capturar resposta', ex: nps_nota">
+        <input value={no.variavelValor} onChange={(e) => onAtualizar({ ...no, variavelValor: e.target.value })} className={CLASSE_INPUT} />
+      </Campo>
+
+      <Campo label="Variável com o comentário (opcional)" hint="Se você capturou um comentário extra em outro bloco 'Capturar resposta'">
+        <input
+          value={no.variavelComentario ?? ""}
+          onChange={(e) => onAtualizar({ ...no, variavelComentario: e.target.value || undefined })}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+    </div>
+  );
+}
+
 export function FluxoPainelPropriedades({
   noSelecionado,
   onAtualizarNo,
@@ -392,6 +585,11 @@ export function FluxoPainelPropriedades({
             {noSelecionado.tipo === "pausar_automacao" && <PropriedadesPausarAutomacao />}
             {noSelecionado.tipo === "iniciar_agente_ia" && (
               <PropriedadesIniciarAgenteIA no={noSelecionado} agentes={agentes} onAtualizar={onAtualizarNo} />
+            )}
+            {noSelecionado.tipo === "capturar_resposta" && <PropriedadesCapturarResposta no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "criar_pesquisa" && <PropriedadesCriarPesquisa no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "persistir_resposta_pesquisa" && (
+              <PropriedadesPersistirRespostaPesquisa no={noSelecionado} onAtualizar={onAtualizarNo} />
             )}
             {noSelecionado.tipo === "inicio" && (
               <p className="text-sm text-neutral-500">O nó de início não tem campos — configure o gatilho na aba ao lado.</p>

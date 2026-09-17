@@ -20,8 +20,10 @@ import {
 } from "@xyflow/react";
 import { NoAdicionarEtiquetaCard } from "@/components/fluxos/nos/NoAdicionarEtiquetaCard";
 import { NoAtribuirAtendenteCard } from "@/components/fluxos/nos/NoAtribuirAtendenteCard";
+import { NoCapturarRespostaCard } from "@/components/fluxos/nos/NoCapturarRespostaCard";
 import { NoCondicaoCard } from "@/components/fluxos/nos/NoCondicaoCard";
 import { NoCriarAlertaInternoCard } from "@/components/fluxos/nos/NoCriarAlertaInternoCard";
+import { NoCriarPesquisaCard } from "@/components/fluxos/nos/NoCriarPesquisaCard";
 import { NoEsperaCard } from "@/components/fluxos/nos/NoEsperaCard";
 import { NoFinalizarCard } from "@/components/fluxos/nos/NoFinalizarCard";
 import { NoIniciarAgenteIACard } from "@/components/fluxos/nos/NoIniciarAgenteIACard";
@@ -31,6 +33,7 @@ import { NoMenuCard } from "@/components/fluxos/nos/NoMenuCard";
 import { NoMensagemCard } from "@/components/fluxos/nos/NoMensagemCard";
 import { NoMudarStatusCard } from "@/components/fluxos/nos/NoMudarStatusCard";
 import { NoPausarAutomacaoCard } from "@/components/fluxos/nos/NoPausarAutomacaoCard";
+import { NoPersistirRespostaPesquisaCard } from "@/components/fluxos/nos/NoPersistirRespostaPesquisaCard";
 import { NoRemoverEtiquetaCard } from "@/components/fluxos/nos/NoRemoverEtiquetaCard";
 import { NoTransferirHumanoCard } from "@/components/fluxos/nos/NoTransferirHumanoCard";
 import type { NoCanvasData } from "@/components/fluxos/nos/tipos";
@@ -57,6 +60,9 @@ const TIPOS_NO: NodeTypes = {
   criar_alerta_interno: NoCriarAlertaInternoCard,
   pausar_automacao: NoPausarAutomacaoCard,
   iniciar_agente_ia: NoIniciarAgenteIACard,
+  capturar_resposta: NoCapturarRespostaCard,
+  criar_pesquisa: NoCriarPesquisaCard,
+  persistir_resposta_pesquisa: NoPersistirRespostaPesquisaCard,
 };
 
 /** Formato do arrasto vindo da paleta (`FluxoPaletaBlocos`) — nome de tipo MIME próprio, não colide com nada externo. */

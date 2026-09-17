@@ -7,9 +7,16 @@ import type { NoFluxo } from "@/lib/fluxo-tipos";
 const BLOCOS_BASICOS: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[] = [
   { tipo: "mensagem", label: "Mensagem", descricao: "Envia um texto" },
   { tipo: "espera", label: "Espera", descricao: "Aguarda um tempo" },
-  { tipo: "menu", label: "Menu", descricao: "Pergunta e espera resposta" },
+  { tipo: "menu", label: "Menu", descricao: "Pergunta e espera resposta (escolha fechada)" },
+  { tipo: "capturar_resposta", label: "Capturar resposta", descricao: "Pergunta e valida uma resposta aberta (texto ou número)" },
   { tipo: "condicao", label: "Se / Senão", descricao: "Ramifica por uma variável" },
   { tipo: "finalizar", label: "Finalizar", descricao: "Encerra a execução" },
+];
+
+/** Fase 3 — infra genérica de pesquisas/solicitações (NPS, satisfação, avaliação Google). Criação e resposta são sempre blocos separados. */
+const BLOCOS_PESQUISAS: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[] = [
+  { tipo: "criar_pesquisa", label: "Criar pesquisa", descricao: "Registra uma pesquisa/solicitação (NPS, satisfação ou avaliação Google)" },
+  { tipo: "persistir_resposta_pesquisa", label: "Salvar resposta da pesquisa", descricao: "Grava a resposta capturada numa pesquisa já criada" },
 ];
 
 /** Não depende de nenhuma capability externa — só escreve em tabelas que o CRM já usa em produção (etiquetas, funil/status, prioridade, atendente). */
@@ -88,6 +95,7 @@ export function FluxoPaletaBlocos({ controleOdontoConfigurado }: { controleOdont
       <SecaoBlocos titulo="Ações CRM" blocos={BLOCOS_ACAO_CRM} onDragStart={handleDragStart} />
       <SecaoBlocos titulo="Humano" blocos={BLOCOS_HUMANO} onDragStart={handleDragStart} />
       <SecaoBlocos titulo="IA" blocos={BLOCOS_IA} onDragStart={handleDragStart} />
+      <SecaoBlocos titulo="Pesquisas" blocos={BLOCOS_PESQUISAS} onDragStart={handleDragStart} />
 
       <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Odonto</p>
       <div className="space-y-2">

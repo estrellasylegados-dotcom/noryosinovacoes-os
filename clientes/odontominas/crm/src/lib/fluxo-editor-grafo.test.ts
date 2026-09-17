@@ -12,7 +12,8 @@ import {
   removerOpcaoMenu,
 } from "@/lib/fluxo-editor-grafo";
 import { validarFormaDefinicao } from "@/lib/fluxo-tipos";
-import type { NoCondicao, NoMenu } from "@/lib/fluxo-tipos";
+import type { NoCapturarResposta, NoCondicao, NoMenu } from "@/lib/fluxo-tipos";
+import { validarGrafo } from "@/lib/fluxo-validador";
 
 describe("criarNoPadrao", () => {
   it.each([
@@ -31,6 +32,9 @@ describe("criarNoPadrao", () => {
     "criar_alerta_interno",
     "pausar_automacao",
     "iniciar_agente_ia",
+    "capturar_resposta",
+    "criar_pesquisa",
+    "persistir_resposta_pesquisa",
   ] as const)("tipo %s nasce sintaticamente válido (passa validarFormaDefinicao)", (tipo) => {
     const no = criarNoPadrao(tipo, "novo");
     const resultado = validarFormaDefinicao({ nodes: [no], edges: [], config: {} });
@@ -58,6 +62,31 @@ describe("criarNoPadrao", () => {
     expect(criarNoPadrao("pausar_automacao", "pa1")).toMatchObject({ proximo: "pa1" });
     expect(criarNoPadrao("transferir_humano", "th1")).toEqual({ id: "th1", tipo: "transferir_humano" });
     expect(criarNoPadrao("iniciar_agente_ia", "ia1")).toEqual({ id: "ia1", tipo: "iniciar_agente_ia", agenteId: "" });
+  });
+
+  it("capturar_resposta nasce auto-referenciado, tipoValor texto (Fase 3)", () => {
+    expect(criarNoPadrao("capturar_resposta", "cap1")).toMatchObject({
+      tipo: "capturar_resposta",
+      tipoValor: "texto",
+      proximo: "cap1",
+    });
+  });
+
+  it("criar_pesquisa nasce auto-referenciado, tipo nps por padrão (Fase 3)", () => {
+    expect(criarNoPadrao("criar_pesquisa", "cp1")).toMatchObject({
+      tipo: "criar_pesquisa",
+      tipoPesquisa: "nps",
+      variavelDestino: "pesquisa_id",
+      proximo: "cp1",
+    });
+  });
+
+  it("persistir_resposta_pesquisa nasce auto-referenciado (Fase 3)", () => {
+    expect(criarNoPadrao("persistir_resposta_pesquisa", "pp1")).toMatchObject({
+      tipo: "persistir_resposta_pesquisa",
+      variavelPesquisaId: "pesquisa_id",
+      proximo: "pp1",
+    });
   });
 });
 
@@ -119,6 +148,26 @@ describe("derivarArestasXyflow", () => {
     expect(derivarArestasXyflow([{ id: "pa", tipo: "pausar_automacao", proximo: "fim" }])).toEqual([
       { id: "pa::default", source: "pa", sourceHandle: "default", target: "fim" },
     ]);
+  });
+
+  it("capturar_resposta: 1 aresta 'default' + timeout só se definido (mesmo padrão de menu)", () => {
+    const semTimeout: NoCapturarResposta = { id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximo: "fim" };
+    expect(derivarArestasXyflow([semTimeout])).toEqual([{ id: "cap::default", source: "cap", sourceHandle: "default", target: "fim" }]);
+
+    const comTimeout: NoCapturarResposta = { ...semTimeout, proximoTimeout: "timeout_no" };
+    const arestas = derivarArestasXyflow([comTimeout]);
+    expect(arestas).toContainEqual({ id: "cap::timeout", source: "cap", sourceHandle: "timeout", target: "timeout_no" });
+  });
+
+  it("criar_pesquisa/persistir_resposta_pesquisa: 1 aresta 'default', mesmo padrão de mensagem/espera", () => {
+    expect(derivarArestasXyflow([{ id: "cp", tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "x", proximo: "fim" }])).toEqual([
+      { id: "cp::default", source: "cp", sourceHandle: "default", target: "fim" },
+    ]);
+    expect(
+      derivarArestasXyflow([
+        { id: "pp", tipo: "persistir_resposta_pesquisa", variavelPesquisaId: "x", variavelValor: "y", proximo: "fim" },
+      ])
+    ).toEqual([{ id: "pp::default", source: "pp", sourceHandle: "default", target: "fim" }]);
   });
 
   it("duas opções de menu apontando pro mesmo destino geram 2 arestas com ids distintos", () => {
@@ -195,6 +244,24 @@ describe("aplicarConexao", () => {
     expect(nodes[0]).toMatchObject({ proximo: "fim" });
   });
 
+  it("capturar_resposta: reconecta 'default' e 'timeout' independentemente", () => {
+    const cap: NoCapturarResposta = { id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximo: "cap" };
+    let nodes = aplicarConexao([cap], "cap", "default", "fim");
+    expect(nodes[0]).toMatchObject({ proximo: "fim" });
+    nodes = aplicarConexao(nodes, "cap", "timeout", "timeout_no");
+    expect(nodes[0]).toMatchObject({ proximoTimeout: "timeout_no", proximo: "fim" });
+  });
+
+  it("criar_pesquisa/persistir_resposta_pesquisa: reconecta 'default', mesmo padrão de mensagem/espera", () => {
+    const nodes = aplicarConexao(
+      [{ id: "cp", tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "x", proximo: "cp" }],
+      "cp",
+      "default",
+      "fim"
+    );
+    expect(nodes[0]).toMatchObject({ proximo: "fim" });
+  });
+
   it("nó de outro id não é afetado", () => {
     const nodes = aplicarConexao(
       [
@@ -229,6 +296,21 @@ describe("podeDeletarAresta / limparConectorOpcional", () => {
     expect(limpo.proximoTimeout).toBeUndefined();
     expect(limpo.opcoes).toEqual(menu.opcoes);
   });
+
+  it("timeout de capturar_resposta também é deletável (Fase 3, mesmo padrão de menu)", () => {
+    const cap: NoCapturarResposta = {
+      id: "cap",
+      tipo: "capturar_resposta",
+      texto: "?",
+      variavel: "x",
+      tipoValor: "texto",
+      proximo: "fim",
+      proximoTimeout: "timeout_no",
+    };
+    expect(podeDeletarAresta(cap, "timeout")).toBe(true);
+    expect(podeDeletarAresta(cap, "default")).toBe(false);
+    expect((limparConectorOpcional(cap, "timeout") as NoCapturarResposta).proximoTimeout).toBeUndefined();
+  });
 });
 
 describe("adicionarOpcaoMenu / removerOpcaoMenu", () => {
@@ -256,6 +338,52 @@ describe("adicionarOpcaoMenu / removerOpcaoMenu", () => {
   it("nunca remove a última opção", () => {
     const menu: NoMenu = { id: "m", tipo: "menu", texto: "Escolha", opcoes: [{ valor: "1", rotulos: ["1"], proximo: "fim" }] };
     expect(removerOpcaoMenu(menu, 0)).toBe(menu);
+  });
+});
+
+describe("Fase 3 — serialização (salvar/reabrir) e compatibilidade com fluxo antigo", () => {
+  it("capturar_resposta/criar_pesquisa/persistir_resposta_pesquisa sobrevivem a um round-trip JSON (mesmo formato salvo em fluxo_versoes.definicao)", () => {
+    const nodes = [
+      criarNoPadrao("inicio", "inicio"),
+      { ...(criarNoPadrao("capturar_resposta", "cap") as NoCapturarResposta), min: 0, max: 10, tipoValor: "numero" as const },
+      criarNoPadrao("criar_pesquisa", "cp"),
+      criarNoPadrao("persistir_resposta_pesquisa", "pp"),
+      { id: "fim", tipo: "finalizar" as const },
+    ];
+    const bruto = { nodes, edges: [], config: {} };
+    const depoisDeSalvarEReabrir = JSON.parse(JSON.stringify(bruto));
+    const resultado = validarFormaDefinicao(depoisDeSalvarEReabrir);
+    expect(resultado.ok).toBe(true);
+    if (resultado.ok) expect(resultado.definicao.nodes).toEqual(nodes);
+  });
+
+  it("um fluxo antigo (só nós que já existiam antes da Fase 3) continua validando normalmente — nada quebrou", () => {
+    const fluxoAntigo = {
+      nodes: [
+        { id: "inicio", tipo: "inicio", proximo: "msg" },
+        { id: "msg", tipo: "mensagem", texto: "Oi {primeiro_nome}!", proximo: "menu" },
+        {
+          id: "menu",
+          tipo: "menu",
+          texto: "1 Agendar\n2 Falar com atendente",
+          opcoes: [
+            { valor: "agendar", rotulos: ["1"], proximo: "et" },
+            { valor: "atendente", rotulos: ["2"], proximo: "th" },
+          ],
+        },
+        { id: "et", tipo: "adicionar_etiqueta", etiquetaId: "etq-1", proximo: "fim" },
+        { id: "th", tipo: "transferir_humano" },
+        { id: "fim", tipo: "finalizar" },
+      ],
+      edges: [],
+      config: {},
+    };
+    const resultado = validarFormaDefinicao(fluxoAntigo);
+    expect(resultado.ok).toBe(true);
+    if (resultado.ok) {
+      const grafo = validarGrafo(resultado.definicao);
+      expect(grafo.erros).toEqual([]);
+    }
   });
 });
 

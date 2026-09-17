@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { processarNo, resolverVariaveisFluxo, type ContadoresNo } from "@/lib/fluxo-motor";
+import { validarGrafo } from "@/lib/fluxo-validador";
 import type { FluxoDefinicao } from "@/lib/fluxo-tipos";
 
 const PACIENTE = { nome: "Maria Silva", telefone: "5561999998888" };
@@ -468,6 +469,103 @@ describe("processarNo — capturar_resposta (Fase 3, genérico — nunca 'captur
     const resultadoB = processarNo(numerica, "cap", { nps_nota: "5" }, { tipo: "resposta_texto", texto: "2" }, PACIENTE, SEM_VISITAS, AGORA);
     expect(resultadoA).toMatchObject({ variaveisAtualizadas: { nps_nota: "9" } });
     expect(resultadoB).toMatchObject({ variaveisAtualizadas: { nps_nota: "2" } });
+  });
+});
+
+describe("Fase 3 — fluxo real completo (teste técnico de infraestrutura, item 6 da decisão)", () => {
+  // Mesmo desenho do exemplo pedido: mensagem → capturar_resposta → criar_pesquisa
+  // → persistir_resposta_pesquisa → mensagem final. Exercita exatamente a
+  // sequência de estados que o editor visual produz (nós conectados por
+  // `proximo`) e que fluxo-execucoes.ts processa passo a passo — a única
+  // coisa que este teste não pode fazer é substituir o passo de I/O real
+  // (banco/WhatsApp), que fica pro teste controlado em produção depois das
+  // migrations (ver relatório de entrega da Fase 3).
+  const definicao = def([
+    { id: "inicio", tipo: "inicio", proximo: "pergunta" },
+    { id: "pergunta", tipo: "mensagem", texto: "Vamos fazer uma pergunta rápida.", proximo: "criar_pesquisa" },
+    { id: "criar_pesquisa", tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id", proximo: "captura" },
+    {
+      id: "captura",
+      tipo: "capturar_resposta",
+      texto: "De 0 a 10, qual sua nota?",
+      variavel: "nps_nota",
+      tipoValor: "numero",
+      min: 0,
+      max: 10,
+      proximo: "persistir",
+    },
+    {
+      id: "persistir",
+      tipo: "persistir_resposta_pesquisa",
+      variavelPesquisaId: "pesquisa_id",
+      variavelValor: "nps_nota",
+      proximo: "final",
+    },
+    { id: "final", tipo: "mensagem", texto: "Obrigado pela nota!", proximo: "fim" },
+    { id: "fim", tipo: "finalizar", motivo: "pesquisa_concluida" },
+  ]);
+
+  it("o grafo é válido (o que o editor bloquearia na publicação)", () => {
+    const resultado = validarGrafo(definicao);
+    expect(resultado.erros).toEqual([]);
+    expect(resultado.avisos).toEqual([]);
+  });
+
+  it("cadeia completa: inicio → mensagem → criar_pesquisa → aguarda resposta → resposta válida → persistir → mensagem final → finalizar", () => {
+    let variaveis: Record<string, string> = {};
+
+    // 1. início
+    let passo = processarNo(definicao, "inicio", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: "pergunta", novoEstado: "queued" });
+
+    // 2. mensagem da pergunta
+    passo = processarNo(definicao, "pergunta", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: "criar_pesquisa", mensagensParaEnviar: ["Vamos fazer uma pergunta rápida."] });
+
+    // 3. criar_pesquisa — motor só declara a ação; a camada de I/O (fora
+    // deste teste puro) é quem cria a linha e devolve o pesquisa_id real.
+    passo = processarNo(definicao, "criar_pesquisa", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({
+      ok: true,
+      proximoNoId: "captura",
+      acaoCrm: { tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id" },
+    });
+    // Simula o que fluxo-execucoes.ts faria: mescla o pesquisa_id gerado pelo banco.
+    variaveis = { ...variaveis, pesquisa_id: "pesquisa-fake-123" };
+
+    // 4. captura — entra em waiting_input, manda a pergunta
+    passo = processarNo(definicao, "captura", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: "captura", novoEstado: "waiting_input", mensagensParaEnviar: ["De 0 a 10, qual sua nota?"] });
+
+    // 5. paciente responde "9" — WAITING_INPUT → RESPOSTA
+    passo = processarNo(definicao, "captura", variaveis, { tipo: "resposta_texto", texto: "9" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: "persistir", novoEstado: "queued", tipoEvento: "captura_concluida" });
+    if (passo.ok) variaveis = { ...variaveis, ...passo.variaveisAtualizadas };
+    expect(variaveis.nps_nota).toBe("9");
+
+    // 6. persistir_resposta_pesquisa — PERSISTÊNCIA (declarada, aplicada pela camada de I/O)
+    passo = processarNo(definicao, "persistir", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({
+      ok: true,
+      proximoNoId: "final",
+      acaoCrm: { tipo: "persistir_resposta_pesquisa", variavelPesquisaId: "pesquisa_id", variavelValor: "nps_nota" },
+    });
+
+    // 7. mensagem final
+    passo = processarNo(definicao, "final", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: "fim", mensagensParaEnviar: ["Obrigado pela nota!"] });
+
+    // 8. FINALIZAÇÃO
+    passo = processarNo(definicao, "fim", variaveis, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(passo).toMatchObject({ ok: true, proximoNoId: null, novoEstado: "completed", motivoFinalizacao: "pesquisa_concluida" });
+  });
+
+  it("resposta fora da faixa não avança — continua em waiting_input até vir uma nota válida", () => {
+    const invalida = processarNo(definicao, "captura", {}, { tipo: "resposta_texto", texto: "15" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(invalida).toMatchObject({ ok: true, proximoNoId: "captura", novoEstado: "waiting_input", tipoEvento: "captura_invalida" });
+
+    const valida = processarNo(definicao, "captura", {}, { tipo: "resposta_texto", texto: "7" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(valida).toMatchObject({ ok: true, proximoNoId: "persistir", tipoEvento: "captura_concluida" });
   });
 });
 
