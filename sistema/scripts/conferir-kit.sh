@@ -17,9 +17,9 @@ linhas=$(wc -l < AGENTS.md | tr -d ' ')
 [ -n "${teto:-}" ] && [ "$linhas" -gt "$teto" ] && falha "AGENTS.md com $linhas linhas, teto $teto"
 
 # 2. versão e changelog batem
-versao=$(tr -d '[:space:]' < .ratosos 2>/dev/null)
-[ -n "${versao:-}" ] || falha "falta o .ratosos com a versão"
-[ -n "${versao:-}" ] && [ ! -f "sistema/changelog/$versao.md" ] && falha "falta sistema/changelog/$versao.md (a versão do .ratosos é $versao)"
+versao=$(tr -d '[:space:]' < .noryosinovacoes 2>/dev/null)
+[ -n "${versao:-}" ] || falha "falta o .noryosinovacoes com a versão"
+[ -n "${versao:-}" ] && [ ! -f "sistema/changelog/$versao.md" ] && falha "falta sistema/changelog/$versao.md (a versão do .noryosinovacoes é $versao)"
 [ -f sistema/changelog/COMO-ATUALIZAR.md ] || falha "falta sistema/changelog/COMO-ATUALIZAR.md"
 
 # 3. lei de admissão: toda gaveta tem gatilho de leitura (boot ou mapa) E de escrita (tabela)
@@ -59,7 +59,7 @@ done
 
 # 7. .gitignore: o trabalho sobe, o segredo não
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  for deve_subir in clientes/x/proposta.html _memoria/diario/2026-01-01.md .claude/skills/minha/SKILL.md .ratosos sistema/scripts/sync-ponte.sh clientes/x/contrato.pdf; do
+  for deve_subir in clientes/x/proposta.html _memoria/diario/2026-01-01.md .claude/skills/minha/SKILL.md .noryosinovacoes sistema/scripts/sync-ponte.sh clientes/x/contrato.pdf; do
     git check-ignore -q "$deve_subir" && falha ".gitignore bloqueia coisa que devia subir: $deve_subir"
   done
   for nao_sobe in .env .env.local .origem .claude/settings.local.json video.mp4 backup.zip node_modules/x.js; do

@@ -33,7 +33,7 @@ Fazer sem alardear; só reportar no fim se algo falhar.
    vira symlink e reflete as skills sozinho; no Windows vira junction, e só cai pra cópia se nem
    isso der (aí skill nova precisa re-sincronizar: o `/mapear` e o `/atualizar` rodam o script).
 2. **A estrutura mínima existe?** `_memoria/diario/`, `_memoria/recados/` (com `.gitkeep`),
-   `_memoria/decisoes.md`, `_contexto/marca/`, `.ratosos`. O kit já traz tudo; se algo faltar
+   `_memoria/decisoes.md`, `_contexto/marca/`, `.noryosinovacoes`. O kit já traz tudo; se algo faltar
    (alguém apagou), recriar em silêncio.
 
 ## Verificação inicial
