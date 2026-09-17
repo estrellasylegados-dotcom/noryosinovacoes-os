@@ -9,6 +9,7 @@ import { adicionarEtiquetaConversa, removerEtiquetaConversa } from "@/lib/etique
 import { atualizarStatus } from "@/lib/conversas";
 import { isPrioridadeValida } from "@/lib/prioridade";
 import { buscarAgente } from "@/lib/agentes";
+import { buscarClinicaAtual } from "@/lib/clinica";
 
 /**
  * Camada de I/O do motor de Fluxo de Conversa (Fase 2a — ver
@@ -64,13 +65,20 @@ async function enviarComRetry(telefone: string, texto: string): Promise<{ ok: bo
  * genérico (que devolveria a conversa pro humano por cima da entrega que
  * acabou de acontecer pro agente). Toda outra ação devolve `false`, mesmo as
  * que nem tocam `dono_conversa`.
+ *
+ * `variaveisExtra` (Fase 3, pesquisas) — só `criar_pesquisa` usa: o
+ * `pesquisa_id` só existe depois do INSERT (gerado pelo banco), então não dá
+ * pra vir de `resultado.variaveisAtualizadas` do motor puro (que nunca toca
+ * banco). `processarPassoReivindicado` funde isso nas variáveis da execução
+ * do mesmo jeito que funde `resultado.variaveisAtualizadas`.
  */
 async function aplicarAcaoCrm(
   supabase: SupabaseClient,
   clinicaId: string,
   conversaId: string,
+  contexto: { pacienteId: string | null; fluxoId: string; execucaoId: string; variaveis: Record<string, string> },
   acao: AcaoCrm
-): Promise<{ donoTransferido: boolean }> {
+): Promise<{ donoTransferido: boolean; variaveisExtra?: Record<string, string> }> {
   switch (acao.tipo) {
     case "adicionar_etiqueta": {
       if (!acao.etiquetaId) return { donoTransferido: false }; // nó publicado sem etiqueta não deveria existir (validarGrafo barra), defesa extra
@@ -153,6 +161,79 @@ async function aplicarAcaoCrm(
       }
       return { donoTransferido: true };
     }
+
+    // Fase 3 — cria a pesquisa/solicitação ANTES de qualquer resposta (ciclo
+    // de vida real: enviada → respondida/expirada, ver migration v22). Nasce
+    // 'enviada' porque este motor não confirma entrega separada do envio
+    // (nenhuma mensagem de nenhum outro nó confirma — mesmo critério de
+    // `enviarComRetry`, "melhor esforço"); 'pendente' fica reservado pra uma
+    // origem futura que precise desse estado intermediário de verdade.
+    case "criar_pesquisa": {
+      if (!contexto.pacienteId) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "sem_paciente" }));
+        return { donoTransferido: false };
+      }
+      const agora = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("pesquisas")
+        .insert({
+          clinica_id: clinicaId,
+          paciente_id: contexto.pacienteId,
+          fluxo_id: contexto.fluxoId,
+          execucao_id: contexto.execucaoId,
+          tipo: acao.tipoPesquisa,
+          status: "enviada",
+          referencia_id: acao.referenciaId,
+          enviado_em: agora,
+        })
+        .select("id")
+        .single();
+      if (error || !data) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error?.code ?? null }));
+        return { donoTransferido: false };
+      }
+      return { donoTransferido: false, variaveisExtra: { [acao.variavelDestino]: data.id as string } };
+    }
+
+    // Fase 3 — único responsável por gravar `pesquisa_respostas`: nunca o
+    // mesmo nó que cria (ver fluxo-tipos.ts). Google Reviews (`avaliacao_google`)
+    // nunca chega aqui de propósito — não há como provar publicação de
+    // avaliação sem integração real, então esta ação recusa gravar resposta
+    // pra esse tipo mesmo que um fluxo mal configurado tente.
+    case "persistir_resposta_pesquisa": {
+      const pesquisaId = contexto.variaveis[acao.variavelPesquisaId];
+      if (!pesquisaId) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "pesquisa_id_ausente" }));
+        return { donoTransferido: false };
+      }
+      const { data: pesquisa } = await supabase.from("pesquisas").select("tipo, clinica_id").eq("id", pesquisaId).maybeSingle();
+      if (!pesquisa || pesquisa.clinica_id !== clinicaId) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "pesquisa_nao_encontrada" }));
+        return { donoTransferido: false };
+      }
+      if (pesquisa.tipo === "avaliacao_google") {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "google_nao_aceita_resposta" }));
+        return { donoTransferido: false };
+      }
+
+      const valorBruto = contexto.variaveis[acao.variavelValor] ?? "";
+      const comentario = acao.variavelComentario ? (contexto.variaveis[acao.variavelComentario] ?? null) : null;
+      const numero = Number(valorBruto);
+      const ehNumero = valorBruto.trim() !== "" && Number.isFinite(numero);
+
+      const { error: erroResposta } = await supabase.from("pesquisa_respostas").insert({
+        pesquisa_id: pesquisaId,
+        valor_numero: ehNumero ? numero : null,
+        valor_texto: ehNumero ? null : valorBruto,
+        comentario,
+      });
+      if (erroResposta) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: erroResposta.code ?? null }));
+        return { donoTransferido: false };
+      }
+      await supabase.from("pesquisas").update({ status: "respondida", respondido_em: new Date().toISOString() }).eq("id", pesquisaId);
+      return { donoTransferido: false };
+    }
   }
 }
 
@@ -222,6 +303,9 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
   const conversaEmbutida = execucao.conversas as { telefone: string } | { telefone: string }[] | null;
   const telefone = (Array.isArray(conversaEmbutida) ? conversaEmbutida[0]?.telefone : conversaEmbutida?.telefone) ?? "";
 
+  // Cacheado em processo (buscarClinicaAtual) — custo real só na 1ª chamada.
+  const clinicaAtual = await buscarClinicaAtual();
+
   return {
     execucaoId: execucao.id as string,
     clinicaId,
@@ -234,7 +318,7 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
     passosExecutados: execucao.passos_executados as number,
     isTest: Boolean(execucao.is_test),
     definicao: formaValidada.definicao,
-    paciente: { nome: nomePaciente, telefone },
+    paciente: { nome: nomePaciente, telefone, clinicaNome: clinicaAtual?.nome ?? null },
   };
 }
 
@@ -318,8 +402,17 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
   }
 
   let donoTransferidoPorAcao = false;
+  let variaveisExtra: Record<string, string> = {};
   if (resultado.acaoCrm) {
-    donoTransferidoPorAcao = (await aplicarAcaoCrm(supabase, clinicaId, contexto.conversaId, resultado.acaoCrm)).donoTransferido;
+    const efeito = await aplicarAcaoCrm(
+      supabase,
+      clinicaId,
+      contexto.conversaId,
+      { pacienteId: contexto.pacienteId, fluxoId: contexto.fluxoId, execucaoId: contexto.execucaoId, variaveis: contexto.variaveis },
+      resultado.acaoCrm
+    );
+    donoTransferidoPorAcao = efeito.donoTransferido;
+    variaveisExtra = efeito.variaveisExtra ?? {};
   }
 
   // Opt-out checado AQUI, imediatamente antes de qualquer envio — nunca
@@ -371,7 +464,7 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
     await supabase.from("conversas").update({ ultima_mensagem_em: agora, updated_at: agora }).eq("id", contexto.conversaId);
   }
 
-  const variaveisAtualizadas = { ...contexto.variaveis, ...resultado.variaveisAtualizadas };
+  const variaveisAtualizadas = { ...contexto.variaveis, ...resultado.variaveisAtualizadas, ...variaveisExtra };
   const terminou = ESTADOS_TERMINAIS.includes(resultado.novoEstado);
 
   await supabase
@@ -388,7 +481,12 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
 
   await supabase
     .from("fluxo_execucao_eventos")
-    .update({ status: "concluido", tipo_evento: resultado.tipoEvento, updated_at: new Date().toISOString() })
+    .update({
+      status: "concluido",
+      tipo_evento: resultado.tipoEvento,
+      payload: resultado.payloadEvento ?? {},
+      updated_at: new Date().toISOString(),
+    })
     .eq("execucao_id", execucaoId)
     .eq("sequencia", sequencia);
 

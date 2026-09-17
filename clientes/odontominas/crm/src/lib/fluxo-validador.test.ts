@@ -205,3 +205,88 @@ describe("validarGrafo", () => {
     expect(erroLoop?.noIds).toEqual(["cond"]);
   });
 });
+
+describe("validarGrafo — capturar_resposta (Fase 3)", () => {
+  it("fluxo válido: início → capturar_resposta → finalizar, sem erro", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "cap" },
+        { id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximo: "fim" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toEqual([]);
+  });
+
+  it("é nó de guarda: loop passando por capturar_resposta é permitido, sem erro de loop", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "cap" },
+        { id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximo: "cond" },
+        { id: "cond", tipo: "condicao", variavel: "x", operador: "existe", seVerdadeiro: "fim", seFalso: "cap" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toEqual([]);
+  });
+
+  it("proximoTimeout também conta como referência válida (não órfão, não quebrada)", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "cap" },
+        { id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximoTimeout: "fim2", proximo: "fim1" },
+        { id: "fim1", tipo: "finalizar" },
+        { id: "fim2", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toEqual([]);
+    expect(resultado.avisos).toEqual([]);
+  });
+
+  it("proximo apontando pra nó inexistente: erro", () => {
+    const resultado = validarGrafo(
+      def([{ id: "cap", tipo: "capturar_resposta", texto: "?", variavel: "x", tipoValor: "texto", proximo: "nao_existe" }])
+    );
+    expect(resultado.erros.some((e) => e.mensagem.includes("nao_existe"))).toBe(true);
+  });
+});
+
+describe("validarGrafo — criar_pesquisa / persistir_resposta_pesquisa (Fase 3)", () => {
+  it("fluxo válido: início → criar_pesquisa → capturar_resposta → persistir_resposta_pesquisa → finalizar", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "criar" },
+        { id: "criar", tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id", proximo: "cap" },
+        { id: "cap", tipo: "capturar_resposta", texto: "Nota?", variavel: "nota", tipoValor: "numero", min: 0, max: 10, proximo: "persistir" },
+        {
+          id: "persistir",
+          tipo: "persistir_resposta_pesquisa",
+          variavelPesquisaId: "pesquisa_id",
+          variavelValor: "nota",
+          proximo: "fim",
+        },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toEqual([]);
+    expect(resultado.avisos).toEqual([]);
+  });
+
+  it("criar_pesquisa/persistir_resposta_pesquisa em loop sem guarda: mesmo erro de loop perigoso", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "criar" },
+        { id: "criar", tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id", proximo: "persistir" },
+        {
+          id: "persistir",
+          tipo: "persistir_resposta_pesquisa",
+          variavelPesquisaId: "pesquisa_id",
+          variavelValor: "nota",
+          proximo: "criar",
+        },
+      ])
+    );
+    const erroLoop = resultado.erros.find((e) => e.mensagem.includes("loop sem espera/menu"));
+    expect(erroLoop).toBeDefined();
+  });
+});

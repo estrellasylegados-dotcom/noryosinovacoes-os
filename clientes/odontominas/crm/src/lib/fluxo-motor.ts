@@ -1,5 +1,5 @@
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
-import { encontrarNo, type FluxoDefinicao, type NoMenu, type OperadorCondicao } from "@/lib/fluxo-tipos";
+import { encontrarNo, type FluxoDefinicao, type NoCapturarResposta, type NoMenu, type OperadorCondicao, type TipoPesquisa } from "@/lib/fluxo-tipos";
 import type { StatusConversa } from "@/lib/status";
 import type { Prioridade } from "@/lib/prioridade";
 
@@ -18,7 +18,13 @@ import type { Prioridade } from "@/lib/prioridade";
 
 export type EntradaProcessamento = { tipo: "avancar" } | { tipo: "resposta_texto"; texto: string } | { tipo: "timeout" };
 
-export type ContextoPaciente = { nome: string | null; telefone: string };
+/**
+ * `clinicaNome` opcional (Fase 3, branding dinâmico) — quem já chamava
+ * `processarNo` sem essa chave continua funcionando: `{{clinica_nome}}`
+ * resolve pra string vazia em vez de derrubar o teste/chamador antigo, mesmo
+ * critério de fallback seguro de `resolverVariaveis` (nunca "undefined").
+ */
+export type ContextoPaciente = { nome: string | null; telefone: string; clinicaNome?: string | null };
 
 export type EstadoExecucao =
   | "queued"
@@ -53,7 +59,14 @@ export type AcaoCrm =
   | { tipo: "atribuir_atendente"; atendenteId: string | null }
   | { tipo: "criar_alerta_interno"; mensagem: string; numeros: string }
   | { tipo: "pausar_automacao" }
-  | { tipo: "iniciar_agente_ia"; agenteId: string };
+  | { tipo: "iniciar_agente_ia"; agenteId: string }
+  // Fase 3 — infra de pesquisas (ver fluxo-tipos.ts). A camada de I/O
+  // (fluxo-execucoes.ts) é quem sabe ler/escrever `pesquisas`/
+  // `pesquisa_respostas`; o motor só declara a intenção, com os NOMES das
+  // variáveis (não os valores resolvidos) — quem tem o valor mais recente de
+  // `variaveis` no momento de aplicar é a camada de I/O, não o motor.
+  | { tipo: "criar_pesquisa"; tipoPesquisa: TipoPesquisa; referenciaId: string | null; variavelDestino: string }
+  | { tipo: "persistir_resposta_pesquisa"; variavelPesquisaId: string; variavelValor: string; variavelComentario: string | null };
 
 export type ResultadoPasso =
   | {
@@ -68,6 +81,15 @@ export type ResultadoPasso =
       acaoCrm: AcaoCrm | null;
       /** Pro log em fluxo_execucao_eventos.tipo_evento. */
       tipoEvento: string;
+      /**
+       * Fase 3 — rastreabilidade de `capturar_resposta`: preserva a resposta
+       * BRUTA recebida (antes de normalizar), gravada em
+       * `fluxo_execucao_eventos.payload` pela camada de I/O. Não duplica em
+       * `fluxo_execucoes.variaveis` (que já guarda o valor normalizado) — a
+       * mensagem original também já vive em `mensagens`, isso aqui é só o
+       * vínculo direto com o passo que a validou.
+       */
+      payloadEvento?: Record<string, unknown>;
     }
   | { ok: false; erro: string };
 
@@ -91,9 +113,9 @@ function normalizar(texto: string): string {
  * string vazia — mesmo princípio de nunca vazar "undefined"/"[object Object]".
  */
 export function resolverVariaveisFluxo(texto: string, variaveis: Record<string, string>, paciente: ContextoPaciente): string {
-  const comBase = resolverVariaveis(texto, { nome: paciente.nome, telefone: paciente.telefone });
+  const comBase = resolverVariaveis(texto, { nome: paciente.nome, telefone: paciente.telefone, clinicaNome: paciente.clinicaNome });
   return comBase.replace(/\{([a-z_][a-z0-9_]*)\}/g, (match, chave: string) => {
-    if (chave === "nome" || chave === "primeiro_nome" || chave === "telefone") return match; // já resolvido acima
+    if (chave === "nome" || chave === "primeiro_nome" || chave === "telefone" || chave === "clinica_nome") return match; // já resolvido acima
     return variaveis[chave] ?? "";
   });
 }
@@ -155,6 +177,62 @@ function fallbackMenu(no: NoMenu, motivo: string): ResultadoPasso {
     motivoFinalizacao: motivo,
     tipoEvento: motivo,
   };
+}
+
+/** Mesmo fallback de `fallbackMenu`, pro nó `capturar_resposta` (`proximoTimeout` próprio). */
+function fallbackCaptura(no: NoCapturarResposta, motivo: string): ResultadoPasso {
+  if (no.proximoTimeout) {
+    return {
+      ok: true,
+      proximoNoId: no.proximoTimeout,
+      novoEstado: "queued",
+      aguardandoAte: new Date().toISOString(),
+      mensagensParaEnviar: [],
+      variaveisAtualizadas: {},
+      acaoCrm: null,
+      tipoEvento: motivo,
+    };
+  }
+  return {
+    ok: true,
+    proximoNoId: null,
+    novoEstado: "transferred",
+    aguardandoAte: null,
+    mensagensParaEnviar: [],
+    variaveisAtualizadas: {},
+    acaoCrm: null,
+    motivoFinalizacao: motivo,
+    tipoEvento: motivo,
+  };
+}
+
+/**
+ * `numero`: aceita vírgula decimal (padrão pt-BR de digitação no WhatsApp),
+ * valida min/max quando configurados. `texto`: valida `regex` só quando
+ * configurada — regex inválida configurada não trava o paciente (aceita como
+ * está, mesmo espírito de nunca deixar um erro de configuração virar
+ * atendimento travado). Vazio: aceito só se `obrigatorio === false`.
+ */
+function validarRespostaCapturada(no: NoCapturarResposta, textoRecebido: string): { ok: true; valor: string } | { ok: false } {
+  const bruto = textoRecebido.trim();
+  if (!bruto) return no.obrigatorio === false ? { ok: true, valor: "" } : { ok: false };
+
+  if (no.tipoValor === "numero") {
+    const numero = Number(bruto.replace(",", "."));
+    if (!Number.isFinite(numero)) return { ok: false };
+    if (no.min !== undefined && numero < no.min) return { ok: false };
+    if (no.max !== undefined && numero > no.max) return { ok: false };
+    return { ok: true, valor: String(numero) };
+  }
+
+  if (no.regex) {
+    try {
+      if (!new RegExp(no.regex).test(bruto)) return { ok: false };
+    } catch {
+      // regex inválida configurada — aceita como está, não trava o paciente.
+    }
+  }
+  return { ok: true, valor: bruto };
 }
 
 export function processarNo(
@@ -409,6 +487,95 @@ export function processarNo(
         acaoCrm: { tipo: "iniciar_agente_ia", agenteId: no.agenteId },
         motivoFinalizacao: no.motivo,
         tipoEvento: "agente_ia_iniciado",
+      };
+
+    // Fase 3 — genérico (texto ou número validado), nunca "capturar_nps": ver
+    // fluxo-tipos.ts. Mesma máquina de estados de `menu` (waiting_input,
+    // guarda de loop, fallback por timeout/tentativas esgotadas), aplicada a
+    // entrada aberta em vez de escolha fechada.
+    case "capturar_resposta": {
+      if (entrada.tipo === "avancar") {
+        const texto = resolverVariaveisFluxo(no.texto, variaveis, paciente);
+        return {
+          ok: true,
+          proximoNoId: no.id,
+          novoEstado: "waiting_input",
+          aguardandoAte: no.timeoutSegundos ? new Date(agora.getTime() + no.timeoutSegundos * 1000).toISOString() : null,
+          mensagensParaEnviar: [texto],
+          variaveisAtualizadas: {},
+          acaoCrm: null,
+          tipoEvento: "captura_iniciada",
+        };
+      }
+
+      if (entrada.tipo === "timeout") {
+        return fallbackCaptura(no, "captura_timeout");
+      }
+
+      // resposta_texto
+      const validado = validarRespostaCapturada(no, entrada.texto);
+      if (!validado.ok) {
+        const maxInvalidas = no.maxTentativasInvalidas ?? MAX_TENTATIVAS_INVALIDAS_PADRAO;
+        if (contadores.tentativasInvalidas + 1 >= maxInvalidas) {
+          return fallbackCaptura(no, "captura_tentativas_esgotadas");
+        }
+        return {
+          ok: true,
+          proximoNoId: no.id,
+          novoEstado: "waiting_input",
+          aguardandoAte: no.timeoutSegundos ? new Date(agora.getTime() + no.timeoutSegundos * 1000).toISOString() : null,
+          mensagensParaEnviar: [
+            no.mensagemValidacao ? resolverVariaveisFluxo(no.mensagemValidacao, variaveis, paciente) : MENSAGEM_INVALIDA_PADRAO,
+          ],
+          variaveisAtualizadas: {},
+          acaoCrm: null,
+          tipoEvento: "captura_invalida",
+          payloadEvento: { respostaBruta: entrada.texto },
+        };
+      }
+
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: { [no.variavel]: validado.valor },
+        acaoCrm: null,
+        tipoEvento: "captura_concluida",
+        payloadEvento: { respostaBruta: entrada.texto, valorNormalizado: validado.valor },
+      };
+    }
+
+    case "criar_pesquisa": {
+      const referenciaId = no.referenciaId ? resolverVariaveisFluxo(no.referenciaId, variaveis, paciente) : null;
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "criar_pesquisa", tipoPesquisa: no.tipoPesquisa, referenciaId, variavelDestino: no.variavelDestino },
+        tipoEvento: "pesquisa_criada",
+      };
+    }
+
+    case "persistir_resposta_pesquisa":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: {
+          tipo: "persistir_resposta_pesquisa",
+          variavelPesquisaId: no.variavelPesquisaId,
+          variavelValor: no.variavelValor,
+          variavelComentario: no.variavelComentario ?? null,
+        },
+        tipoEvento: "resposta_pesquisa_persistida",
       };
   }
 }

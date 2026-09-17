@@ -39,7 +39,11 @@ function proximosDe(no: NoFluxo): string[] {
     case "atribuir_atendente":
     case "criar_alerta_interno":
     case "pausar_automacao":
+    case "criar_pesquisa":
+    case "persistir_resposta_pesquisa":
       return [no.proximo];
+    case "capturar_resposta":
+      return [no.proximo, ...(no.proximoTimeout ? [no.proximoTimeout] : [])];
     case "finalizar":
     case "transferir_humano":
     case "iniciar_agente_ia":
@@ -49,7 +53,7 @@ function proximosDe(no: NoFluxo): string[] {
 
 /** Nós que "guardam" um ciclo — introduzem espera real (tempo ou input humano), tornando o loop seguro. */
 function ehNoDeGuarda(no: NoFluxo): boolean {
-  return no.tipo === "espera" || no.tipo === "menu";
+  return no.tipo === "espera" || no.tipo === "menu" || no.tipo === "capturar_resposta";
 }
 
 /** Nós que terminam a execução — usado pra checar "todo caminho tem uma saída", não só `finalizar` (ver proximosDe). */

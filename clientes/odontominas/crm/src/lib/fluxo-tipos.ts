@@ -85,6 +85,64 @@ export type NoPausarAutomacao = { id: string; tipo: "pausar_automacao"; proximo:
 /** `agenteId` aceita vazio na forma pelo mesmo motivo de `etiquetaId` (ver acima) — barrado na publicação. */
 export type NoIniciarAgenteIA = { id: string; tipo: "iniciar_agente_ia"; agenteId: string; motivo?: string };
 
+/**
+ * Fase 3 (motor central de automação — ver _memoria/decisoes.md): nó
+ * genérico de captura de resposta, NÃO um "capturar_nps". Mesma semântica de
+ * espera de `NoMenu` (`waiting_input`, guarda de loop), mas pra entrada
+ * aberta/validada em vez de escolha fechada — `menu` continua sendo o único
+ * bloco de escolha fechada, sem mudança de comportamento.
+ */
+export type TipoValorCaptura = "texto" | "numero";
+export type NoCapturarResposta = {
+  id: string;
+  tipo: "capturar_resposta";
+  texto: string;
+  variavel: string;
+  tipoValor: TipoValorCaptura;
+  obrigatorio?: boolean;
+  min?: number;
+  max?: number;
+  regex?: string;
+  mensagemValidacao?: string;
+  maxTentativasInvalidas?: number;
+  timeoutSegundos?: number;
+  proximoTimeout?: string;
+  proximo: string;
+};
+
+/**
+ * Fase 3: infraestrutura genérica de pesquisas/solicitações (NPS, satisfação,
+ * avaliação Google — mesma tabela `pesquisas`, tipos semanticamente
+ * distintos, nunca misturados). `criar_pesquisa` grava a entidade ANTES de
+ * qualquer resposta (ciclo de vida real: enviada → respondida/expirada);
+ * `persistir_resposta_pesquisa` é o único responsável por gravar
+ * `pesquisa_respostas` — nunca o mesmo nó que cria. Google Reviews usa só
+ * `criar_pesquisa` (tipo `avaliacao_google`); nunca ganha resposta fabricada
+ * (ver src/lib/fluxo-execucoes.ts:aplicarAcaoCrm).
+ */
+export type TipoPesquisa = "nps" | "satisfacao" | "avaliacao_google";
+const TIPOS_PESQUISA: readonly TipoPesquisa[] = ["nps", "satisfacao", "avaliacao_google"];
+
+export type NoCriarPesquisa = {
+  id: string;
+  tipo: "criar_pesquisa";
+  tipoPesquisa: TipoPesquisa;
+  /** Aceita `{variavel}` do fluxo, resolvido em runtime — ex.: id do atendimento. */
+  referenciaId?: string;
+  /** Nome da variável do fluxo onde o `pesquisa_id` gerado é salvo — consumida por `persistir_resposta_pesquisa`. */
+  variavelDestino: string;
+  proximo: string;
+};
+
+export type NoPersistirRespostaPesquisa = {
+  id: string;
+  tipo: "persistir_resposta_pesquisa";
+  variavelPesquisaId: string;
+  variavelValor: string;
+  variavelComentario?: string;
+  proximo: string;
+};
+
 export type NoFluxo =
   | NoInicio
   | NoMensagem
@@ -100,7 +158,10 @@ export type NoFluxo =
   | NoTransferirHumano
   | NoCriarAlertaInterno
   | NoPausarAutomacao
-  | NoIniciarAgenteIA;
+  | NoIniciarAgenteIA
+  | NoCapturarResposta
+  | NoCriarPesquisa
+  | NoPersistirRespostaPesquisa;
 
 export type FluxoDefinicao = {
   nodes: NoFluxo[];
@@ -137,6 +198,10 @@ function ehNumeroPositivoOpcional(v: unknown): v is number | undefined {
 }
 function ehStringOuNull(v: unknown): v is string | null {
   return v === null || (typeof v === "string" && v.length > 0);
+}
+/** Diferente de `ehNumeroPositivoOpcional`: aceita 0 e negativo — usado por `min`/`max` de captura (ex.: nota 0-10). */
+function ehNumeroOpcional(v: unknown): v is number | undefined {
+  return v === undefined || (typeof v === "number" && Number.isFinite(v));
 }
 
 function validarNo(bruto: unknown, indice: number): NoFluxo | string {
@@ -255,6 +320,67 @@ function validarNo(bruto: unknown, indice: number): NoFluxo | string {
       if (!ehStringOuNull(n.atendenteId)) return `nó ${n.id}: "atendenteId" inválido`;
       if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
       return { id: n.id, tipo: "atribuir_atendente", atendenteId: n.atendenteId, proximo: n.proximo };
+
+    case "capturar_resposta": {
+      if (!ehString(n.texto)) return `nó ${n.id}: "texto" ausente`;
+      if (!ehString(n.variavel)) return `nó ${n.id}: "variavel" ausente`;
+      if (n.tipoValor !== "texto" && n.tipoValor !== "numero") return `nó ${n.id}: "tipoValor" inválido`;
+      if (n.obrigatorio !== undefined && typeof n.obrigatorio !== "boolean") return `nó ${n.id}: "obrigatorio" inválido`;
+      if (!ehNumeroOpcional(n.min)) return `nó ${n.id}: "min" inválido`;
+      if (!ehNumeroOpcional(n.max)) return `nó ${n.id}: "max" inválido`;
+      if (!ehStringOpcional(n.regex)) return `nó ${n.id}: "regex" inválido`;
+      if (!ehStringOpcional(n.mensagemValidacao)) return `nó ${n.id}: "mensagemValidacao" inválido`;
+      if (!ehNumeroPositivoOpcional(n.maxTentativasInvalidas)) return `nó ${n.id}: "maxTentativasInvalidas" inválido`;
+      if (!ehNumeroPositivoOpcional(n.timeoutSegundos)) return `nó ${n.id}: "timeoutSegundos" inválido`;
+      if (!ehStringOpcional(n.proximoTimeout)) return `nó ${n.id}: "proximoTimeout" inválido`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return {
+        id: n.id,
+        tipo: "capturar_resposta",
+        texto: n.texto,
+        variavel: n.variavel,
+        tipoValor: n.tipoValor,
+        obrigatorio: n.obrigatorio as boolean | undefined,
+        min: n.min as number | undefined,
+        max: n.max as number | undefined,
+        regex: n.regex as string | undefined,
+        mensagemValidacao: n.mensagemValidacao as string | undefined,
+        maxTentativasInvalidas: n.maxTentativasInvalidas as number | undefined,
+        timeoutSegundos: n.timeoutSegundos as number | undefined,
+        proximoTimeout: n.proximoTimeout as string | undefined,
+        proximo: n.proximo,
+      };
+    }
+
+    case "criar_pesquisa":
+      if (typeof n.tipoPesquisa !== "string" || !TIPOS_PESQUISA.includes(n.tipoPesquisa as TipoPesquisa)) {
+        return `nó ${n.id}: "tipoPesquisa" inválido`;
+      }
+      if (!ehStringOpcional(n.referenciaId)) return `nó ${n.id}: "referenciaId" inválido`;
+      if (!ehString(n.variavelDestino)) return `nó ${n.id}: "variavelDestino" ausente`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return {
+        id: n.id,
+        tipo: "criar_pesquisa",
+        tipoPesquisa: n.tipoPesquisa as TipoPesquisa,
+        referenciaId: n.referenciaId as string | undefined,
+        variavelDestino: n.variavelDestino,
+        proximo: n.proximo,
+      };
+
+    case "persistir_resposta_pesquisa":
+      if (!ehString(n.variavelPesquisaId)) return `nó ${n.id}: "variavelPesquisaId" ausente`;
+      if (!ehString(n.variavelValor)) return `nó ${n.id}: "variavelValor" ausente`;
+      if (!ehStringOpcional(n.variavelComentario)) return `nó ${n.id}: "variavelComentario" inválido`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return {
+        id: n.id,
+        tipo: "persistir_resposta_pesquisa",
+        variavelPesquisaId: n.variavelPesquisaId,
+        variavelValor: n.variavelValor,
+        variavelComentario: n.variavelComentario as string | undefined,
+        proximo: n.proximo,
+      };
 
     default:
       return `nó ${n.id}: tipo desconhecido "${String(n.tipo)}"`;

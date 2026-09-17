@@ -50,6 +50,12 @@ export function criarNoPadrao(tipo: NoFluxo["tipo"], id: string): NoFluxo {
       return { id, tipo: "pausar_automacao", proximo: id };
     case "iniciar_agente_ia":
       return { id, tipo: "iniciar_agente_ia", agenteId: "" };
+    case "capturar_resposta":
+      return { id, tipo: "capturar_resposta", texto: "Sua pergunta aqui", variavel: "resposta", tipoValor: "texto", proximo: id };
+    case "criar_pesquisa":
+      return { id, tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id", proximo: id };
+    case "persistir_resposta_pesquisa":
+      return { id, tipo: "persistir_resposta_pesquisa", variavelPesquisaId: "pesquisa_id", variavelValor: "resposta", proximo: id };
   }
 }
 
@@ -68,6 +74,8 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
       case "atribuir_atendente":
       case "criar_alerta_interno":
       case "pausar_automacao":
+      case "criar_pesquisa":
+      case "persistir_resposta_pesquisa":
         arestas.push({ id: `${no.id}::default`, source: no.id, sourceHandle: "default", target: no.proximo });
         break;
       case "condicao":
@@ -78,6 +86,12 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
         no.opcoes.forEach((opcao, indice) => {
           arestas.push({ id: `${no.id}::opcao:${indice}`, source: no.id, sourceHandle: `opcao:${indice}`, target: opcao.proximo });
         });
+        if (no.proximoTimeout) {
+          arestas.push({ id: `${no.id}::timeout`, source: no.id, sourceHandle: "timeout", target: no.proximoTimeout });
+        }
+        break;
+      case "capturar_resposta":
+        arestas.push({ id: `${no.id}::default`, source: no.id, sourceHandle: "default", target: no.proximo });
         if (no.proximoTimeout) {
           arestas.push({ id: `${no.id}::timeout`, source: no.id, sourceHandle: "timeout", target: no.proximoTimeout });
         }
@@ -106,6 +120,8 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
       case "atribuir_atendente":
       case "criar_alerta_interno":
       case "pausar_automacao":
+      case "criar_pesquisa":
+      case "persistir_resposta_pesquisa":
         return sourceHandle === "default" ? { ...no, proximo: target } : no;
       case "condicao":
         if (sourceHandle === "verdadeiro") return { ...no, seVerdadeiro: target };
@@ -119,6 +135,9 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
         if (indice < 0 || indice >= no.opcoes.length) return no;
         return { ...no, opcoes: no.opcoes.map((o, i) => (i === indice ? { ...o, proximo: target } : o)) };
       }
+      case "capturar_resposta":
+        if (sourceHandle === "timeout") return { ...no, proximoTimeout: target };
+        return sourceHandle === "default" ? { ...no, proximo: target } : no;
       case "finalizar":
       case "transferir_humano":
       case "iniciar_agente_ia":
@@ -127,13 +146,13 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
   });
 }
 
-/** Só o conector "timeout" do menu é opcional — os demais são obrigatórios pro schema (string vazia é inválida) e só podem ser re-arrastados, nunca apagados via canvas. */
+/** Só o conector "timeout" (menu ou capturar_resposta) é opcional — os demais são obrigatórios pro schema (string vazia é inválida) e só podem ser re-arrastados, nunca apagados via canvas. */
 export function podeDeletarAresta(no: NoFluxo, sourceHandle: string): boolean {
-  return no.tipo === "menu" && sourceHandle === "timeout";
+  return (no.tipo === "menu" || no.tipo === "capturar_resposta") && sourceHandle === "timeout";
 }
 
 export function limparConectorOpcional(no: NoFluxo, sourceHandle: string): NoFluxo {
-  if (no.tipo === "menu" && sourceHandle === "timeout") {
+  if ((no.tipo === "menu" || no.tipo === "capturar_resposta") && sourceHandle === "timeout") {
     return { ...no, proximoTimeout: undefined };
   }
   return no;
