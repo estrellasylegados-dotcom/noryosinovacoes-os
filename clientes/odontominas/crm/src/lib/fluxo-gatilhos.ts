@@ -50,3 +50,33 @@ export function combinaGatilhoMensagem(gatilhoTipo: string, gatilhoConfig: Recor
 export function dedupeKeyParaGatilho(gatilhoTipo: string, conversaId: string): string | null {
   return gatilhoTipo === "nova_conversa" || gatilhoTipo === "primeira_mensagem" ? conversaId : null;
 }
+
+/**
+ * Fase 3 (motor central de automação — ver _memoria/decisoes.md): categoriza
+ * `gatilho_tipo` sem precisar de coluna nova em `fluxos` (o campo já é texto
+ * livre, sem `check` — ver migration v20). O scanner temporal
+ * (fluxo-scanner-temporal.ts) usa "temporal" pra saber quais fluxos avaliar;
+ * `emitirEventoAutomacao` (fluxo-eventos-internos.ts) usa "interno". Gatilhos
+ * temporais além de `aniversario` ficam só PREPARADOS aqui (mapeados, sem
+ * regra concreta ainda) — mesmo critério do webhook: existir na lista não
+ * significa que já dispara sozinho.
+ */
+export type CategoriaGatilho = "mensagem" | "temporal" | "interno";
+
+const CATEGORIA_POR_GATILHO: Record<string, CategoriaGatilho> = {
+  nova_conversa: "mensagem",
+  primeira_mensagem: "mensagem",
+  palavra_chave: "mensagem",
+  aniversario: "temporal",
+  x_dias_sem_resposta: "temporal",
+  x_meses_sem_atendimento: "temporal",
+  retorno_previsto: "temporal",
+  atendimento_concluido: "interno",
+  lead_convertido: "interno",
+  proposta_apresentada: "interno",
+  paciente_inativo: "interno",
+};
+
+export function categoriaDoGatilho(gatilhoTipo: string): CategoriaGatilho | null {
+  return CATEGORIA_POR_GATILHO[gatilhoTipo] ?? null;
+}

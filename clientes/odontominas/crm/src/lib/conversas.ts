@@ -160,6 +160,62 @@ export async function listarConversas(clinicaId: string, filtroStatus?: string):
   return resultado;
 }
 
+/**
+ * Fase 3 (gatilhos temporais/eventos internos — ver _memoria/decisoes.md):
+ * acha a conversa do paciente pra iniciar uma execução de automação que não
+ * nasceu de uma mensagem recebida (aniversário, evento interno). "Path B"
+ * (ver clinica.ts) garante 1 conversa por paciente, nunca duas — mesma
+ * premissa já usada em `buscarFichaPaciente` (pacientes.ts). Se o paciente
+ * nunca teve conversa (ex.: importado sem nunca ter escrito), cria uma nova
+ * no mesmo formato do webhook pra uma mensagem "de nós pra ele"
+ * (`status='respondido'`, sem badge de não-lida — não é o paciente esperando
+ * resposta, somos nós que estamos iniciando contato).
+ */
+export async function obterOuCriarConversaDoPaciente(clinicaId: string, pacienteId: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const { data: existente } = await supabase
+    .from("conversas")
+    .select("id")
+    .eq("clinica_id", clinicaId)
+    .eq("paciente_id", pacienteId)
+    .maybeSingle();
+  if (existente) return existente.id as string;
+
+  const { data: paciente } = await supabase.from("pacientes").select("telefone").eq("id", pacienteId).eq("clinica_id", clinicaId).maybeSingle();
+  const telefone = (paciente?.telefone as string | null) ?? null;
+  if (!telefone) return null;
+
+  const agora = new Date().toISOString();
+  const { data: nova, error } = await supabase
+    .from("conversas")
+    .insert({
+      clinica_id: clinicaId,
+      paciente_id: pacienteId,
+      telefone,
+      status: "respondido",
+      primeira_mensagem_em: agora,
+      ultima_mensagem_em: agora,
+      aguardando_desde: agora,
+      nao_lida: false,
+      mensagens_nao_lidas: 0,
+    })
+    .select("id")
+    .single();
+
+  if (error || !nova) {
+    // 23505 (unique clinica_id+telefone): outra automação/webhook criou entre o SELECT e este INSERT — busca de novo, não é erro real.
+    if (error?.code === "23505") {
+      const { data: corrida } = await supabase.from("conversas").select("id").eq("clinica_id", clinicaId).eq("telefone", telefone).maybeSingle();
+      return (corrida?.id as string | null) ?? null;
+    }
+    console.error("[conversas] obter_ou_criar_failed", JSON.stringify({ pacienteId, code: error?.code ?? null }));
+    return null;
+  }
+  return nova.id as string;
+}
+
 export async function atualizarStatus(
   clinicaId: string,
   conversaId: string,

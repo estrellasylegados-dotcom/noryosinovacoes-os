@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combinaGatilhoMensagem, dedupeKeyParaGatilho } from "@/lib/fluxo-gatilhos";
+import { categoriaDoGatilho, combinaGatilhoMensagem, dedupeKeyParaGatilho } from "@/lib/fluxo-gatilhos";
 
 describe("combinaGatilhoMensagem", () => {
   it("nova_conversa bate só quando a conversa é nova", () => {
@@ -37,5 +37,29 @@ describe("dedupeKeyParaGatilho", () => {
 
   it("palavra_chave não tem dedupe (pode reabrir o mesmo fluxo depois)", () => {
     expect(dedupeKeyParaGatilho("palavra_chave", "conversa-1")).toBeNull();
+  });
+});
+
+describe("categoriaDoGatilho (Fase 3 — motor central de automação)", () => {
+  it.each(["nova_conversa", "primeira_mensagem", "palavra_chave"])("%s é categoria mensagem", (tipo) => {
+    expect(categoriaDoGatilho(tipo)).toBe("mensagem");
+  });
+
+  it.each(["aniversario", "x_dias_sem_resposta", "x_meses_sem_atendimento", "retorno_previsto"])(
+    "%s é categoria temporal",
+    (tipo) => {
+      expect(categoriaDoGatilho(tipo)).toBe("temporal");
+    }
+  );
+
+  it.each(["atendimento_concluido", "lead_convertido", "proposta_apresentada", "paciente_inativo"])(
+    "%s é categoria interno",
+    (tipo) => {
+      expect(categoriaDoGatilho(tipo)).toBe("interno");
+    }
+  );
+
+  it("gatilho desconhecido não tem categoria", () => {
+    expect(categoriaDoGatilho("etapa_funil")).toBeNull();
   });
 });

@@ -1,0 +1,26 @@
+name: OdontoMinas CRM — scanner temporal do Fluxo de Conversa
+
+# Fase 3 do motor de Fluxo de Conversa (ver _memoria/decisoes.md): dispara o
+# scanner temporal genérico (src/lib/fluxo-scanner-temporal.ts) via POST
+# autenticado por segredo — mesmo padrão do cron de reativação. Roda de hora
+# em hora: a janela de horário configurada por fluxo (gatilho_config.horario)
+# decide quando cada regra (hoje só aniversário) processa de verdade —
+# idempotência garante que rodar fora de hora ou duas vezes na mesma janela
+# nunca duplica execução. Precisa do mesmo secret
+# ODONTOMINAS_CRM_CRON_SECRET já usado pela reativação.
+
+on:
+  schedule:
+    - cron: "0 * * * *" # todo início de hora
+  workflow_dispatch: {}
+
+jobs:
+  fluxo-temporal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar rota do scanner temporal
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "x-cron-secret: ${{ secrets.ODONTOMINAS_CRM_CRON_SECRET }}" \
+            https://odontominas-crm-production.up.railway.app/api/cron/fluxo-temporal
