@@ -15,6 +15,7 @@ const ROTAS_PUBLICAS = [
   "/api/login",
   "/api/webhook/evolution",
   "/api/cron/reativacao",
+  "/api/cron/fluxo-temporal",
   "/api/integrations/controle-odonto/webhook",
   "/api/cron/controle-odonto-sync",
 ];
