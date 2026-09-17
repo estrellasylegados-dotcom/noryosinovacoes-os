@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { isStatusValido, type StatusConversa } from "@/lib/status";
+import { registrarEventoCampanha } from "@/lib/campanha-eventos";
 
 export type MensagemFicha = {
   id: string;
@@ -24,6 +25,7 @@ export type FichaPaciente = {
   telefone: string;
   email: string | null;
   criadoEm: string;
+  campanhaId: string | null;
   conversa: {
     id: string;
     status: StatusConversa;
@@ -46,7 +48,7 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
 
   const { data: paciente, error: erroPaciente } = await supabase
     .from("pacientes")
-    .select("id, nome, telefone, email, created_at")
+    .select("id, nome, telefone, email, created_at, campanha_id")
     .eq("id", pacienteId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -108,8 +110,62 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
     telefone: paciente.telefone as string,
     email: paciente.email as string | null,
     criadoEm: paciente.created_at as string,
+    campanhaId: (paciente.campanha_id as string | null) ?? null,
     conversa,
     mensagens,
     eventos,
   };
+}
+
+export type PacienteResumo = { id: string; nome: string | null; telefone: string };
+
+/** Leads de uma campanha — alimenta o seletor de "Registrar comparecimento/fechamento" no painel dela. */
+export async function listarPacientesDaCampanha(clinicaId: string, campanhaId: string): Promise<PacienteResumo[]> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("pacientes")
+    .select("id, nome, telefone")
+    .eq("clinica_id", clinicaId)
+    .eq("campanha_id", campanhaId)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map((p) => ({ id: p.id as string, nome: (p.nome as string | null) ?? null, telefone: p.telefone as string }));
+}
+
+/**
+ * Vínculo manual paciente↔campanha (item 14 do briefing) — a Evolution API
+ * (Baileys, WhatsApp não-oficial) não entrega UTM/`ctwa_clid` na mensagem
+ * de entrada (achado da migração v14, Pixel de Conversão), então a origem
+ * por campanha nasce de uma escolha manual no painel, não de detecção
+ * automática. Dispara o evento `new_lead` na 1ª vez que a campanha é
+ * definida (idempotente — ver registrarEventoCampanha).
+ */
+export async function vincularCampanhaPaciente(
+  clinicaId: string,
+  pacienteId: string,
+  campanhaId: string | null
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return { ok: false, error: "backend_unavailable" };
+
+  const { error } = await supabase
+    .from("pacientes")
+    .update({ campanha_id: campanhaId })
+    .eq("id", pacienteId)
+    .eq("clinica_id", clinicaId);
+
+  if (error) return { ok: false, error: "persist_failed" };
+
+  if (campanhaId) {
+    try {
+      await registrarEventoCampanha(clinicaId, campanhaId, "new_lead", { pacienteId });
+    } catch (e) {
+      console.error("[pacientes] registrar_new_lead_failed", JSON.stringify({ pacienteId, message: (e as Error).message }));
+    }
+  }
+
+  return { ok: true };
 }

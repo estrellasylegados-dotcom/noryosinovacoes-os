@@ -7,6 +7,7 @@ import { detectarIntencaoCompra, detectarPedidoHumano, notificarEquipe } from "@
 import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib/agentes-conhecimento";
 import { aplicarQualificacaoAutomatica, classificarQualificacao } from "@/lib/agentes-qualificacao";
 import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
+import { buscarCampanha, labelObjetivo } from "@/lib/campanhas";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -861,7 +862,7 @@ export async function responderComoAgente(
 
   const { data: conversa } = await supabase
     .from("conversas")
-    .select("id, telefone, status, agente_ativo_id, pacientes(nome)")
+    .select("id, telefone, status, agente_ativo_id, pacientes(nome, campanha_id)")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -872,8 +873,13 @@ export async function responderComoAgente(
 
   const telefone = conversa.telefone as string;
   const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";
-  const pacienteBruto = conversa.pacientes as { nome: string | null } | { nome: string | null }[] | null;
-  const pacienteNome = (Array.isArray(pacienteBruto) ? pacienteBruto[0]?.nome : pacienteBruto?.nome) ?? null;
+  const pacienteBruto = conversa.pacientes as
+    | { nome: string | null; campanha_id: string | null }
+    | { nome: string | null; campanha_id: string | null }[]
+    | null;
+  const pacienteRow = Array.isArray(pacienteBruto) ? pacienteBruto[0] : pacienteBruto;
+  const pacienteNome = pacienteRow?.nome ?? null;
+  const pacienteCampanhaId = pacienteRow?.campanha_id ?? null;
   const notifParams = { pacienteNome, telefone, resumo: mensagemRecebida };
 
   if (isNovoPaciente && agente.notificarNovoLead) {
@@ -921,8 +927,19 @@ export async function responderComoAgente(
 
   const conhecimento = await listarConhecimento(clinicaId, agente.id);
 
+  // Campanhas: quando o paciente tem origem por campanha (vínculo manual —
+  // ver src/lib/pacientes.ts), a IA sabe de onde o lead veio. Nunca falha o
+  // envio se a campanha não existir mais/estiver cancelada.
+  let contextoCampanha = "";
+  if (pacienteCampanhaId) {
+    const campanha = await buscarCampanha(clinicaId, pacienteCampanhaId);
+    if (campanha) {
+      contextoCampanha = `Origem: esta conversa começou pela campanha "${campanha.nome}" (objetivo: ${labelObjetivo(campanha.objetivo)}).`;
+    }
+  }
+
   const resposta = await gerarResposta(modelo, {
-    promptSistema: montarPromptSistema(agente, conhecimento),
+    promptSistema: [montarPromptSistema(agente, conhecimento), contextoCampanha].filter(Boolean).join("\n\n"),
     historico,
     mensagem: mensagemRecebida,
     temperatura: agente.temperatura,

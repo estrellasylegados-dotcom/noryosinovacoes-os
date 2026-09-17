@@ -16,6 +16,10 @@ import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
 import { FiltroPeriodo } from "@/components/FiltroPeriodo";
 import { AbasRelatorio } from "@/components/relatorios/AbasRelatorio";
 import { BarChart, COR_SERIE_A, COR_SERIE_B } from "@/components/relatorios/BarChart";
+import { montarRelatorioMarketing } from "@/lib/campanha-metricas";
+import { listarAtendentes } from "@/lib/atendentes";
+import { inicioPeriodo } from "@/lib/relatorios";
+import { RelatorioMarketing } from "@/components/campanhas/RelatorioMarketing";
 
 export const dynamic = "force-dynamic";
 
@@ -54,13 +58,17 @@ export default async function ResumoPage({
 
   const periodo: PeriodoRelatorio = periodoBruto && isPeriodoValido(periodoBruto) ? periodoBruto : "7d";
 
-  const [resumo, relatorio, leads, statsAtendentes, naoLidas] = await Promise.all([
+  const agora = new Date();
+  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes] = await Promise.all([
     buscarResumoExecutivo(clinicaId),
     buscarRelatorioAtendimento(clinicaId, periodo),
     listarNovosPacientes(clinicaId, periodo),
     buscarStatsAtendentes(clinicaId),
     contarNaoLidas(clinicaId),
+    montarRelatorioMarketing(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
+    listarAtendentes(clinicaId),
   ]);
+  const nomesAtendentes = Object.fromEntries(atendentes.map((a) => [a.id, a.nome]));
 
   const semResposta = resumo.contagens.novo + resumo.contagens.aguardando;
   const resolvidas = resumo.contagens.respondido + resumo.contagens.agendado;
@@ -216,6 +224,11 @@ export default async function ResumoPage({
                     ))}
                   </div>
                 ),
+            },
+            {
+              valor: "marketing",
+              label: "Marketing",
+              conteudo: <RelatorioMarketing linhas={marketing} nomesAtendentes={nomesAtendentes} />,
             },
             {
               valor: "leads",

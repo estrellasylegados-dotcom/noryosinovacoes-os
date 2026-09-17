@@ -2,26 +2,26 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { StatusCampanha } from "@/lib/campanhas";
+import type { StatusDisparo } from "@/lib/disparos";
 
 type Acao = "iniciar" | "pausar" | "retomar" | "cancelar";
 
 const ROTULO: Record<Acao, string> = {
-  iniciar: "Iniciar campanha",
+  iniciar: "Iniciar disparo",
   pausar: "Pausar",
   retomar: "Retomar",
-  cancelar: "Cancelar campanha",
+  cancelar: "Cancelar disparo",
 };
 
 /** Ações disponíveis variam por status — mesmo espírito de ControleOdontoAcoes.tsx (fetch cru + useState). */
-function acoesDisponiveis(status: StatusCampanha): Acao[] {
+function acoesDisponiveis(status: StatusDisparo): Acao[] {
   if (status === "rascunho") return ["iniciar", "cancelar"];
   if (status === "enviando") return ["pausar", "cancelar"];
   if (status === "pausada") return ["retomar", "cancelar"];
   return [];
 }
 
-export function DisparosCampanhaAcoes({ campanhaId, status }: { campanhaId: string; status: StatusCampanha }) {
+export function DisparosLoteAcoes({ disparoId, status }: { disparoId: string; status: StatusDisparo }) {
   const router = useRouter();
   const [carregando, setCarregando] = useState<Acao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -30,14 +30,14 @@ export function DisparosCampanhaAcoes({ campanhaId, status }: { campanhaId: stri
   if (acoes.length === 0) return null;
 
   async function executar(acao: Acao) {
-    if (acao === "cancelar" && !window.confirm("Cancelar esta campanha? Destinatários ainda pendentes não recebem mensagem.")) {
+    if (acao === "cancelar" && !window.confirm("Cancelar este disparo? Destinatários ainda pendentes não recebem mensagem.")) {
       return;
     }
 
     setCarregando(acao);
     setErro(null);
     try {
-      const res = await fetch(`/api/disparos/campanhas/${campanhaId}/${acao}`, { method: "POST" });
+      const res = await fetch(`/api/disparos/lotes/${disparoId}/${acao}`, { method: "POST" });
       const corpo = await res.json();
       if (!corpo.ok) {
         setErro(corpo.error === "transicao_invalida" ? "O status mudou — atualize a página." : "Não consegui completar a ação agora.");

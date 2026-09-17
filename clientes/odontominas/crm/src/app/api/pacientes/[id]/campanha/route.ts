@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { getClinicaId } from "@/lib/clinica";
-import { iniciarCampanha } from "@/lib/campanhas";
+import { vincularCampanhaPaciente } from "@/lib/pacientes";
 
 export const runtime = "nodejs";
 
-/** "Criar e iniciar agora" de um rascunho salvo — o worker (src/lib/disparos-worker.ts) pega daqui em diante. */
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+/** Vínculo manual paciente↔campanha (item 14) — admin só, mesmo gate de "Ferramentas". */
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
   if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
@@ -14,6 +14,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
 
   const { id } = await context.params;
-  const resultado = await iniciarCampanha(clinicaId, id);
+  const body = (await request.json().catch(() => null)) as { campanhaId?: string | null } | null;
+  if (!body) return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+
+  const resultado = await vincularCampanhaPaciente(clinicaId, id, body.campanhaId ?? null);
   return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
 }

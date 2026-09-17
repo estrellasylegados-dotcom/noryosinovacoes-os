@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { getClinicaId } from "@/lib/clinica";
-import { cancelarCampanha } from "@/lib/campanhas";
+import { duplicarCampanha } from "@/lib/campanhas";
 
 export const runtime = "nodejs";
 
-/** Cancela de vez — marca todo destinatário ainda pendente como "cancelado" (não volta atrás). */
+/** Copia objetivo/tipo/público/canais/metas/UTMs — nunca métricas/eventos/disparos já executados. */
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
   if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
@@ -14,6 +14,6 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
 
   const { id } = await context.params;
-  const resultado = await cancelarCampanha(clinicaId, id);
+  const resultado = await duplicarCampanha(clinicaId, id, sessao.atendenteId);
   return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
 }

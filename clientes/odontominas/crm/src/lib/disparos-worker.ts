@@ -5,7 +5,7 @@ import { adquirirLock, liberarLock } from "@/lib/disparos-lock";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
 import { normalizarTelefoneEntrada } from "@/lib/chat";
-import { intervaloEnvioMs, type StatusDestinatario } from "@/lib/campanhas";
+import { intervaloEnvioMs, type StatusDestinatario } from "@/lib/disparos";
 
 /**
  * Disparos — Fase B: worker de envio in-process. Mesmo desenho de
@@ -17,8 +17,12 @@ import { intervaloEnvioMs, type StatusDestinatario } from "@/lib/campanhas";
  *
  * Só o ciclo que efetivamente manda uma mensagem paga o intervalo cheio
  * (`intervaloEnvioMs`); pular destinatário (opt-out/telefone inválido
- * reconferido ao vivo) ou fechar uma campanha esgotada agenda o próximo tick
+ * reconferido ao vivo) ou fechar um disparo esgotado agenda o próximo tick
  * rápido, porque não usou o número de WhatsApp.
+ *
+ * Tabelas renomeadas na v18 (2026-09-16): `campanhas`→`disparos`,
+ * `campanha_destinatarios`→`disparo_destinatarios` — liberou "campanha" pro
+ * módulo estratégico novo (src/lib/campanhas.ts). Lógica de envio idêntica.
  */
 
 const RESOURCE = "envio";
@@ -27,12 +31,12 @@ const POLL_OCIOSO_MS = 5_000;
 const POLL_OCUPADO_MS = 3_000;
 const POLL_IMEDIATO_MS = 500;
 
-async function buscarProximaCampanhaEnviando(
+async function buscarProximoDisparoEnviando(
   supabase: SupabaseClient,
   clinicaId: string
 ): Promise<{ id: string; mensagemTexto: string } | null> {
   const { data } = await supabase
-    .from("campanhas")
+    .from("disparos")
     .select("id, mensagem_texto")
     .eq("clinica_id", clinicaId)
     .eq("status", "enviando")
@@ -46,20 +50,20 @@ async function buscarProximaCampanhaEnviando(
 
 async function incrementarContador(
   supabase: SupabaseClient,
-  campanhaId: string,
+  disparoId: string,
   campo: "total_enviados" | "total_falhas" | "total_pulados"
 ): Promise<void> {
-  const { data } = await supabase.from("campanhas").select(campo).eq("id", campanhaId).maybeSingle();
+  const { data } = await supabase.from("disparos").select(campo).eq("id", disparoId).maybeSingle();
   const atual = ((data as Record<string, number | null> | null)?.[campo] as number | null) ?? 0;
   await supabase
-    .from("campanhas")
+    .from("disparos")
     .update({ [campo]: atual + 1, updated_at: new Date().toISOString() })
-    .eq("id", campanhaId);
+    .eq("id", disparoId);
 }
 
-async function marcarConcluida(supabase: SupabaseClient, campanhaId: string): Promise<void> {
+async function marcarConcluido(supabase: SupabaseClient, disparoId: string): Promise<void> {
   const agora = new Date().toISOString();
-  await supabase.from("campanhas").update({ status: "concluida", concluido_em: agora, updated_at: agora }).eq("id", campanhaId);
+  await supabase.from("disparos").update({ status: "concluida", concluido_em: agora, updated_at: agora }).eq("id", disparoId);
 }
 
 async function marcarDestinatario(
@@ -69,7 +73,7 @@ async function marcarDestinatario(
   extra?: Record<string, unknown>
 ): Promise<void> {
   await supabase
-    .from("campanha_destinatarios")
+    .from("disparo_destinatarios")
     .update({ status, updated_at: new Date().toISOString(), ...extra })
     .eq("id", destinatarioId);
 }
@@ -96,29 +100,29 @@ async function ciclo(): Promise<void> {
     holder = lock.holder;
     clinicaComLock = clinicaId;
 
-    const campanha = await buscarProximaCampanhaEnviando(supabase, clinicaId);
-    if (!campanha) {
+    const disparo = await buscarProximoDisparoEnviando(supabase, clinicaId);
+    if (!disparo) {
       proximoDelayMs = POLL_OCIOSO_MS;
       return;
     }
 
     const { data: destinatario } = await supabase
-      .from("campanha_destinatarios")
+      .from("disparo_destinatarios")
       .select("id, paciente_id, conversa_id, telefone, nome")
-      .eq("campanha_id", campanha.id)
+      .eq("disparo_id", disparo.id)
       .eq("status", "pendente")
       .order("ordem", { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (!destinatario) {
-      await marcarConcluida(supabase, campanha.id);
+      await marcarConcluido(supabase, disparo.id);
       proximoDelayMs = POLL_IMEDIATO_MS;
       return;
     }
 
-    // Reconfere opt-out/telefone AO VIVO — o snapshot é de quando a campanha
-    // foi criada, e ela pode levar horas pra terminar de enviar.
+    // Reconfere opt-out/telefone AO VIVO — o snapshot é de quando o disparo
+    // foi criado, e ele pode levar horas pra terminar de enviar.
     const { data: paciente } = await supabase
       .from("pacientes")
       .select("opt_out_em, telefone")
@@ -131,12 +135,12 @@ async function ciclo(): Promise<void> {
     if (optOutEm || !telefoneValido) {
       const status: StatusDestinatario = optOutEm ? "pulado_opt_out" : "telefone_invalido";
       await marcarDestinatario(supabase, destinatario.id as string, status);
-      await incrementarContador(supabase, campanha.id, "total_pulados");
+      await incrementarContador(supabase, disparo.id, "total_pulados");
       proximoDelayMs = POLL_IMEDIATO_MS;
       return;
     }
 
-    const texto = resolverVariaveis(campanha.mensagemTexto, {
+    const texto = resolverVariaveis(disparo.mensagemTexto, {
       nome: destinatario.nome as string | null,
       telefone: destinatario.telefone as string,
     });
@@ -148,7 +152,7 @@ async function ciclo(): Promise<void> {
         enviado_em: agora,
         evolution_message_id: envio.mensagemId ?? null,
       });
-      await incrementarContador(supabase, campanha.id, "total_enviados");
+      await incrementarContador(supabase, disparo.id, "total_enviados");
 
       const conversaId = destinatario.conversa_id as string | null;
       if (conversaId) {
@@ -173,10 +177,10 @@ async function ciclo(): Promise<void> {
       }
     } else {
       await marcarDestinatario(supabase, destinatario.id as string, "falha", { erro: envio.error ?? null });
-      await incrementarContador(supabase, campanha.id, "total_falhas");
+      await incrementarContador(supabase, disparo.id, "total_falhas");
       console.error(
         "[disparos-worker] envio_failed",
-        JSON.stringify({ campanhaId: campanha.id, destinatarioId: destinatario.id, error: envio.error ?? null })
+        JSON.stringify({ disparoId: disparo.id, destinatarioId: destinatario.id, error: envio.error ?? null })
       );
     }
 

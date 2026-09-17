@@ -1,57 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { intervaloEnvioMs, montarLinhasDestinatarios } from "@/lib/campanhas";
-import type { CandidatoAudiencia } from "@/lib/audiencias";
+import { isStatusCampanhaValido, labelCanal, labelObjetivo, labelTipoCampanha, STATUS_CAMPANHA_ORDEM } from "@/lib/campanhas";
 
-function candidato(overrides: Partial<CandidatoAudiencia>): CandidatoAudiencia {
-  return {
-    pacienteId: "p1",
-    conversaId: "c1",
-    telefone: "5561999999999",
-    nome: "Maria Silva",
-    statusConversa: "respondido",
-    ultimaMensagemEm: null,
-    etiquetaIds: [],
-    optOutEm: null,
-    ...overrides,
-  };
-}
-
-describe("intervaloEnvioMs", () => {
-  it("sempre cai dentro do intervalo pedido (jitter anti-shadowban)", () => {
-    for (let i = 0; i < 200; i++) {
-      const ms = intervaloEnvioMs(15_000, 25_000);
-      expect(ms).toBeGreaterThanOrEqual(15_000);
-      expect(ms).toBeLessThan(25_000);
+describe("isStatusCampanhaValido", () => {
+  it("aceita os 6 status do conjunto fechado (item 19 do briefing)", () => {
+    for (const status of STATUS_CAMPANHA_ORDEM) {
+      expect(isStatusCampanhaValido(status)).toBe(true);
     }
   });
 
-  it("respeita min/max customizados", () => {
-    for (let i = 0; i < 50; i++) {
-      const ms = intervaloEnvioMs(1000, 2000);
-      expect(ms).toBeGreaterThanOrEqual(1000);
-      expect(ms).toBeLessThan(2000);
-    }
+  it("rejeita string fora do conjunto (ex.: valor em inglês do briefing original, nunca usado no banco)", () => {
+    expect(isStatusCampanhaValido("active")).toBe(false);
+    expect(isStatusCampanhaValido("")).toBe(false);
+    expect(isStatusCampanhaValido("qualquer-coisa")).toBe(false);
   });
 });
 
-describe("montarLinhasDestinatarios", () => {
-  it("gera 1 linha por elegível, pendente, com ordem sequencial e sem reconsultar Supabase", () => {
-    const elegiveis = [
-      candidato({ pacienteId: "p1", conversaId: "c1", telefone: "5561999999991", nome: "Ana" }),
-      candidato({ pacienteId: "p2", conversaId: "c2", telefone: "5561999999992", nome: "Bia" }),
-      candidato({ pacienteId: "p3", conversaId: null, telefone: "5561999999993", nome: null }),
-    ];
-
-    const linhas = montarLinhasDestinatarios(elegiveis);
-
-    expect(linhas).toEqual([
-      { paciente_id: "p1", conversa_id: "c1", telefone: "5561999999991", nome: "Ana", ordem: 0, status: "pendente" },
-      { paciente_id: "p2", conversa_id: "c2", telefone: "5561999999992", nome: "Bia", ordem: 1, status: "pendente" },
-      { paciente_id: "p3", conversa_id: null, telefone: "5561999999993", nome: null, ordem: 2, status: "pendente" },
-    ]);
+describe("catálogos de rótulo (objetivo/tipo/canal)", () => {
+  it("acham o rótulo certo pra um valor conhecido", () => {
+    expect(labelObjetivo("gerar_agendamentos")).toBe("Gerar agendamentos");
+    expect(labelTipoCampanha("implantes")).toBe("Implantes");
+    expect(labelCanal("whatsapp")).toBe("WhatsApp");
   });
 
-  it("lista vazia gera zero linhas", () => {
-    expect(montarLinhasDestinatarios([])).toEqual([]);
+  it("cai no próprio valor cru quando a opção é nova (item 3: permitir expansão futura sem migração)", () => {
+    expect(labelObjetivo("campanha_de_natal")).toBe("campanha_de_natal");
+    expect(labelTipoCampanha("bichectomia")).toBe("bichectomia");
+    expect(labelCanal("tiktok_ads")).toBe("tiktok_ads");
   });
 });

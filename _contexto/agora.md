@@ -5,10 +5,11 @@
 
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia). Site
 no ar (Cloudflare Pages). CRM em produção: Fases 1-5, V1 do painel, Chat ao Vivo, Relatórios,
-Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO e
-Disparos completo (Fase A + Fase B, 2026-09-16) — tudo desligado/pendente de credencial, dado real
-ou teste fim a ponta onde ainda não há. Histórico completo em `clientes/odontominas/andamento.md`.
-Disparos já testado fim a ponta com sucesso. **Próximo passo: Fase 6 (demo pro marido)**.
+Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO,
+Disparos completo (Fase A + Fase B) e Campanhas — módulo estratégico novo, separado de Disparos
+(2026-09-16) — tudo desligado/pendente de credencial, dado real ou tráfego pago onde ainda não há.
+Histórico completo em `clientes/odontominas/andamento.md`. Disparos e Campanhas já testados fim a
+ponta com sucesso. **Próximo passo: Fase 6 (demo pro marido)**.
 Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -37,7 +38,7 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos testado com sucesso; Fase 6 (demo) é a
-  frente aberta agora. Painel tem 5 conversas fictícias — falta decidir se apaga ou mantém.
+- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos e Campanhas testados com sucesso;
+  Fase 6 (demo) é a frente aberta agora. Painel tem 5 conversas fictícias — falta decidir se apaga.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

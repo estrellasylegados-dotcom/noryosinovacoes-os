@@ -55,6 +55,18 @@ export function formatHoraCurta(iso: string | null, agora: Date = new Date()): s
   });
 }
 
+/** R$ 1.234,56 — usado nos cards de investimento/receita/CPL/CPA/ROAS de Campanhas. `null` (métrica sem dado) vira "—". */
+export function formatMoeda(valor: number | null): string {
+  if (valor === null) return "—";
+  return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** 12,3% — taxas do funil de Campanhas. `null` (denominador zero, sem dado) vira "—". */
+export function formatPercentual(fracao: number | null): string {
+  if (fracao === null) return "—";
+  return `${(fracao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+}
+
 /** Aceita telefone com ou sem DDI 55; cai no valor cru se não bater um formato BR conhecido. */
 export function formatTelefone(telefone: string): string {
   const digitos = telefone.replace(/\D/g, "");

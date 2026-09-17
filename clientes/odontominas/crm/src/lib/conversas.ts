@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarAgente } from "@/lib/agentes";
 import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
+import { registrarEventoCampanha } from "@/lib/campanha-eventos";
 
 export type ConversaPainel = {
   id: string;
@@ -170,7 +171,7 @@ export async function atualizarStatus(
 
   const { data: atual, error: erroAtual } = await supabase
     .from("conversas")
-    .select("status, telefone, ultimo_agente_id")
+    .select("status, telefone, ultimo_agente_id, paciente_id")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -221,6 +222,22 @@ export async function atualizarStatus(
       }
     } catch (e) {
       console.error("[conversas] pixel_agendado_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
+    }
+  }
+
+  // Campanhas: se o paciente desta conversa tem origem por campanha, o
+  // agendamento vira o marco `appointment_booked` do funil (idempotente —
+  // só a 1ª vez conta, mesmo que o status oscile entre agendado/outro).
+  const pacienteId = atual.paciente_id as string | null;
+  if (statusNovo === "agendado" && pacienteId) {
+    try {
+      const { data: paciente } = await supabase.from("pacientes").select("campanha_id").eq("id", pacienteId).maybeSingle();
+      const campanhaId = (paciente?.campanha_id as string | null) ?? null;
+      if (campanhaId) {
+        await registrarEventoCampanha(clinicaId, campanhaId, "appointment_booked", { pacienteId, conversaId });
+      }
+    } catch (e) {
+      console.error("[conversas] evento_campanha_agendado_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
     }
   }
 

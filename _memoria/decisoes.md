@@ -309,3 +309,21 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   depois do teste. Por quê: evita recriar tudo de novo se precisar testar outra campanha antes da
   Fase 6. Rafael pediu explicitamente pra apagar **todo** dado de teste (não só este) antes de o
   sistema ir pra produção de verdade com clientes reais — pendência registrada em `agora.md`.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: **"Ferramentas → Campanhas"
+  construído como módulo estratégico novo**, separado de Disparos — plano formal
+  (`EnterPlanMode`/`ExitPlanMode`) a partir de um briefing extenso do Rafael. Auditoria encontrou
+  que a tela "Campanhas" não existia (nav só tinha Agentes/Disparos/ControleODONTO) e que a tabela
+  `campanhas` da Fase B de Disparos (v17) era, na prática, um Disparo (lote de envio) — exatamente
+  a confusão que o briefing pedia pra resolver. Decisão: **renomear** `campanhas`/
+  `campanha_destinatarios` → `disparos`/`disparo_destinatarios` (migração v18, rename puro, sem
+  perda de dado) pra liberar o nome `campanhas` pro conceito estratégico novo (migração v19:
+  `campanhas`, `campanha_canais`, `campanha_eventos`, mais `disparos.campanha_id` e
+  `pacientes.campanha_id/utm_term/landing_page`). Uma campanha agrupa disparos por FK
+  (`disparos.campanha_id`), nunca reimplementa envio/segmentação/opt-out — reusa
+  `audiencias.ts` por `audiencia_id` e Disparos como estão. Por quê: "Campanha ≠ Disparo" era o
+  ponto central do briefing; manter os dois com o mesmo nome no banco pra sempre seria a mesma
+  ambiguidade que motivou o pedido. Sem tabela de métricas (tudo calculado ao vivo, mesmo padrão de
+  `relatorios.ts`); sem chamada real a Meta/Google Ads (investimento é campo manual, mesmo critério
+  já usado pra adiar o Pixel até existir tráfego pago real); `appointment_attended`/
+  `treatment_closed` só por registro manual (ControleODONTO ainda sem credencial). Detalhe completo
+  em `clientes/odontominas/crm/docs/campanhas.md`.

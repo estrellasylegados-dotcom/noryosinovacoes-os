@@ -20,17 +20,25 @@ type Props = {
   audiencias: Audiencia[];
   mensagensSalvas: MensagemSalva[];
   etiquetas: Etiqueta[];
+  /** Preenchidos quando o disparo nasce de dentro de uma campanha estratégica (Ferramentas → Campanhas). */
+  campanhaId?: string | null;
+  audienciaPadraoId?: string | null;
 };
 
 type Passo = 1 | 2 | 3;
 
-export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props) {
+export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas, campanhaId = null, audienciaPadraoId = null }: Props) {
   const router = useRouter();
   const [passo, setPasso] = useState<Passo>(1);
 
+  const audienciaInicial =
+    (audienciaPadraoId && audiencias.some((a) => a.id === audienciaPadraoId) ? audienciaPadraoId : null) ??
+    audiencias[0]?.id ??
+    null;
+
   // Passo 1 — público
   const [modoPublico, setModoPublico] = useState<"audiencia" | "filtro">(audiencias.length > 0 ? "audiencia" : "filtro");
-  const [audienciaId, setAudienciaId] = useState<string | null>(audiencias[0]?.id ?? null);
+  const [audienciaId, setAudienciaId] = useState<string | null>(audienciaInicial);
   const [etiquetaIds, setEtiquetaIds] = useState<string[]>([]);
   const [etiquetaModo, setEtiquetaModo] = useState<"todas" | "qualquer">("qualquer");
   const [statusSelecionados, setStatusSelecionados] = useState<StatusConversa[]>([]);
@@ -48,7 +56,7 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
   const [previewMensagem, setPreviewMensagem] = useState<string | null>(null);
 
   // Passo 3 — revisão
-  const [nomeCampanha, setNomeCampanha] = useState("");
+  const [nomeDisparo, setNomeDisparo] = useState("");
   const [enviando, setEnviando] = useState<"rascunho" | "iniciar" | null>(null);
   const [erroFinal, setErroFinal] = useState<string | null>(null);
 
@@ -118,10 +126,10 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
   }
 
   async function finalizar(iniciarAgora: boolean) {
-    const nome = nomeCampanha.trim();
+    const nome = nomeDisparo.trim();
     const texto = mensagemAtual.trim();
     if (!nome || !texto) {
-      setErroFinal("Preencha o nome da campanha e a mensagem.");
+      setErroFinal("Preencha o nome do disparo e a mensagem.");
       return;
     }
     if (modoMensagem === "nova" && salvarComoMensagemSalva && !nomeNovaMensagem.trim()) {
@@ -145,7 +153,7 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
         if (corpoSalva.ok) mensagemSalvaIdFinal = corpoSalva.id;
       }
 
-      const res = await fetch("/api/disparos/campanhas", {
+      const res = await fetch("/api/disparos/lotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,6 +163,7 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
           mensagemSalvaId: mensagemSalvaIdFinal,
           mensagemTexto: texto,
           iniciarAgora,
+          campanhaId,
         }),
       });
       const corpo = await res.json();
@@ -162,13 +171,13 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
         setErroFinal(
           corpo.error === "sem_destinatarios"
             ? "Esse público não tem ninguém elegível pra receber mensagem agora."
-            : "Não consegui criar a campanha agora."
+            : "Não consegui criar o disparo agora."
         );
         return;
       }
       router.push(`/disparos/${corpo.id}`);
     } catch {
-      setErroFinal("Não consegui criar a campanha agora.");
+      setErroFinal("Não consegui criar o disparo agora.");
     } finally {
       setEnviando(null);
     }
@@ -455,11 +464,11 @@ export function DisparosWizard({ audiencias, mensagensSalvas, etiquetas }: Props
       {passo === 3 && (
         <div className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-neutral-500">Nome da campanha</label>
+            <label className="mb-1.5 block text-xs font-medium text-neutral-500">Nome do disparo</label>
             <input
               type="text"
-              value={nomeCampanha}
-              onChange={(e) => setNomeCampanha(e.target.value)}
+              value={nomeDisparo}
+              onChange={(e) => setNomeDisparo(e.target.value)}
               placeholder="ex.: Reativação — inativos 60 dias"
               className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm"
             />

@@ -1,5 +1,78 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-16, Campanhas — módulo estratégico construído; próximo: Fase 6)
+
+**"Ferramentas → Campanhas" construído do zero e em produção**, a partir de um briefing extenso do
+Rafael pedindo que o módulo virasse o centro estratégico de marketing/conversão da clínica — não
+mais uma tela genérica. Planejamento formal (`EnterPlanMode`/`ExitPlanMode`, plano em
+`C:\Users\rafaelviriato\.claude\plans\zazzy-chasing-gray.md`).
+
+Auditoria (pedida explicitamente antes de codar) encontrou 2 coisas: (1) a tela "Campanhas" **não
+existia** — nav só tinha Agentes de IA/Disparos/ControleODONTO; (2) a tabela `campanhas` criada na
+Fase B de Disparos (v17) era, na prática, um **Disparo** (lote de envio de WhatsApp — nome,
+mensagem, público resolvido, worker), sem objetivo, canal, meta ou receita — exatamente a confusão
+"Campanha = Disparo" que o briefing pedia pra desfazer.
+
+**Decisão de arquitetura** (`_memoria/decisoes.md`): renomear em vez de duplicar. Migração `v18`
+(`campanhas`→`disparos`, `campanha_destinatarios`→`disparo_destinatarios`, rename puro de metadado,
+zero perda de dado) libera o nome pro conceito estratégico novo. Migração `v19` cria `campanhas`
+(objetivo/tipo/especialidade texto livre sem CHECK — catálogo sugerido em código, permite opção
+nova sem migração; status fechado rascunho/agendada/ativa/pausada/concluida/cancelada; `metas`
+jsonb; trilha de auditoria completa — criado/atualizado/iniciado/pausado/encerrado/cancelado
+`_por`/`_em`), `campanha_canais` e `campanha_eventos` (log idempotente dos 5 marcos do funil —
+`new_lead`/`qualified_lead`/`appointment_booked`/`appointment_attended`/`treatment_closed`, unique
+key `(campanha_id, paciente_id, tipo)`); mais `disparos.campanha_id` (1 campanha → N disparos, por
+FK, sem duplicar o motor de envio) e `pacientes.campanha_id`/`utm_term`/`landing_page` (completa a
+atribuição que a v14/Pixel tinha começado).
+
+Reaproveitado sem duplicar: motor de público (`audiencias.ts`, por `audiencia_id`), opt-out
+(nunca contornado — quem manda mensagem continua sendo só Disparos), mensagens
+salvas/etiquetas/agentes de IA, RBAC (mesmo gate `papel === "admin"` de todo "Ferramentas"),
+Relatórios (`AbasRelatorio.tsx` ganhou aba "Marketing" em vez de tela paralela). Nova rota
+`POST /api/audiencias` (antes inexistente — `salvarAudiencia` já existia desde a Fase A de
+Disparos mas nunca tinha chamador; agora o passo "Público" do wizard de Campanhas pode salvar o
+filtro montado como audiência reutilizável).
+
+Automático vs. manual no funil, sem fingir integração que não existe: `new_lead` dispara ao
+vincular paciente↔campanha (manual, ficha do paciente — Evolution/Baileys não recebe UTM/
+`ctwa_clid`, achado já documentado na v14); `qualified_lead` dispara quando a Qualificação
+Automática (Agentes de IA) classifica "Quente"; `appointment_booked` dispara quando a conversa
+muda pra status "Agendado" — os 2 ganchos são só uma chamada isolada em try/catch em cima de
+funcionalidade que já existe (`agentes-qualificacao.ts`, `conversas.ts`), sem infra nova.
+`appointment_attended`/`treatment_closed` (com receita) só por registro manual no painel da
+campanha — ponto de extensão natural pro ControleODONTO quando tiver credencial real. Agente de IA
+também ganhou consciência de campanha: quando o paciente da conversa tem `campanha_id`, o prompt
+final inclui uma linha de contexto ("Origem: campanha X, objetivo Y").
+
+Sem tabela de métricas — tudo calculado ao vivo (`src/lib/campanha-metricas.ts`, mesmo padrão de
+`relatorios.ts`): leads, respondidos (por mensagem enviada, não por status), qualificados,
+agendamentos, comparecimentos, fechamentos, receita, CPL/CPA/CAC/ROAS — **as 4 métricas
+financeiras somem da tela quando não há investimento registrado**, nunca "R$0,00"/"Infinity".
+Funil visual (`CampanhaFunil.tsx`) com barra proporcional, mesma paleta de `BarChart.tsx`.
+
+UI: nav item "Campanhas" (primeiro do grupo Ferramentas — é o estratégico, Disparo é o
+operacional); `/campanhas` (abas de status + dashboard do período, reusando `FiltroPeriodo`);
+`/campanhas/nova` (wizard de 8 passos: Informações básicas/Objetivo/Público/Canais/Disparos e
+Agente de IA/Metas/Tracking/Revisão, com 7 templates prontos que só pré-preenchem); `/campanhas/
+[id]` (dashboard + funil + disparos vinculados + registro manual de comparecimento/fechamento +
+auditoria); `/campanhas/[id]/editar` (mesmo formulário, em abas livres em vez de wizard linear —
+mesmo componente, mesmo truque do `AgenteForm.tsx`: presença de `campanha` decide o modo).
+
+Testes: só as partes puras (mesmo critério do resto do projeto) —
+`calcularMetricas`/`isStatusCampanhaValido`/catálogos de rótulo/`buscarTemplate`, 12 testes novos
+(340 no total). `typecheck`/`lint`/`build` de produção limpos.
+
+Migrações v18 e v19 aplicadas em produção pelo MCP do Supabase, confirmadas lendo o schema depois.
+**Verificação fim a ponta contra o schema de produção**: campanha de teste criada → paciente de
+teste vinculado → os 5 marcos do funil registrados (inclusive tentando duplicar `new_lead` de
+propósito — confirmado que a unique key barra o duplicado, fica só 1 linha) → métricas conferidas
+batendo (CPL/CPA/CAC/ROAS calculados certos a partir de investimento R$1.000/receita R$4.500) →
+disparo real existente vinculado por FK e desvinculado de novo → tudo apagado ao final, banco
+voltou ao estado de antes.
+
+Documentação nova em `crm/docs/campanhas.md` (conceito, schema, automático vs. manual, o que ficou
+de fora conscientemente). Ainda não commitado nem sincronizado no GitHub nesta sessão.
+
 ## Onde está (2026-09-16, Disparos — Fase B testada em produção; próximo: Fase 6)
 
 **Fase B do módulo "Ferramentas → Disparos" completa e em produção**, fechando o que a Fase A abriu
@@ -415,6 +488,11 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Disparos — Fase A e Fase B (wizard + worker de envio + relatório): construídas, testadas e
   em produção, teste fim a ponta feito com sucesso (2026-09-16) — ver "Feito". Falta apagar os
   dados de teste antes da produção real com clientes (decisão em `_memoria/decisoes.md`).
+- [x] Campanhas — módulo estratégico (Ferramentas → Campanhas), separado de Disparos: schema
+  (rename v18 + v19), CRUD, wizard, dashboard, funil, ganchos automáticos com Qualificação/Funil/
+  Agente de IA, aba Marketing em Relatórios — construído, testado (typecheck/lint/build/340
+  testes) e verificado fim a ponta contra produção (2026-09-16) — ver "Feito" e
+  `crm/docs/campanhas.md`.
 
 ## Plano técnico do CRM (2026-09-14)
 

@@ -1,14 +1,16 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { getClinicaId } from "@/lib/clinica";
-import { buscarCampanhaComRelatorio, type StatusCampanha, type StatusDestinatario } from "@/lib/campanhas";
+import { buscarDisparoComRelatorio, type StatusDisparo, type StatusDestinatario } from "@/lib/disparos";
+import { buscarCampanha } from "@/lib/campanhas";
 import { formatDataHora, formatTelefone } from "@/lib/tempo";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { DisparosCampanhaAcoes } from "@/components/disparos/DisparosCampanhaAcoes";
+import { DisparosLoteAcoes } from "@/components/disparos/DisparosLoteAcoes";
 
 export const dynamic = "force-dynamic";
 
-const LABEL_STATUS_CAMPANHA: Record<StatusCampanha, { texto: string; cor: string }> = {
+const LABEL_STATUS_DISPARO: Record<StatusDisparo, { texto: string; cor: string }> = {
   rascunho: { texto: "Rascunho", cor: "bg-neutral-100 text-neutral-500 ring-neutral-500/20" },
   enviando: { texto: "Enviando", cor: "bg-teal-50 text-teal-700 ring-teal-600/20" },
   pausada: { texto: "Pausada", cor: "bg-amber-50 text-amber-700 ring-amber-600/20" },
@@ -25,7 +27,7 @@ const LABEL_STATUS_DESTINATARIO: Record<StatusDestinatario, { texto: string; cor
   cancelado: { texto: "Cancelado", cor: "bg-neutral-100 text-neutral-500 ring-neutral-500/20" },
 };
 
-export default async function DisparosCampanhaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DisparoPage({ params }: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
   if (sessao?.papel !== "admin") redirect("/");
 
@@ -35,41 +37,51 @@ export default async function DisparosCampanhaPage({ params }: { params: Promise
   }
 
   const { id } = await params;
-  const campanha = await buscarCampanhaComRelatorio(clinicaId, id);
-  if (!campanha) notFound();
+  const disparo = await buscarDisparoComRelatorio(clinicaId, id);
+  if (!disparo) notFound();
 
-  const status = LABEL_STATUS_CAMPANHA[campanha.status];
-  const pendentes = campanha.totalDestinatarios - campanha.totalEnviados - campanha.totalFalhas - campanha.totalPulados;
+  const campanha = disparo.campanhaId ? await buscarCampanha(clinicaId, disparo.campanhaId) : null;
+
+  const status = LABEL_STATUS_DISPARO[disparo.status];
+  const pendentes = disparo.totalDestinatarios - disparo.totalEnviados - disparo.totalFalhas - disparo.totalPulados;
 
   return (
     <main className="px-4 py-8 sm:px-8">
-      {campanha.status === "enviando" && <AutoRefresh intervaloMs={5000} />}
+      {disparo.status === "enviando" && <AutoRefresh intervaloMs={5000} />}
       <div className="mx-auto max-w-4xl">
         <header className="mb-6">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-neutral-900">{campanha.nome}</h1>
+            <h1 className="text-xl font-semibold text-neutral-900">{disparo.nome}</h1>
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${status.cor}`}>{status.texto}</span>
           </div>
-          <p className="mt-1 text-sm text-neutral-500">{campanha.mensagemTexto}</p>
+          <p className="mt-1 text-sm text-neutral-500">{disparo.mensagemTexto}</p>
+          {campanha && (
+            <p className="mt-2 text-xs text-neutral-500">
+              Parte da campanha{" "}
+              <Link href={`/campanhas/${campanha.id}`} className="font-medium text-teal-700 hover:underline">
+                {campanha.nome}
+              </Link>
+            </p>
+          )}
         </header>
 
         <div className="rounded-xl border border-neutral-200 bg-white p-5">
           <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-neutral-500">Destinatários</dt>
-              <dd className="font-medium text-neutral-900">{campanha.totalDestinatarios}</dd>
+              <dd className="font-medium text-neutral-900">{disparo.totalDestinatarios}</dd>
             </div>
             <div>
               <dt className="text-neutral-500">Enviados</dt>
-              <dd className="font-medium text-emerald-700">{campanha.totalEnviados}</dd>
+              <dd className="font-medium text-emerald-700">{disparo.totalEnviados}</dd>
             </div>
             <div>
               <dt className="text-neutral-500">Falhas</dt>
-              <dd className="font-medium text-red-600">{campanha.totalFalhas}</dd>
+              <dd className="font-medium text-red-600">{disparo.totalFalhas}</dd>
             </div>
             <div>
               <dt className="text-neutral-500">Pulados</dt>
-              <dd className="font-medium text-amber-700">{campanha.totalPulados}</dd>
+              <dd className="font-medium text-amber-700">{disparo.totalPulados}</dd>
             </div>
           </dl>
 
@@ -79,20 +91,20 @@ export default async function DisparosCampanhaPage({ params }: { params: Promise
               <dd className="font-medium text-neutral-900">{Math.max(0, pendentes)}</dd>
             </div>
             <div>
-              <dt className="text-neutral-500">Iniciada em</dt>
-              <dd className="font-medium text-neutral-900">{formatDataHora(campanha.iniciadoEm)}</dd>
+              <dt className="text-neutral-500">Iniciado em</dt>
+              <dd className="font-medium text-neutral-900">{formatDataHora(disparo.iniciadoEm)}</dd>
             </div>
             <div>
-              <dt className="text-neutral-500">Concluída em</dt>
-              <dd className="font-medium text-neutral-900">{formatDataHora(campanha.concluidoEm)}</dd>
+              <dt className="text-neutral-500">Concluído em</dt>
+              <dd className="font-medium text-neutral-900">{formatDataHora(disparo.concluidoEm)}</dd>
             </div>
             <div>
-              <dt className="text-neutral-500">Criada em</dt>
-              <dd className="font-medium text-neutral-900">{formatDataHora(campanha.createdAt)}</dd>
+              <dt className="text-neutral-500">Criado em</dt>
+              <dd className="font-medium text-neutral-900">{formatDataHora(disparo.createdAt)}</dd>
             </div>
           </div>
 
-          <DisparosCampanhaAcoes campanhaId={campanha.id} status={campanha.status} />
+          <DisparosLoteAcoes disparoId={disparo.id} status={disparo.status} />
         </div>
 
         <div className="mt-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
@@ -106,7 +118,7 @@ export default async function DisparosCampanhaPage({ params }: { params: Promise
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {campanha.destinatarios.map((d) => {
+              {disparo.destinatarios.map((d) => {
                 const statusDestinatario = LABEL_STATUS_DESTINATARIO[d.status];
                 return (
                   <tr key={d.id}>

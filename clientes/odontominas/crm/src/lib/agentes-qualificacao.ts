@@ -1,5 +1,7 @@
 import { buscarModelo, gerarResposta, type MensagemHistorico } from "@/lib/ia-provedores";
 import { adicionarEtiquetaConversa, buscarOuCriarEtiqueta, removerEtiquetaConversa } from "@/lib/etiquetas";
+import { getSupabaseServerClient } from "@/lib/supabase";
+import { registrarEventoCampanha } from "@/lib/campanha-eventos";
 import type { AgenteIA } from "@/lib/agentes";
 
 /**
@@ -98,4 +100,26 @@ export async function aplicarQualificacaoAutomatica(
   );
 
   await adicionarEtiquetaConversa(clinicaId, conversaId, alvo.id);
+
+  // Campanhas: "Quente" é o marco `qualified_lead` do funil — só quando o
+  // paciente desta conversa tem origem por campanha. Idempotente (unique
+  // key), isolado: nunca deve derrubar a qualificação em si.
+  if (classificacao === "quente") {
+    try {
+      const supabase = getSupabaseServerClient();
+      if (supabase) {
+        const { data: conversa } = await supabase.from("conversas").select("paciente_id").eq("id", conversaId).maybeSingle();
+        const pacienteId = (conversa?.paciente_id as string | null) ?? null;
+        if (pacienteId) {
+          const { data: paciente } = await supabase.from("pacientes").select("campanha_id").eq("id", pacienteId).maybeSingle();
+          const campanhaId = (paciente?.campanha_id as string | null) ?? null;
+          if (campanhaId) {
+            await registrarEventoCampanha(clinicaId, campanhaId, "qualified_lead", { pacienteId, conversaId });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[agentes-qualificacao] evento_campanha_failed", JSON.stringify({ conversaId, message: (e as Error).message }));
+    }
+  }
 }

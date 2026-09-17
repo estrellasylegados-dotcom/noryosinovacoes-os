@@ -2,14 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarFichaPaciente } from "@/lib/pacientes";
+import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { listarCampanhas } from "@/lib/campanhas";
 import { LIMITE_ESPERA_MS, STATUS_CONFIG, labelStatus } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
+import { PacienteCampanhaOrigem } from "@/components/campanhas/PacienteCampanhaOrigem";
 
 export const dynamic = "force-dynamic";
 
 export default async function FichaPacientePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const clinicaId = await getClinicaId();
+  const [clinicaId, sessao] = await Promise.all([getClinicaId(), getSessaoAtual()]);
 
   if (!clinicaId) {
     return (
@@ -23,6 +26,8 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
 
   const ficha = await buscarFichaPaciente(clinicaId, id);
   if (!ficha) notFound();
+
+  const campanhas = sessao?.papel === "admin" ? await listarCampanhas(clinicaId) : [];
 
   const conversa = ficha.conversa;
   const emAberto = conversa?.status === "novo" || conversa?.status === "aguardando";
@@ -58,6 +63,16 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
             </span>
           )}
         </header>
+
+        {sessao?.papel === "admin" && (
+          <div className="mb-6">
+            <PacienteCampanhaOrigem
+              pacienteId={ficha.id}
+              campanhaAtualId={ficha.campanhaId}
+              campanhas={campanhas.map((c) => ({ id: c.id, nome: c.nome }))}
+            />
+          </div>
+        )}
 
         {ficha.eventos.length > 0 && (
           <section className="mb-6">
