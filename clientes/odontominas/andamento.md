@@ -81,9 +81,11 @@ produção ok). Ainda não sincronizado no GitHub nesta sessão.
 iniciado — o worker já rodando em produção pegou sozinho e mandou a mensagem de verdade pro
 WhatsApp do Rafael (`evolution_message_id` confirmado, `{primeiro_nome}` resolvido certo pra
 "Rafael"). Confirma que campanha→disparo→worker→WhatsApp funciona de ponta a ponta com envio real,
-não só com dado sintético. **Dados ficam no banco de propósito** — Rafael pediu explicitamente pra
-deixar configurado; entram no mesmo apagão de dados de teste (Disparos + Campanhas) antes da
-produção real com clientes (pendência em `agora.md`).
+não só com dado sintético. **Rafael confirmou o recebimento da mensagem no WhatsApp** — diferente
+do teste anterior de Disparos, que só tinha confirmação do sistema (Evolution aceitou o envio), este
+fechou com confirmação visual de verdade. **Dados ficam no banco de propósito** — Rafael pediu
+explicitamente pra deixar configurado; entram no mesmo apagão de dados de teste (Disparos +
+Campanhas) antes da produção real com clientes (pendência em `agora.md`).
 
 ## Onde está (2026-09-16, Disparos — Fase B testada em produção; próximo: Fase 6)
 
