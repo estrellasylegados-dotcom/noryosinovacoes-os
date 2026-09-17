@@ -1,4 +1,4 @@
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { listarConversasChat } from "@/lib/chat";
 import { listarEtiquetas } from "@/lib/etiquetas";
 import { listarAtendentes } from "@/lib/atendentes";
@@ -29,11 +29,12 @@ export default async function ChatAoVivoPage() {
     );
   }
 
-  const [conversas, etiquetas, atendentes, agentes] = await Promise.all([
+  const [conversas, etiquetas, atendentes, agentes, clinicaAtual] = await Promise.all([
     listarConversasChat(clinicaId),
     listarEtiquetas(clinicaId),
     listarAtendentes(clinicaId),
     listarAgentes(clinicaId),
+    buscarClinicaAtual(),
   ]);
 
   // Só oferece "Retomar IA" quando a etiqueta que a conversa já tem de fato liga a algum agente ativo.
@@ -48,6 +49,7 @@ export default async function ChatAoVivoPage() {
       etiquetasComAgente={etiquetasComAgente}
       atendentes={atendentes}
       atendenteAtualId={sessao?.atendenteId ?? null}
+      clinicaNome={clinicaAtual?.nome ?? "Clínica"}
     />
   );
 }

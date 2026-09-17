@@ -54,9 +54,10 @@ let cachedClinicaAtual: ClinicaAtual | null = null;
 /**
  * Fase 3 (white-label — ver _memoria/decisoes.md): fonte única do nome de
  * exibição da clínica, pra `resolverVariaveis`/`resolverVariaveisFluxo`
- * (`{clinica_nome}`) e pras poucas telas que hoje têm "OdontoMinas" fixo.
- * Não é multi-tenant runtime — só elimina o hardcode, mesma arquitetura
- * "path B" de `getClinicaId`.
+ * (`{clinica_nome}`) e pras telas do painel/login/Chat ao Vivo/prompt
+ * sugerido do Agente de IA, que já usam esta função (nenhuma tem mais
+ * "OdontoMinas" fixo). Não é multi-tenant runtime — só elimina o hardcode,
+ * mesma arquitetura "path B" de `getClinicaId`.
  */
 export async function buscarClinicaAtual(): Promise<ClinicaAtual | null> {
   if (cachedClinicaAtual) return cachedClinicaAtual;

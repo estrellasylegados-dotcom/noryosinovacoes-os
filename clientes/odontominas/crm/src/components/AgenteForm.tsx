@@ -16,21 +16,28 @@ const TOM_VOZ_OPCOES: { valor: TomVoz; label: string }[] = [
   { valor: "direto", label: "Direto" },
 ];
 
-const PROMPT_SUGERIDO =
-  "Você é a assistente virtual da OdontoMinas, respondendo pacientes pelo WhatsApp. Seja " +
-  "acolhedora, direta e breve. Nunca prometa resultado de tratamento, nunca use superlativo " +
-  "('o melhor', 'garantido') e nunca invente informação clínica ou de preço que você não tem " +
-  "certeza — nesses casos, ofereça transferir pra um atendente humano. Sempre que o paciente " +
-  "pedir pra falar com uma pessoa, respeite e avise que vai encaminhar.";
+/** Fase 3, branding dinâmico — o prompt sugerido nunca fica com "OdontoMinas" fixo (pode ir pro paciente se o admin não editar). */
+function promptSugerido(clinicaNome: string): string {
+  return (
+    `Você é a assistente virtual da ${clinicaNome}, respondendo pacientes pelo WhatsApp. Seja ` +
+    "acolhedora, direta e breve. Nunca prometa resultado de tratamento, nunca use superlativo " +
+    "('o melhor', 'garantido') e nunca invente informação clínica ou de preço que você não tem " +
+    "certeza — nesses casos, ofereça transferir pra um atendente humano. Sempre que o paciente " +
+    "pedir pra falar com uma pessoa, respeite e avise que vai encaminhar."
+  );
+}
 
 export function AgenteForm({
   agente,
   etiquetasIniciais,
   modelos,
+  clinicaNome,
 }: {
   agente?: AgenteIA;
   etiquetasIniciais: Etiqueta[];
   modelos: ModeloIA[];
+  /** Fase 3, branding dinâmico — client component, recebe via prop do Server Component pai. */
+  clinicaNome: string;
 }) {
   const router = useRouter();
   const editando = Boolean(agente);
@@ -49,7 +56,7 @@ export function AgenteForm({
   const [temperatura, setTemperatura] = useState(agente?.temperatura ?? 0.7);
   const [maxTokens, setMaxTokens] = useState(agente?.maxTokens ?? 700);
 
-  const [promptSistema, setPromptSistema] = useState(agente?.promptSistema ?? PROMPT_SUGERIDO);
+  const [promptSistema, setPromptSistema] = useState(agente?.promptSistema ?? promptSugerido(clinicaNome));
   const [modoPrompt, setModoPrompt] = useState<ModoPrompt>(agente?.modoPrompt ?? "simples");
   const [persona, setPersona] = useState(agente?.persona ?? "");
   const [objetivo, setObjetivo] = useState(agente?.objetivo ?? "");
@@ -546,7 +553,7 @@ export function AgenteForm({
                   value={persona}
                   onChange={(e) => setPersona(e.target.value)}
                   rows={3}
-                  placeholder="Ex.: Você é a assistente virtual da OdontoMinas, respondendo pacientes pelo WhatsApp."
+                  placeholder={`Ex.: Você é a assistente virtual da ${clinicaNome}, respondendo pacientes pelo WhatsApp.`}
                   className={campoClasses}
                 />
               </Campo>

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { listarEtiquetas } from "@/lib/etiquetas";
 import { modelosDisponiveis } from "@/lib/ia-provedores";
 import { AgenteForm } from "@/components/AgenteForm";
@@ -24,7 +24,7 @@ export default async function NovoAgentePage() {
     );
   }
 
-  const etiquetas = await listarEtiquetas(clinicaId);
+  const [etiquetas, clinicaAtual] = await Promise.all([listarEtiquetas(clinicaId), buscarClinicaAtual()]);
 
   return (
     <main className="px-4 py-8 sm:px-8">
@@ -34,7 +34,7 @@ export default async function NovoAgentePage() {
           <p className="text-sm text-neutral-500">Ele nasce pausado — você ativa quando estiver pronto.</p>
         </header>
 
-        <AgenteForm etiquetasIniciais={etiquetas} modelos={modelosDisponiveis()} />
+        <AgenteForm etiquetasIniciais={etiquetas} modelos={modelosDisponiveis()} clinicaNome={clinicaAtual?.nome ?? "Clínica"} />
       </div>
     </main>
   );

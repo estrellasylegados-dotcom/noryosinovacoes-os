@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { buscarAgente, buscarEstatisticasAgente } from "@/lib/agentes";
 import { listarEtiquetas } from "@/lib/etiquetas";
 import { buscarModelo, modelosDisponiveis } from "@/lib/ia-provedores";
@@ -34,9 +34,10 @@ export default async function EditarAgentePage({ params }: { params: Promise<{ i
     redirect("/agentes");
   }
 
-  const [etiquetas, estatisticas] = await Promise.all([
+  const [etiquetas, estatisticas, clinicaAtual] = await Promise.all([
     listarEtiquetas(clinicaId),
     buscarEstatisticasAgente(clinicaId, agente.id),
+    buscarClinicaAtual(),
   ]);
   const modelos = modelosDisponiveis();
   // Garante que o modelo já configurado no agente apareça no seletor mesmo que
@@ -62,7 +63,7 @@ export default async function EditarAgentePage({ params }: { params: Promise<{ i
           <CardEstatistica label="Conhecimentos" valor={String(estatisticas.conhecimentos)} />
         </div>
 
-        <AgenteForm agente={agente} etiquetasIniciais={etiquetas} modelos={opcoes} />
+        <AgenteForm agente={agente} etiquetasIniciais={etiquetas} modelos={opcoes} clinicaNome={clinicaAtual?.nome ?? "Clínica"} />
       </div>
     </main>
   );

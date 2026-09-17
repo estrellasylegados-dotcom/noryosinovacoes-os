@@ -74,12 +74,15 @@ export function ChatAoVivo({
   etiquetasComAgente,
   atendentes,
   atendenteAtualId,
+  clinicaNome,
 }: {
   conversasIniciais: ConversaChat[];
   etiquetasIniciais: Etiqueta[];
   etiquetasComAgente: string[];
   atendentes: Atendente[];
   atendenteAtualId: string | null;
+  /** Fase 3, branding dinâmico — client component, recebe via prop do Server Component pai (chat/page.tsx). */
+  clinicaNome: string;
 }) {
   const [conversas, setConversas] = useState(conversasIniciais);
   const [etiquetas, setEtiquetas] = useState(etiquetasIniciais);
@@ -386,7 +389,7 @@ export function ChatAoVivo({
         <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-4">
           <div>
             <h1 className="text-lg font-semibold text-neutral-900">Chat ao Vivo</h1>
-            <p className="text-xs text-neutral-500">OdontoMinas · WhatsApp</p>
+            <p className="text-xs text-neutral-500">{clinicaNome} · WhatsApp</p>
           </div>
           <div className="flex items-center gap-1">
             <button
