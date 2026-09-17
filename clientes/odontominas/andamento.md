@@ -1,5 +1,57 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-17, Fase 6 — demo pro marido, e a frente "Noryos Odonto")
+
+**Deploy real:** Ações CRM e Humano+IA foram ao ar no Railway pela 1ª vez (`railway up`, commit
+`cd88695`, deployment `3570f47e` SUCCESS). Logs limpos, os 3 workers subiram sem erro.
+
+**Fluxo da demo criado e publicado:** "DEMO - Atendimento Odontológico" (`fluxos.id`
+`34aa24c0-e500-4629-9fb3-2b80e40ab87b`), 29 nós, gatilho manual. Cobre 8 dos 9 blocos novos.
+Criado direto no banco (Supabase MCP), não pela UI — a sessão não tinha a senha do painel admin
+(ver `_contexto/ferramentas.md`); validado antes com os validadores reais do projeto
+(`validarFormaDefinicao`/`validarGrafo`, teste temporário criado e apagado na hora), zero erros e
+zero avisos. Corrigida uma inconsistência do próprio roteiro do Rafael: a ordem "transferir → alerta
+→ pausar" não é possível porque `transferir_humano` é terminal (sem saída) — ficou alerta → pausa
+→ transferir. Criadas 4 etiquetas novas (Implantes/Ortodontia/Estética/Clínica Geral). Doc completo
+em `crm/docs/demo-fase6-roteiro.md` (roteiro de 10-15min, dados de demo, checklist).
+
+**Teste real pontual: disparado, pausado, não concluído.** Execução `a98ee509-76b2-4d4c-ba86-d1233ae9d1c6`
+contra o contato de teste já conhecido (paciente "Rafael (teste Disparos)", telefone
+5561981925241) — as 2 primeiras mensagens confirmadas enviadas de verdade (`evolution_message_id`
+presente). Parada em `waiting_input` no nó `menu_principal`, esperando o Rafael responder "1" no
+WhatsApp de verdade (não é simulável). Quando a resposta chegar: confirmar etiqueta aplicada, funil
+→ agendado, prioridade → alta, atendente atribuído, transferência pro humano, e fechar o relatório
+técnico da Fase E.
+
+**Nova frente: "Noryos Odonto".** A pedido do Rafael (impressionar a cliente-piloto antes de
+fechar), pesquisa de mercado (Brasil: Clinicorp/iClinic/Simples Dental/Feegow; internacional:
+Weave/NexHealth/Podium/RevenueWell) levantou 10 funcionalidades candidatas fora do escopo clínico/
+financeiro. Princípio de escopo definido pelo Rafael: *"Noryos Odonto controla tudo que acontece
+antes do paciente chegar à cadeira e tudo que acontece depois que ele sai"* — nunca prontuário,
+agenda clínica, ERP financeiro, odontograma, TCLE ou exames (isso segue com o ControleODONTO).
+Priorizadas agora 4: NPS/satisfação, avaliação Google, aniversário, dashboard executivo. As demais
+(indicação, catálogo, gamificação, multi-unidade, proposta digital de tratamento, marca por
+clínica) ficam de roadmap.
+
+Auditoria técnica (Fase 1) feita antes de qualquer código: `reativacao.ts` é o precedente real de
+"gatilho por data" (cron → seleciona candidato por regra pura → manda → registra); `resumo.ts` já é
+o embrião do dashboard executivo (`leadsEsfriando` já é a seção "atenção necessária", só que cobre
+1 caso); `pacientes.origem_lead`/`utm_*`/`gclid`/`fbclid`/`campanha_id` já existem (cobre a seção
+"origem" do dashboard sem coluna nova); `clinica_id` já isola dado por clínica em toda tabela, mas o
+runtime resolve 1 clínica fixa por deploy (`CLINICA_SLUG`) — multi-clínica de verdade precisaria de
+uma camada de troca de tenant em runtime, que não existe. **Achado que bloqueia aniversário:
+`pacientes.data_nascimento` não existe em nenhuma migration nem no schema ao vivo** — falta decidir
+de onde esse dado vem antes de implementar. **Achado de white-label:** 3 pontos com "OdontoMinas"
+hardcoded — título/meta da página (`app/layout.tsx`), subtítulo do painel de chat
+(`app/(painel)/page.tsx`), e dentro do texto da mensagem de reativação (`reativacao.ts`) — este
+último é o mais delicado por ser conteúdo que vai pro paciente, não só UI interna.
+
+Proposta apresentada ao Rafael, ainda sem resposta: estender o motor do Fluxo de Conversa (gatilho
+novo tipo "por data"/"evento de atendimento concluído" + 1 tipo de nó novo pra capturar resposta
+livre, ex. NPS 0-10) em vez de construir um motor de automação paralelo — evita a "segunda
+infraestrutura" que o Rafael explicitamente não quer. **Nada implementado ainda desta frente**, só
+auditoria e proposta.
+
 ## Onde está (2026-09-17, Fluxo de Conversa — Ações CRM + Humano/IA, paleta ampliada)
 
 **2 fatias novas da ampliação da paleta do editor, seguindo a mesma disciplina das fases

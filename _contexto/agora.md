@@ -7,18 +7,15 @@
 no ar (Cloudflare Pages). CRM em produção: Fases 1-5, V1 do painel, Chat ao Vivo, Relatórios,
 Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO,
 Disparos completo (Fase A + Fase B), Campanhas (módulo estratégico separado de Disparos, 2026-09-16)
-e Fluxo de Conversa — motor de automação determinístico novo, Fases 0/1/2a/2b/3 completas e em
-produção, mais 2 fatias novas da paleta (2026-09-17): **Ações CRM** (5 blocos — etiqueta, funil,
-prioridade, atendente) e **Humano + IA** (4 blocos — transferir humano, alerta interno, pausar
-automação, iniciar agente de IA), commitadas localmente (`c3d04e8`, `0fad463`), sem migration,
-typecheck/lint/build/testes limpos, **nada ainda sincronizado com o GitHub nem deployado**. Odonto
-segue 100% bloqueado (ControleODONTO sem capability validada); Integração pausada por decisão do
-Rafael (precisa de cofre de credenciais novo + mitigação de SSRF). Histórico completo em
-`clientes/odontominas/andamento.md`. Disparos, Campanhas e Fluxo de Conversa (Fases 0-2b/3) já
-testados fim a ponta com sucesso em produção — as 2 fatias novas ainda não. **Próximo passo: seguir
-ampliando a paleta (próxima categoria concreta é Integração, com desenho próprio) ou Fase 6 (demo
-pro marido) — nenhuma das duas tem data definida ainda. O teste robusto ponta a ponta (navegador +
-WhatsApp reais) fica reservado pro fim de todas as fases da paleta.**
+e Fluxo de Conversa — motor de automação determinístico, Fases 0/1/2a/2b/3 completas, mais Ações
+CRM e Humano+IA — as duas ampliações **já deployadas em produção** (2026-09-17, 1º deploy real
+delas). Odonto segue bloqueado (sem capability do ControleODONTO); Integração pausada (cofre de
+credenciais + SSRF, fase separada). **Fase 6 (demo pro marido) em andamento**: fluxo "DEMO -
+Atendimento Odontológico" publicado, teste real pontual disparado e **pausado esperando o Rafael
+responder "1" no WhatsApp de teste**. Nova frente aberta, batizada **"Noryos Odonto"** (NPS,
+avaliação Google, aniversário, dashboard executivo) — auditoria técnica feita, **aguardando o
+Rafael confirmar se reaproveita o motor do Fluxo de Conversa** antes de codar. Histórico completo
+em `clientes/odontominas/andamento.md`.
 Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -42,6 +39,13 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
   já arquivados — e as execuções vinculadas) antes da produção real com clientes — pedido explícito
   do Rafael de deixar tudo configurado por enquanto (2026-09-16/17, ver andamento.md e decisoes.md).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
+- Teste real da Fase 6 pausado: responder "1" no WhatsApp de teste (5561981925241) pra concluir a
+  validação do fluxo da demo (2026-09-17).
+- Decidir se a frente "Noryos Odonto" (NPS/avaliação Google/aniversário/dashboard) reaproveita o
+  motor do Fluxo de Conversa (recomendado) ou vira automação separada — auditoria pronta,
+  aguardando confirmação do Rafael (2026-09-17).
+- Aniversário automatizado depende de `pacientes.data_nascimento`, que não existe em lugar nenhum
+  do sistema hoje — falta decidir de onde esse dado vem (2026-09-17).
 - Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
   fechar (2026-09-14).
 
@@ -50,12 +54,11 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 - Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos, Campanhas e Fluxo de Conversa (Fases
   0 a 2b/3, incluindo o editor visual) testados com sucesso; Fase 6 (demo) é a frente aberta agora.
   Painel tem 5 conversas fictícias — falta decidir se apaga.
-- Fluxo de Conversa (CRM OdontoMinas): motor de automação determinístico. Fases 0/1/2a/2b/3
-  completas e em produção; mais 2 fatias novas da paleta commitadas localmente e ainda não
-  sincronizadas — Ações CRM (5 blocos) e Humano + IA (4 blocos), sem migration,
-  typecheck/lint/build/testes limpos. Odonto segue bloqueado (sem capability do ControleODONTO);
-  Integração pausada (cofre de credenciais + mitigação de SSRF, fase separada). Migration em
-  produção e envio real de WhatsApp continuam exigindo aprovação explícita a cada fase, nunca
-  automáticas.
+- Fluxo de Conversa (CRM OdontoMinas): Ações CRM + Humano+IA deployadas em produção (2026-09-17).
+  Odonto bloqueado; Integração pausada. Migration em produção e envio real de WhatsApp continuam
+  exigindo aprovação explícita a cada fase, nunca automáticas.
+- "Noryos Odonto": frente nova pra impressionar a cliente-piloto — NPS, avaliação Google,
+  aniversário, dashboard executivo. Princípio de escopo do Rafael: "controla tudo antes da cadeira
+  e depois que o paciente sai"; nunca vira prontuário/agenda/financeiro (isso é ControleODONTO).
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

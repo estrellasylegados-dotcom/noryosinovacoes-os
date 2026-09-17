@@ -512,3 +512,19 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   nenhum genérico pra integrações de terceiros) e abre risco real de SSRF (o servidor passaria a
   chamar URLs configuradas dentro de um fluxo). Fica documentada como próxima fase específica, a
   desenhar com calma.
+- **2026-09-17** (Rafael) [odontominas]: posicionamento de produto pra frente de captação/
+  relacionamento do CRM OdontoMinas, batizada **"Noryos Odonto"**: *"controla tudo que acontece
+  antes do paciente chegar à cadeira e tudo que acontece depois que ele sai"*. Nunca vira
+  prontuário odontológico, agenda clínica completa, ERP financeiro, odontograma, prescrição,
+  TCLE, exames ou controle de estoque — isso continua com o ControleODONTO ou o sistema de gestão
+  da própria clínica. Por quê: Rafael quer impressionar a cliente-piloto (layout e funcionalidade)
+  pra fechar o case, sem transformar o produto num sistema clínico que concorreria com o que a
+  clínica já usa e paga.
+- **2026-09-17** (Rafael) [odontominas]: dentro da frente "Noryos Odonto", priorizar agora 4
+  funcionalidades — NPS/satisfação, avaliação Google automatizada, aniversário automatizado e
+  dashboard executivo. Por quê: de 10 funcionalidades candidatas levantadas em pesquisa de mercado
+  (Clinicorp/iClinic/Simples Dental/Feegow no Brasil; Weave/NexHealth/Podium/RevenueWell fora),
+  essas 4 reaproveitam a automação que já existe (motor do Fluxo de Conversa, `resumo.ts`) e têm o
+  melhor retorno imediato pra demo/fechamento. Indicação, catálogo no WhatsApp, gamificação de
+  atendente, multi-unidade, proposta digital de tratamento e marca por clínica ficam de roadmap,
+  não descartadas.
