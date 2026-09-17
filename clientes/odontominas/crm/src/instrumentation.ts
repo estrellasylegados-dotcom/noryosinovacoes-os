@@ -1,8 +1,9 @@
 /**
  * Ponto padrão do Next.js pra rodar código uma vez quando o processo sobe —
  * usado aqui pra ligar o poll do buffer de mensagens dos Agentes de IA
- * (src/lib/agentes-buffer.ts, Fase 2B) e o worker de envio de campanhas de
- * Disparos (src/lib/disparos-worker.ts, Fase B).
+ * (src/lib/agentes-buffer.ts, Fase 2B), o worker de envio de campanhas de
+ * Disparos (src/lib/disparos-worker.ts, Fase B) e o worker do motor de Fluxo
+ * de Conversa (src/lib/fluxo-worker.ts, Fase 2a).
  *
  * Só em produção (`next start` — Railway, ou um teste local com
  * `npm run build && npm run start`), nunca em `npm run dev`: decisão do
@@ -17,5 +18,8 @@ export async function register() {
 
     const { iniciarWorkerDisparos } = await import("@/lib/disparos-worker");
     iniciarWorkerDisparos();
+
+    const { iniciarWorkerFluxo } = await import("@/lib/fluxo-worker");
+    iniciarWorkerFluxo();
   }
 }

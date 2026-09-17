@@ -1,5 +1,165 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-17, Fluxo de Conversa — Fase 2a completa, deployada e validada com envio real)
+
+**Fase 2a (núcleo do motor, sem editor visual) construída, testada localmente e não deployada
+ainda.** Planejamento formal (`EnterPlanMode`/`ExitPlanMode`), com uma revisão de arquitetura
+dedicada (agente Plan) que achou 2 bugs reais antes de qualquer código — uma race que deixaria todo
+menu sem timeout inoperável (`NULL <= now()` é falsy em SQL, uma query única de claim nunca acharia
+essas linhas) e um estado `running` sem caminho de recovery (travaria o slot de execução da conversa
+pra sempre num crash no meio do processamento). Os dois corrigidos antes de codar.
+
+**Novo, puro e testado exaustivamente** (`fluxo-tipos.ts`, `fluxo-validador.ts`, `fluxo-motor.ts`,
+`fluxo-gatilhos.ts` — 65 testes novos): tipos dos 6 blocos mínimos (Início, Mensagem, Espera, Menu,
+Se/Senão, Finalizar) com validação de forma **hand-rolled, sem adicionar `zod`** como dependência —
+este projeto nunca usou biblioteca de schema, mesmo critério de `isStatusValido`; validador de grafo
+(início único, nó órfão, referência quebrada, loop sem espera/menu de guarda — DFS com pilha de
+recursão); interpretador de nó (`processarNo`, um passo por vez, nunca cadeia em memória) com casamento
+de menu por número/rótulo/variação, timeout, contador de tentativas inválidas separado do contador de
+loop; casamento de gatilho de mensagem (`nova_conversa`/`primeira_mensagem`/`palavra_chave` — os
+demais gatilhos da visão entram por Campanhas/Disparos/cron, fora de escopo desta fase).
+
+**Novo, I/O, sem teste direto** (mesmo critério de `disparos-worker.ts`): `fluxo-execucoes.ts`
+(`iniciarExecucaoFluxo` — ponto único de entrada com arbitragem; claim por `UPDATE` condicional
+otimista, não CTE/RPC — este projeto nunca usou função de banco, e introduzir isso só pra esta
+feature quebraria o padrão; a janela residual de "running sem evento" é fechada por uma 2ª varredura
+de recovery direto em `fluxo_execucoes`, além da varredura de eventos `em_andamento`); `fluxo-lock.ts`/
+`fluxo-worker.ts` (clone literal de `disparos-lock.ts`/`disparos-worker.ts`, `provider='fluxo_conversa'`).
+
+**6 sítios de escrita de `agente_ativo_id` corrigidos pra manter `conversas.dono_conversa` em
+sincronia** (`dono-conversa.ts`, módulo-folha novo): 4 em `agentes.ts`, 1 em `etiquetas.ts` (+ guarda
+nova: nunca ativa Agente de IA por etiqueta se `dono_conversa='fluxo'`) e 1 achado só na revisão de
+arquitetura — `chat.ts:enviarRespostaChat` (atendente respondendo manualmente enquanto um fluxo
+está ativo agora transfere a execução pra `transferred`, sem isso uma `espera` de dias continuaria
+mandando mensagem por cima do humano). `opt-out.ts` não foi tocado (evitaria import circular) —
+`cancelarExecucoesAtivasDoPaciente` é chamada pelo webhook logo depois de `aplicarOptOut`.
+
+**Webhook** (`api/webhook/evolution/route.ts`): mesmo bloco isolado de sempre, reestruturado pra
+checar `dono_conversa` antes de `deveResponder` — zero mudança de comportamento pra quem nunca usa
+Fluxo de Conversa (backfill já cobre isso). Achado durante a implementação, não previsto no plano:
+`dono_conversa` nasce `'humano'` por padrão (inclusive em conversa NOVA), o que impediria pra sempre
+os gatilhos `nova_conversa`/`primeira_mensagem` de disparar — corrigido com uma exceção explícita
+(`conversaEraNova`) que só vale pra conversa que acabou de ser criada nesta mesma request, nunca pra
+uma conversa humana já em andamento.
+
+Gate limpo em cada etapa: `typecheck`/`lint`/`build` de produção e teste (381 no total, 65 novos).
+
+**Deploy + validação manual concluídos no mesmo dia (2026-09-17), sem nenhuma mensagem real
+enviada.** `railway up` — os 3 workers (`agentes-buffer`, `disparos-worker`, `fluxo-worker`) subiram
+limpos no boot. 1º teste com fixture (fluxo "TESTE Fase 2a", início→condição→espera(15s)→finalizar,
+sem nó de mensagem — nunca chama a Evolution) **achou um bug real**: `carregarContextoExecucao`
+falhava em silêncio (`contexto_invalido`) porque a query de contexto embute `conversas(telefone)` a
+partir de `fluxo_execucoes`, e como `conversas` também referencia `fluxo_execucoes` de volta
+(`fluxo_execucao_ativa_id`), o PostgREST recusa o embed por ambiguidade sem um hint explícito — e o
+código nunca checava `error` nessa query, só `data`, escondendo a falha. Corrigido
+(`conversas!conversa_id(telefone)` + log de erro), redeployado, testado de novo: **execução
+completou os 4 passos na ordem certa** (`inicio`→`condicao_avaliada`→`espera_iniciada`→`finalizado`,
+~15s de espera real observada), `conversas.dono_conversa` voltou pra `humano` sozinho ao final. Dados
+de teste apagados ao fim (banco voltou ao estado de antes, mesmo critério do teste de Campanhas).
+
+**Teste real de ponta a ponta, com aprovação explícita do Rafael (2026-09-17, mesmo dia):** fluxo
+isolado "TESTE - Fluxo Odonto" (nome e gatilho manual exatamente como a visão original pedia) criado
+direto em produção — Início → Mensagem ("Teste de fluxo OdontoMinas concluído com sucesso.") →
+Finalizar — vinculado ao paciente "Rafael (teste Disparos)" já existente (mesmo número usado nos
+testes de Disparos/Campanhas). Checklist pré-envio da visão conferida antes (opt-out inexistente,
+`is_test=true`, nenhuma fila antiga). O worker pegou sozinho, processou os 3 nós e mandou a mensagem
+de verdade — `evolution_message_id` confirmado (`3EB0136A5AB0BE78D421AC9E35F51A73479EE0BE`),
+execução terminou `completed`, `dono_conversa` voltou pra `humano` sozinho. Fluxo de teste arquivado
+ao final (não apagado — segue a própria instrução da visão); dados de teste ficam no banco por
+enquanto, mesmo critério já usado em Disparos/Campanhas (pendência de limpeza única antes da
+produção real, já registrada em `agora.md`).
+
+**Fase 2a completa, deployada e validada em produção — motor, worker e webhook provados de ponta a
+ponta, com envio real confirmado pela Evolution.** Próximo passo: Fase 2b/3 (editor visual), ou
+ampliar a paleta de blocos — checkpoint próprio, ainda não iniciado.
+
+## Onde está (2026-09-17, Fluxo de Conversa — Fase 1 proposta; aguardando aprovação pra aplicar)
+
+**Fase 1 (arquitetura/schema) da reconstrução do Fluxo de Conversa entregue como proposta —
+nenhuma migration aplicada em produção, nenhum código de aplicação escrito.** Antes de desenhar, 3
+perguntas em aberto da Fase 0 foram fechadas com o Rafael (decisão completa em
+`_memoria/decisoes.md`): `reativacao.ts` migra pro motor novo eventualmente, não nesta fase; dos 5
+riscos já existentes no código, 3 (buffer de agentes sem lock, reativação sem lock/opt-out, corrida
+no webhook) viram patches separados fora desta reconstrução, e 2 (recovery só por TTL, sem
+watchdog) moldam o desenho do motor; nomenclatura das tabelas em português, seguindo a convenção já
+usada (`campanhas`/`disparos`/`agentes_ia`).
+
+Desenho validado por uma revisão de arquitetura dedicada (agente Plan) em cima do código-fonte real
+— não é o desenho ingênuo inicial. Resultado: **4 tabelas** (`fluxos`, `fluxo_versoes`,
+`fluxo_execucoes`, `fluxo_execucao_eventos`) em vez das 9 conceituais da visão original, mais 1
+alteração em `conversas` (arbitragem Fluxo/Agente de IA/Humano). Pontos centrais do desenho: grafo
+de nós+arestas guardado como jsonb versionado por snapshot imutável (`fluxo_versoes.definicao`, com
+índice único parcial garantindo 1 só versão publicada por fluxo); gatilho denormalizado em `fluxos`
+pra não abrir jsonb a cada mensagem recebida (hot path do webhook); coluna nova
+`conversas.dono_conversa` (`humano/agente_ia/fluxo`) resolvendo a arbitragem que hoje é implícita
+(`agente_ativo_id is null` = humano, que quebraria com um 3º candidato) sem mudar nenhum
+comportamento existente (backfill reproduz a regra atual byte a byte); worker clonando o padrão já
+validado de `disparos-worker.ts`/`disparos-lock.ts` (`integration_locks`, `provider =
+'fluxo_conversa'`), com lock só durante o processamento ativo de 1 passo — nunca durante a espera em
+si, resolvendo o problema de recovery pós-restart pra esperas longas (dias); idempotência de passo
+via `unique(execucao_id, sequencia)` em `fluxo_execucao_eventos` (não `(execucao_id, no_id,
+tentativa)` — essa chave tinha um bug real, corrigido na revisão: loop legítimo revisita o mesmo nó
+mais de uma vez).
+
+Migration completa (não aplicada) em
+`crm/supabase/migrations/2026-09-17_v20_fluxo_conversa_schema.sql`. Documento de arquitetura
+completo (schema comentado, arbitragem, worker/lock, idempotência, ponto exato de integração no
+webhook, recovery, ordem Fase 2→3) em `crm/docs/fluxo-conversa-arquitetura.md`.
+
+**Migration `v20` revisada e aplicada em produção (2026-09-17).** Antes de aplicar, revisão final
+pedida pelo Rafael (5 pontos: created_at/updated_at, índices, FKs/ON DELETE, is_test, recovery)
+achou 3 problemas reais, corrigidos na própria `v20`: `fluxo_execucao_eventos` sem `updated_at`;
+faltavam índices em `fluxo_execucoes.conversa_id` (plano, pra histórico)/`fluxo_id`/`versao_id`; e o
+mais sério — 3 FKs (`fluxo_versoes.fluxo_id`, `fluxo_execucoes.fluxo_id`/`versao_id`) estavam `on
+delete cascade`, o que apagaria histórico de execução em cascata se um fluxo fosse excluído —
+trocadas pra `on delete restrict`. O mecanismo de recovery pós-restart também só existia em prosa no
+documento de arquitetura, sem coluna nenhuma no schema pra sustentá-lo — `fluxo_execucao_eventos`
+ganhou `status` (`em_andamento/concluido/falhou`) + índice dedicado. Detalhe completo em
+`crm/docs/fluxo-conversa-arquitetura.md` (seção "Revisão final antes de aplicar").
+
+Aplicada via MCP do Supabase, confirmada lendo o schema depois: as 4 tabelas existem, RLS ligado, 0
+linhas (nenhum código as usa ainda). Backfill de `conversas.dono_conversa` conferido: 7 `humano`, 1
+`agente_ia` (bate com a única conversa que já tinha `agente_ativo_id`). Nenhum deploy no Railway foi
+necessário — é só schema, nenhum código de aplicação toca essas tabelas ainda.
+
+**Fase 1 completa e em produção. Fase 2 (engine/worker) é o próximo passo — checkpoint próprio.**
+
+## Onde está (2026-09-17, Fluxo de Conversa — Fase 0 concluída; aguardando checkpoint pra Fase 1)
+
+**Fase 0 (auditoria só-leitura) da reconstrução do módulo "Ferramentas → Fluxo de Conversa"
+concluída**, em sessão nova como a decisão de 2026-09-16 previa. Rafael colou a visão completa do
+que quer pro módulo — motor de automação conversacional determinístico, tratado como infraestrutura
+crítica, com editor visual, versionamento, engine assíncrona, paleta de blocos odontológicos —
+registrada na íntegra em `crm/docs/fluxo-conversa-visao.md` (fonte, não plano aprovado).
+
+Auditoria confirmou: **o módulo não existe em nenhuma camada do sistema hoje** — sem rota, sem item
+de menu, sem componente, sem tabela (mesmo padrão já visto na auditoria de Campanhas). Em vez de
+auditar um módulo antigo, a Fase 0 mapeou o que um motor novo precisa reaproveitar e os riscos reais
+já presentes na infraestrutura que ele vai herdar: os dois pollers existentes
+(`agentes-buffer.ts`/`disparos-worker.ts`, via `instrumentation.ts`) como modelo de engine
+assíncrona fora do request HTTP; o padrão de idempotência já validado 3x em produção (constraint
+única + insert puro + tratar `23505` como sucesso, em `integration_locks`/`campanha_eventos`/
+`mensagens.evolution_message_id`); o pipeline exato do webhook Evolution e onde um Fluxo se
+encaixaria nele sem quebrar o que existe; a máquina de estado do funil (`conversas.ts`); o par
+`agente_ativo_id`/`agente_pausado_ate`/`ultimo_agente_id` como a única arbitragem
+determinístico↔dinâmico que já existe (só entre Humano e Agente de IA — nenhuma arbitragem entre 3+
+automatismos); e o padrão de "capability desligada" do ControleODONTO como diretamente reaproveitável
+pros blocos Odonto.
+
+**5 riscos reais já existentes no código atual** (não introduzidos pelo Fluxo de Conversa, mas que
+ele herdaria se não forem corrigidos): `agentes-buffer.ts` sem lock distribuído (resposta duplicada
+da IA em caso de dois processos concorrentes); `reativacao.ts` sem lock e sem checagem de opt-out
+(pode duplicar envio ou mandar mensagem pra quem já saiu — falha de LGPD prática já existente);
+corrida de criação de paciente/conversa no webhook (`23505` não tratado nesses dois inserts, só em
+`mensagens`); recovery de lock só por TTL (não escala pra esperas de horas/dias); sem watchdog
+externo se um poller parar de se reagendar. Relatório completo, com caminho de arquivo por achado,
+em `crm/docs/fluxo-conversa-auditoria-fase0.md`.
+
+**Fase 0 encerrada. Fase 1 (arquitetura/schema/migrations) não começou** — fica pra checkpoint
+explícito do Rafael, com 3 perguntas em aberto registradas no relatório (migrar `reativacao.ts` pro
+motor novo ou deixar separado; os 5 riscos entram no escopo desta reconstrução ou viram correções à
+parte; nome final das tabelas). Nenhum código, schema ou mensagem real tocado nesta sessão.
+
 ## Onde está (2026-09-16, Campanhas — módulo estratégico construído; próximo: Fase 6)
 
 **"Ferramentas → Campanhas" construído do zero e em produção**, a partir de um briefing extenso do
@@ -507,10 +667,21 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   Agente de IA, aba Marketing em Relatórios — construído, testado (typecheck/lint/build/340
   testes) e verificado fim a ponta contra produção (2026-09-16) — ver "Feito" e
   `crm/docs/campanhas.md`.
+- [x] Fluxo de Conversa — Fase 0 (auditoria só-leitura): concluída (2026-09-17) — ver
+  `crm/docs/fluxo-conversa-auditoria-fase0.md`.
+- [x] Fluxo de Conversa — Fase 1 (arquitetura/schema): migration `v20` revisada (5 pontos pedidos
+  pelo Rafael, 3 corrigidos) e **aplicada em produção** (2026-09-17), confirmada lendo o schema —
+  ver `crm/docs/fluxo-conversa-arquitetura.md`.
+- [x] Fluxo de Conversa — Fase 2a (núcleo do motor): construída, deployada e validada em produção
+  (2026-09-17) — 1 bug real achado e corrigido (embed ambíguo do PostgREST); teste real de WhatsApp
+  ("TESTE - Fluxo Odonto") confirmado de ponta a ponta pela Evolution. Ver "Onde está" no topo.
 - [ ] Fluxo de Conversa — reconstrução do módulo "Ferramentas → Fluxo de Conversa" como motor de
   automação conversacional determinístico (infraestrutura crítica), fatiada em 6 fases com
-  checkpoint do Rafael entre elas — decisão completa em `_memoria/decisoes.md` (2026-09-16). Fase 0
-  (auditoria do módulo atual) ainda não começou; começa em sessão nova.
+  checkpoint do Rafael entre elas — decisão completa em `_memoria/decisoes.md` (2026-09-16). Fases
+  0, 1 e 2a completas, deployadas e validadas com envio real (2026-09-17). Falta apagar o fluxo de
+  teste "TESTE - Fluxo Odonto" (arquivado, não apagado) e os dados vinculados antes da produção real
+  com clientes — mesma pendência de Disparos/Campanhas, ver `agora.md`. Próximo passo: Fase 2b/3
+  (editor visual), sem data definida ainda.
 
 ## Plano técnico do CRM (2026-09-14)
 

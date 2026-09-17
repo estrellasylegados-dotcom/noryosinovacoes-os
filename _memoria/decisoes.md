@@ -343,3 +343,119 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   arrisca fazer com pressa exatamente o módulo que precisa ser determinístico, auditável e seguro;
   fatiar com checkpoint evita isso e cria pontos de decisão antes de qualquer ação irreversível
   (schema de produção, envio real).
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: Fase 0 (auditoria só-leitura) do
+  Fluxo de Conversa concluída — confirmado que o módulo não existe em nenhuma camada do sistema
+  hoje (mesmo achado da auditoria de Campanhas). Relatório completo em
+  `crm/docs/fluxo-conversa-auditoria-fase0.md`; visão completa que o Rafael colou no chat preservada
+  em `crm/docs/fluxo-conversa-visao.md`. Antes de entrar na Fase 1, 3 perguntas em aberto foram
+  fechadas:
+  - **`reativacao.ts`**: migra pro motor novo no futuro (é estruturalmente um fluxo de 1 nó — gatilho
+    por inatividade, condição de opt-out, 1 mensagem, guarda 1x — e é um dos templates que o próprio
+    Rafael pediu), mas só depois do motor validado pelo teste isolado da Fase 5; nunca por
+    substituição silenciosa do cron do GitHub Actions que já roda em produção. O schema da Fase 1
+    trata "gatilho por inatividade" como cidadão de primeira classe por causa disso.
+  - **Os 5 riscos já existentes** achados na auditoria: riscos 1/2/3 (buffer de agentes sem lock
+    distribuído, `reativacao.ts` sem lock e sem checar opt-out, corrida de criação de
+    paciente/conversa no webhook sem tratar `23505`) são bugs isolados no código atual, sem
+    dependência da arquitetura nova — viram patch(es) à parte, com aprovação antes de qualquer
+    deploy, sem esperar a reconstrução (risco 2 é falha de LGPD prática rodando em produção agora).
+    Riscos 4/5 (recovery de lock só por TTL, sem watchdog) só importam de verdade com esperas longas
+    — ficam dentro do desenho da Fase 1.
+  - **Nomenclatura das tabelas**: português, seguindo a convenção de domínio já usada
+    (`campanhas`/`disparos`/`agentes_ia`), não o `flow_*` em inglês da visão original (que era
+    conceitual). 4 tabelas em vez das 9 sugeridas: `fluxos` (o fluxo), `fluxo_versoes` (grafo
+    nós+arestas+config como jsonb numa coluna `definicao` — cada versão é um snapshot imutável,
+    resolve sozinho "editar fluxo ativo não mexe em execução em andamento"), `fluxo_execucoes` (1
+    linha por execução) e `fluxo_execucao_eventos` (log passo a passo + idempotência por unique
+    key). Por quê: mais enxuto, mesmo espírito de "sem tabela de métricas, tudo calculado ao vivo"
+    já validado em Campanhas, e jsonb versionado evita duplicar linhas de nó/aresta a cada nova
+    versão publicada.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: Fase 1 (arquitetura/schema) do
+  Fluxo de Conversa entregue **como proposta** — migration `v20` escrita em
+  `crm/supabase/migrations/2026-09-17_v20_fluxo_conversa_schema.sql`, **não aplicada** em produção;
+  documento completo em `crm/docs/fluxo-conversa-arquitetura.md`. Desenho revisado por uma segunda
+  passada de arquitetura (agente Plan) antes de fechar. Pontos que fecham decisão de schema (além
+  das 4 tabelas já decididas em 2026-09-17 acima):
+  - `conversas` ganha `dono_conversa text check (in humano/agente_ia/fluxo)` +
+    `fluxo_execucao_ativa_id` — resolve a arbitragem entre Fluxo de Conversa, Agente de IA e Humano,
+    hoje implícita (`agente_ativo_id is null` = humano) e ambígua assim que existe um 3º candidato.
+    Backfill reproduz a regra atual byte a byte; zero mudança de comportamento pra quem não usa
+    Fluxo de Conversa. `fluxos.pode_interromper_agente_ia` (default `false`) decide se um gatilho de
+    fluxo pode assumir uma conversa que já está com a IA.
+  - `fluxos.gatilho_tipo/gatilho_config` ficam denormalizados da versão publicada (não só dentro do
+    jsonb de `fluxo_versoes.definicao`) porque o webhook precisa achar "qual fluxo ativo tem este
+    gatilho" em toda mensagem recebida — hot path, não pode custar abrir jsonb de N fluxos por
+    mensagem.
+  - Worker clona `disparos-worker.ts`/`disparos-lock.ts` (`integration_locks`, `provider =
+    'fluxo_conversa'`, `resource = 'engine'` fixo por clínica — não por execução, porque só existe 1
+    processo Node vivo hoje). Lock só durante o processamento ativo de 1 passo, nunca durante a
+    espera em si — resolve o problema de recovery pós-restart pra esperas longas (dias) sem precisar
+    de TTL longo.
+  - Idempotência de passo: `unique(execucao_id, sequencia)` em `fluxo_execucao_eventos`
+    (`sequencia` = `fluxo_execucoes.passos_executados` pós-incremento, reivindicado atomicamente por
+    `UPDATE ... RETURNING`) — corrigindo uma chave proposta inicialmente,
+    `(execucao_id, no_id, tentativa)`, que tinha um bug real: um loop controlado revisita o mesmo nó
+    mais de uma vez legitimamente, então `no_id` não pode fazer parte da chave de deduplicação de
+    passo.
+  - Por quê registrar isto como decisão (não só documentação técnica): schema de produção é uma das
+    duas ações que a decisão de 2026-09-16 exige aprovação explícita a cada vez — este registro é a
+    proposta que fica pendente de aprovação, não a aplicação em si (`apply_migration` não foi
+    chamado). Fase 2 (engine/worker) só começa depois da aprovação e da migration `v20` aplicada.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: antes de aplicar a `v20`, Rafael
+  pediu revisão específica de 5 pontos (created_at/updated_at, índices pro worker, FKs/ON DELETE
+  preservando histórico, suporte a execução de teste, recovery sem repetir passo concluído). 3
+  acharam problema real, corrigido na própria migration antes de aplicar — não é mudança de
+  arquitetura, é correção de schema:
+  - `fluxo_versoes.fluxo_id`, `fluxo_execucoes.fluxo_id` e `fluxo_execucoes.versao_id` estavam `on
+    delete cascade` — excluir um fluxo apagaria em cascata todo o histórico de versões e execuções.
+    Trocado para `on delete restrict` (nenhum fluxo é excluído de verdade pelo app, só arquivado,
+    mas o schema não deveria depender disso pra proteger histórico de paciente real).
+  - Faltavam índices em `fluxo_execucoes.conversa_id` (plano — o parcial existente só cobre execução
+    ativa, não histórico), `fluxo_id` e `versao_id` (métricas por fluxo + performance da checagem de
+    FK). Adicionados.
+  - O mecanismo de recovery pós-restart (evento gravado `em_andamento` antes do efeito colateral, só
+    `concluido` depois) só existia em prosa no documento de arquitetura — `fluxo_execucao_eventos`
+    não tinha coluna nenhuma pra sustentar isso. Adicionado `status`
+    (`em_andamento/concluido/falhou`) + `updated_at` + índice parcial de recovery.
+  - Migration `v20` aplicada em produção via MCP do Supabase depois dessas correções, confirmada
+    lendo o schema (4 tabelas criadas, RLS ligado, backfill de `conversas.dono_conversa` batendo: 7
+    `humano`/1 `agente_ia`). Nenhum deploy no Railway necessário — só schema, nenhum código de
+    aplicação toca essas tabelas ainda. Fase 1 completa; Fase 2 (engine/worker) é o próximo
+    checkpoint.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: Fase 2a (núcleo do motor de Fluxo
+  de Conversa, sem editor visual) construída e testada localmente — planejamento formal
+  (`EnterPlanMode`/`ExitPlanMode`) com uma 2ª revisão de arquitetura (agente Plan) que achou 2 bugs
+  reais antes de codar: (1) uma query de claim unificada nunca reivindicaria um menu sem timeout
+  (`aguardando_ate=null`, e `NULL <= now()` é falsy em SQL) — corrigido com 2 formas de claim
+  distintas (poller por tempo, webhook por id); (2) o estado `running` (claim reivindicado) não
+  tinha caminho de recovery se o processo morresse entre a `UPDATE` de claim e o `INSERT` do
+  evento — corrigido com uma 2ª varredura de recovery, direto em `fluxo_execucoes`, além da já
+  planejada sobre `fluxo_execucao_eventos`. 3 decisões técnicas fechadas durante a implementação,
+  não previstas no desenho original:
+  - **Sem `zod`**: a visão original assumia validação de schema via `zod`, mas este projeto nunca
+    usou biblioteca de validação (sempre hand-rolled, ex. `isStatusValido`) — introduzir uma
+    dependência nova só pra esta feature quebraria o padrão do resto do código. `fluxo-tipos.ts`
+    valida a forma de `definicao` manualmente.
+  - **Sem CTE/RPC pro claim atômico**: a proposta original (revisão de arquitetura) recomendava
+    fundir claim+insert de evento numa CTE de banco. Este projeto nunca usou função/procedure de
+    Postgres (só a query builder do Supabase) — introduzir isso quebraria o mesmo padrão. Optado por
+    `UPDATE` condicional otimista (`WHERE id=$1 AND estado=<valor lido antes>`, serializado pelo
+    lock de linha do Postgres) + a 2ª varredura de recovery acima como defesa em profundidade pra
+    janela residual — mesmo nível de correção prática, sem introduzir mecanismo novo no projeto.
+  - **`conversaEraNova`**: achado só na hora de integrar o webhook — `conversas.dono_conversa` nasce
+    `'humano'` por padrão (inclusive numa conversa QUE ACABOU DE SER CRIADA), e a regra "recusa
+    iniciar fluxo se humano" bloquearia pra sempre os gatilhos `nova_conversa`/`primeira_mensagem`.
+    Corrigido com uma exceção explícita: a recusa só vale quando a conversa já existia antes desta
+    mensagem (não pode haver atendimento humano "ativo" numa conversa que não existia um instante
+    atrás).
+  - Achado adicional na revisão: faltava um 6º sítio de escrita de `agente_ativo_id` no mapeamento
+    original — `src/lib/chat.ts:enviarRespostaChat` (resposta manual pelo Chat ao Vivo). Corrigido:
+    se um atendente responde manualmente enquanto `dono_conversa='fluxo'`, a execução ativa vira
+    `transferred` — sem isso, uma `espera` de dias continuaria mandando mensagem automática por cima
+    do atendimento humano.
+  - `typecheck`/`lint`/`build` de produção limpos; 381 testes (65 novos, todos na lógica pura —
+    `fluxo-tipos`/`fluxo-validador`/`fluxo-motor`/`fluxo-gatilhos` — mesmo critério de não testar
+    diretamente a camada de I/O já usado em `disparos-worker.ts`/`agentes.ts`).
+  - **Nada disso está em produção ainda** — sem deploy no Railway, sem fluxo de teste criado. Deploy
+    + validação manual (fixture → worker sozinho → webhook real) é o próximo passo, com aprovação
+    separada antes de qualquer mensagem real de WhatsApp.

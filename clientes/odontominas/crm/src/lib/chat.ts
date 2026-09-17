@@ -3,6 +3,7 @@ import { atualizarStatus, extrairNomeEmbutido, type NomeEmbutido } from "@/lib/c
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { pausarAgenteManual, pausarAgenteSeConfigurado } from "@/lib/agentes";
+import { transferirExecucaoAtivaParaHumano } from "@/lib/fluxo-execucoes";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 
@@ -190,7 +191,7 @@ export async function enviarRespostaChat(
 
   const { data: conversa, error: erroConversa } = await supabase
     .from("conversas")
-    .select("id, telefone, status, agente_ativo_id")
+    .select("id, telefone, status, agente_ativo_id, dono_conversa")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -203,6 +204,14 @@ export async function enviarRespostaChat(
   // conversa e configurado pra pausar nesse caso, entra em espera — nunca
   // bloqueia o envio em si se isso falhar.
   await pausarAgenteSeConfigurado(clinicaId, conversaId, (conversa.agente_ativo_id as string | null) ?? null);
+
+  // Mesma ideia, pro Fluxo de Conversa: sem isso, uma `espera` de dias
+  // continuaria mandando mensagem automática por cima do humano que acabou
+  // de responder — a execução em si precisa ir pra `transferred`, não só o
+  // roteador `dono_conversa` (ver src/lib/fluxo-execucoes.ts).
+  if ((conversa.dono_conversa as string | null) === "fluxo") {
+    await transferirExecucaoAtivaParaHumano(clinicaId, conversaId, "resposta_manual_chat");
+  }
 
   const agora = new Date().toISOString();
   const statusAtual = isStatusValido(conversa.status as string) ? (conversa.status as StatusConversa) : "novo";

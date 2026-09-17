@@ -6,10 +6,13 @@
 1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia). Site
 no ar (Cloudflare Pages). CRM em produção: Fases 1-5, V1 do painel, Chat ao Vivo, Relatórios,
 Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO,
-Disparos completo (Fase A + Fase B) e Campanhas — módulo estratégico novo, separado de Disparos
-(2026-09-16) — tudo desligado/pendente de credencial, dado real ou tráfego pago onde ainda não há.
-Histórico completo em `clientes/odontominas/andamento.md`. Disparos e Campanhas já testados fim a
-ponta com sucesso. **Próximo passo: Fase 6 (demo pro marido)**.
+Disparos completo (Fase A + Fase B), Campanhas (módulo estratégico separado de Disparos, 2026-09-16)
+e Fluxo de Conversa — motor de automação determinístico novo, Fases 0/1/2a completas e em produção
+(2026-09-17: auditoria, schema/migration v20, motor+worker+webhook, teste real de WhatsApp
+confirmado) — tudo desligado/pendente de credencial, dado real ou tráfego pago onde ainda não há.
+Histórico completo em `clientes/odontominas/andamento.md`. Disparos, Campanhas e Fluxo de Conversa já
+testados fim a ponta com sucesso. **Próximo passo: Fase 6 (demo pro marido) ou Fase 2b/3 do Fluxo de
+Conversa (editor visual) — nenhuma das duas tem data definida ainda.**
 Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Pendências
@@ -28,9 +31,10 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
   capability (2026-09-16, checklist em
   `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
 - Apagar todos os dados de teste (Disparos e Campanhas: paciente "Rafael (teste Disparos)",
-  conversa, o disparo de verificação, a campanha "Teste Campanhas — envio real" e os eventos dela)
-  antes da produção real com clientes — pedido explícito do Rafael de deixar tudo configurado por
-  enquanto (2026-09-16/17, ver andamento.md e decisoes.md).
+  conversa, o disparo de verificação, a campanha "Teste Campanhas — envio real" e os eventos dela;
+  Fluxo de Conversa: o fluxo "TESTE - Fluxo Odonto", já arquivado, e a execução vinculada) antes da
+  produção real com clientes — pedido explícito do Rafael de deixar tudo configurado por enquanto
+  (2026-09-16/17, ver andamento.md e decisoes.md).
 - `.ratosos` sumiu do disco (git mostra deletado) e `.noryosinovacoes` (conteúdo "2.0") apareceu sem
   versionar — parece rename/atualização do kit incompleta (2026-09-16).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
@@ -39,12 +43,14 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 ## Quente agora
 
-- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos e Campanhas testados com sucesso;
-  Fase 6 (demo) é a frente aberta agora. Painel tem 5 conversas fictícias — falta decidir se apaga.
-- Fluxo de Conversa (CRM OdontoMinas): decisão tomada de reconstruir como motor de automação
-  determinístico, fatiado em 6 fases com checkpoint do Rafael entre elas (ver decisoes.md
-  2026-09-16). **Fase 0 (auditoria) ainda não começou** — começar em sessão nova, lendo primeiro
-  `clientes/odontominas/AGENTS.md`/`contexto.md`/`andamento.md`. Migration em produção e envio real
-  de WhatsApp exigem aprovação explícita a cada fase, nunca automáticas.
+- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos, Campanhas e Fluxo de Conversa (Fases
+  0/1/2a) testados com sucesso; Fase 6 (demo) é a frente aberta agora. Painel tem 5 conversas
+  fictícias — falta decidir se apaga.
+- Fluxo de Conversa (CRM OdontoMinas): motor de automação determinístico, fatiado em 6 fases com
+  checkpoint do Rafael entre elas (ver decisoes.md 2026-09-16). Fases 0 (auditoria), 1 (schema,
+  migration `v20` em produção) e 2a (motor/worker/webhook, testado com envio real) completas
+  (2026-09-17). **Próximo passo: Fase 2b/3 (editor visual), sem data definida.** Migration em
+  produção e envio real de WhatsApp continuam exigindo aprovação explícita a cada fase, nunca
+  automáticas.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

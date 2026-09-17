@@ -8,6 +8,7 @@ import { contarConhecimento, criarConhecimento, listarConhecimento } from "@/lib
 import { aplicarQualificacaoAutomatica, classificarQualificacao } from "@/lib/agentes-qualificacao";
 import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
 import { buscarCampanha, labelObjetivo } from "@/lib/campanhas";
+import { assumirControle, liberarControle } from "@/lib/dono-conversa";
 
 /**
  * Agentes de IA — a pedido do Rafael (prints da RoiZap como referência de
@@ -714,17 +715,9 @@ export async function pausarAgenteSeConfigurado(clinicaId: string, conversaId: s
  * vez (`agente_ativo_id = null`) até alguém retomar ou reaplicar a etiqueta.
  */
 export async function pausarAgenteManual(clinicaId: string, conversaId: string): Promise<{ ok: boolean }> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return { ok: false };
-
-  const { error } = await supabase
-    .from("conversas")
-    .update({ agente_ativo_id: null, agente_pausado_ate: null })
-    .eq("id", conversaId)
-    .eq("clinica_id", clinicaId);
-
-  if (error) {
-    console.error("[agentes] pausar_manual_failed", JSON.stringify({ conversaId, code: error.code ?? null }));
+  const resultado = await liberarControle(clinicaId, conversaId, { agente_ativo_id: null, agente_pausado_ate: null });
+  if (!resultado.ok) {
+    console.error("[agentes] pausar_manual_failed", JSON.stringify({ conversaId }));
     return { ok: false };
   }
   return { ok: true };
@@ -744,14 +737,13 @@ export async function retomarAgente(clinicaId: string, conversaId: string): Prom
   const agente = decidirAgenteElegivel(agentes, etiquetaIds);
   if (!agente) return { ok: false, error: "sem_agente_elegivel" };
 
-  const { error } = await supabase
-    .from("conversas")
-    .update({ agente_ativo_id: agente.id, agente_pausado_ate: null, ultimo_agente_id: agente.id })
-    .eq("id", conversaId)
-    .eq("clinica_id", clinicaId);
-
-  if (error) {
-    console.error("[agentes] retomar_failed", JSON.stringify({ conversaId, code: error.code ?? null }));
+  const resultado = await assumirControle(clinicaId, conversaId, "agente_ia", {
+    agente_ativo_id: agente.id,
+    agente_pausado_ate: null,
+    ultimo_agente_id: agente.id,
+  });
+  if (!resultado.ok) {
+    console.error("[agentes] retomar_failed", JSON.stringify({ conversaId }));
     return { ok: false, error: "update_failed" };
   }
   return { ok: true };
@@ -827,7 +819,9 @@ async function atualizarFunilAposResposta(
       status: decisao.statusNovo,
       nao_lida: false,
       mensagens_nao_lidas: 0,
-      ...(limparAgenteSeConcluido && concluiu ? { agente_ativo_id: null } : {}),
+      // dono_conversa junto com agente_ativo_id na MESMA update, sempre —
+      // nunca deixar as duas colunas desincronizarem (src/lib/dono-conversa.ts).
+      ...(limparAgenteSeConcluido && concluiu ? { agente_ativo_id: null, dono_conversa: "humano" } : {}),
     })
     .eq("id", conversaId);
 
@@ -897,7 +891,7 @@ export async function responderComoAgente(
     const envio = await enviarBlocos(supabase, clinicaId, conversaId, telefone, [texto], agente.id);
     if (!envio.ok) return envio;
 
-    await supabase.from("conversas").update({ agente_ativo_id: null }).eq("id", conversaId).eq("clinica_id", clinicaId);
+    await liberarControle(clinicaId, conversaId, { agente_ativo_id: null });
     await atualizarFunilAposResposta(supabase, clinicaId, conversaId, statusAtual, "transferencia_para_humano", false);
     await notificarEquipe(agente, "pedido_humano", notifParams);
     return { ok: true };

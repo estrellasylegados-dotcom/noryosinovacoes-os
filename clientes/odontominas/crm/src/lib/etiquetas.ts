@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { decidirAtivarAgentePorEtiqueta, listarAgentes } from "@/lib/agentes";
+import { assumirControle } from "@/lib/dono-conversa";
 
 /**
  * Etiquetas (tags) livres do Chat ao Vivo — infraestrutura pedida pelo
@@ -156,6 +157,11 @@ export async function adicionarEtiquetaConversa(
  * Se a etiqueta aplicada for a etiqueta-gatilho de algum agente ativo desta
  * clínica, a conversa passa a ser escutada por ele. Silencioso de propósito
  * (nunca falha a aplicação da etiqueta em si por causa disso).
+ *
+ * Nunca atropela um Fluxo de Conversa em andamento (`dono_conversa='fluxo'`)
+ * — sem flag de override simétrica a `fluxos.pode_interromper_agente_ia`
+ * nesta fase, decisão consciente de manter o padrão seguro só numa direção
+ * (ver crm/docs/fluxo-conversa-arquitetura.md).
  */
 async function ativarAgentePorEtiqueta(clinicaId: string, conversaId: string, etiquetaId: string): Promise<void> {
   const supabase = getSupabaseServerClient();
@@ -165,13 +171,20 @@ async function ativarAgentePorEtiqueta(clinicaId: string, conversaId: string, et
   const agente = decidirAtivarAgentePorEtiqueta(agentes, etiquetaId);
   if (!agente) return;
 
-  const { error } = await supabase
+  const { data: conversa } = await supabase
     .from("conversas")
-    .update({ agente_ativo_id: agente.id, ultimo_agente_id: agente.id })
+    .select("dono_conversa")
     .eq("id", conversaId)
-    .eq("clinica_id", clinicaId);
-  if (error) {
-    console.error("[etiquetas] ativar_agente_failed", JSON.stringify({ conversaId, agenteId: agente.id, code: error.code ?? null }));
+    .eq("clinica_id", clinicaId)
+    .maybeSingle();
+  if ((conversa?.dono_conversa as string | null) === "fluxo") return;
+
+  const resultado = await assumirControle(clinicaId, conversaId, "agente_ia", {
+    agente_ativo_id: agente.id,
+    ultimo_agente_id: agente.id,
+  });
+  if (!resultado.ok) {
+    console.error("[etiquetas] ativar_agente_failed", JSON.stringify({ conversaId, agenteId: agente.id }));
   }
 }
 

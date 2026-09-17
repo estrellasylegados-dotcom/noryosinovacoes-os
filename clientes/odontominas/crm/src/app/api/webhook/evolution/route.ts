@@ -9,6 +9,11 @@ import { deveResponder } from "@/lib/agentes";
 import { processarMensagemRecebida } from "@/lib/agentes-buffer";
 import { detectarPedidoOptOut, aplicarOptOut, MENSAGEM_CONFIRMACAO_OPT_OUT } from "@/lib/opt-out";
 import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import {
+  cancelarExecucoesAtivasDoPaciente,
+  resolverRespostaWaitingInput,
+  tentarIniciarFluxoPorMensagem,
+} from "@/lib/fluxo-execucoes";
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
@@ -144,6 +149,11 @@ export async function POST(request: Request) {
     .eq("telefone", telefone)
     .maybeSingle();
 
+  // Usado pelo gatilho de Fluxo de Conversa "nova_conversa"/"primeira_mensagem"
+  // (src/lib/fluxo-execucoes.ts) — capturado ANTES do bloco de criação abaixo,
+  // que reatribui conversaId.
+  const conversaEraNova = !conversaExistente;
+
   let conversaId: string | null = conversaExistente?.id ?? null;
   let statusAnterior: string | null = null;
   let statusNovo: string | null = null;
@@ -245,6 +255,12 @@ export async function POST(request: Request) {
     const resultadoOptOut = await aplicarOptOut(clinicaId, pacienteId, "webhook_whatsapp");
     if (resultadoOptOut.ok) {
       optOutDetectado = true;
+      // Cancela qualquer execução de Fluxo de Conversa ativa deste paciente —
+      // opt-out nunca deixa uma execução zumbi ocupando o slot único de
+      // "execução ativa por conversa" (ver src/lib/fluxo-execucoes.ts). Fora
+      // de opt-out.ts de propósito: evitaria import circular (fluxo-execucoes
+      // já importa detectarPedidoOptOut de lá).
+      await cancelarExecucoesAtivasDoPaciente(clinicaId, pacienteId);
       const envio = await enviarMensagemWhatsapp(telefone, MENSAGEM_CONFIRMACAO_OPT_OUT);
       if (envio.ok) {
         const { error: confirmacaoError } = await supabase.from("mensagens").insert({
@@ -265,38 +281,61 @@ export async function POST(request: Request) {
     }
   }
 
-  // Agente de IA: nunca pode derrubar o ack do webhook pra Evolution — roda
-  // isolado, depois que a mensagem já está persistida. Uma falha/demora da
-  // IA só fica no log; a conversa segue visível no Chat ao Vivo normalmente.
-  // Opt-out detectado agora: a IA não responde mais nada além da confirmação
-  // já mandada acima.
+  // Fluxo de Conversa / Agente de IA: nunca pode derrubar o ack do webhook
+  // pra Evolution — roda isolado, depois que a mensagem já está persistida.
+  // Uma falha/demora aqui só fica no log; a conversa segue visível no Chat ao
+  // Vivo normalmente. Opt-out detectado agora: nada automático responde mais
+  // nada além da confirmação já mandada acima.
+  //
+  // `dono_conversa` (Fase 2a do motor, ver crm/docs/fluxo-conversa-arquitetura.md)
+  // é o roteador explícito de quem responde agora — checado ANTES de
+  // agente_ativo_id/agente_pausado_ate, que não mudam em nada. Pra quem nunca
+  // usa Fluxo de Conversa, `dono_conversa` fica no valor de backfill
+  // ('agente_ia' ou 'humano') e o caminho abaixo roda IDÊNTICO ao de sempre.
   if (direcao === "recebida" && conteudo && !optOutDetectado) {
     try {
-      const { data: conversaAgente } = await supabase
+      const { data: conversaEstado } = await supabase
         .from("conversas")
-        .select("agente_ativo_id, agente_pausado_ate")
+        .select("dono_conversa, fluxo_execucao_ativa_id, agente_ativo_id, agente_pausado_ate")
         .eq("id", conversaId)
         .maybeSingle();
 
-      const deveIaResponder = deveResponder(
-        {
-          agenteAtivoId: (conversaAgente?.agente_ativo_id as string | null) ?? null,
-          agentePausadoAte: (conversaAgente?.agente_pausado_ate as string | null) ?? null,
-        },
-        new Date(),
-        false
-      );
+      const donoConversa = (conversaEstado?.dono_conversa as string | null) ?? "humano";
+      const fluxoExecucaoAtivaId = (conversaEstado?.fluxo_execucao_ativa_id as string | null) ?? null;
 
-      if (deveIaResponder) {
-        const resultado = await processarMensagemRecebida(
-          clinicaId,
-          conversaId as string,
-          conversaAgente!.agente_ativo_id as string,
-          conteudo,
-          !pacienteExistente
-        );
-        if (!resultado.ok) {
-          console.error("[webhook/evolution] agente_ia_failed", JSON.stringify({ conversaId, error: resultado.error ?? null }));
+      if (donoConversa === "fluxo" && fluxoExecucaoAtivaId) {
+        const resolvida = await resolverRespostaWaitingInput(clinicaId, fluxoExecucaoAtivaId, conteudo);
+        if (!resolvida) {
+          console.error(
+            "[webhook/evolution] fluxo_resolver_falhou",
+            JSON.stringify({ conversaId, fluxoExecucaoAtivaId })
+          );
+        }
+      } else if (donoConversa !== "humano") {
+        const iniciouFluxo = await tentarIniciarFluxoPorMensagem(clinicaId, conversaId as string, pacienteId, conversaEraNova, conteudo);
+
+        if (!iniciouFluxo) {
+          const deveIaResponder = deveResponder(
+            {
+              agenteAtivoId: (conversaEstado?.agente_ativo_id as string | null) ?? null,
+              agentePausadoAte: (conversaEstado?.agente_pausado_ate as string | null) ?? null,
+            },
+            new Date(),
+            false
+          );
+
+          if (deveIaResponder) {
+            const resultado = await processarMensagemRecebida(
+              clinicaId,
+              conversaId as string,
+              conversaEstado!.agente_ativo_id as string,
+              conteudo,
+              !pacienteExistente
+            );
+            if (!resultado.ok) {
+              console.error("[webhook/evolution] agente_ia_failed", JSON.stringify({ conversaId, error: resultado.error ?? null }));
+            }
+          }
         }
       }
     } catch (e) {
