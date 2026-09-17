@@ -102,7 +102,16 @@ export async function emitirEventoAutomacao(input: {
     conversaId,
     input.pacienteId,
     { tipo: input.tipo, refId: input.pacienteId, dedupeKey },
-    Boolean(fluxoAtivo.pode_interromper_agente_ia)
+    Boolean(fluxoAtivo.pode_interromper_agente_ia),
+    false,
+    // conversaEraNova=true: a guarda "recusa se humano" (iniciarExecucaoFluxo)
+    // protege atendimento humano JÁ EM ANDAMENTO — mas pra gatilho interno
+    // `dono_conversa='humano'` é só o estado de REPOUSO da imensa maioria das
+    // conversas (ninguém assumiu ainda), não sinal de atendimento ativo.
+    // Mesma exceção que nova_conversa/primeira_mensagem já usam — sem isso,
+    // evento interno nunca alcançaria paciente real nenhum. Decisão
+    // confirmada com o Rafael (ver _memoria/decisoes.md).
+    true
   );
 
   if (!resultado.ok) {

@@ -95,7 +95,12 @@ export async function executarScannerTemporal(clinicaId: string, agora: Date = n
         conversaId,
         pacienteId,
         { tipo: "aniversario", refId: pacienteId, dedupeKey },
-        Boolean(fluxo.pode_interromper_agente_ia)
+        Boolean(fluxo.pode_interromper_agente_ia),
+        false,
+        // conversaEraNova=true: mesma decisão de fluxo-eventos-internos.ts —
+        // dono_conversa='humano' é repouso, não atendimento ativo. Sem isso o
+        // scanner nunca alcançaria paciente real (ver _memoria/decisoes.md).
+        true
       );
 
       if (!resultado.ok) {
