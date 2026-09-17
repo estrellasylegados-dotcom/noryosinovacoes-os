@@ -27,9 +27,10 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 - Integração ControleODONTO: obter credencial/documentação real antes de habilitar qualquer
   capability (2026-09-16, checklist em
   `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
-- Apagar os dados de teste de Disparos (paciente "Rafael (teste Disparos)", conversa, campanha)
-  antes da produção real com clientes — teste fim a ponta já feito e confirmado pelo sistema
-  (2026-09-16, ver andamento.md e decisoes.md).
+- Apagar todos os dados de teste (Disparos e Campanhas: paciente "Rafael (teste Disparos)",
+  conversa, o disparo de verificação, a campanha "Teste Campanhas — envio real" e os eventos dela)
+  antes da produção real com clientes — pedido explícito do Rafael de deixar tudo configurado por
+  enquanto (2026-09-16/17, ver andamento.md e decisoes.md).
 - `.ratosos` sumiu do disco (git mostra deletado) e `.noryosinovacoes` (conteúdo "2.0") apareceu sem
   versionar — parece rename/atualização do kit incompleta (2026-09-16).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).

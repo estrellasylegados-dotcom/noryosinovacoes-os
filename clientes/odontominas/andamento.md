@@ -71,7 +71,19 @@ disparo real existente vinculado por FK e desvinculado de novo → tudo apagado 
 voltou ao estado de antes.
 
 Documentação nova em `crm/docs/campanhas.md` (conceito, schema, automático vs. manual, o que ficou
-de fora conscientemente). Ainda não commitado nem sincronizado no GitHub nesta sessão.
+de fora conscientemente). Commitado (`54745a8`) e deployado no Railway (sucesso, smoke test em
+produção ok). Ainda não sincronizado no GitHub nesta sessão.
+
+**Teste real de ponta a ponta, a pedido do Rafael (2026-09-16, mesmo dia)**: campanha
+"Teste Campanhas — envio real" criada direto em produção (status `ativa`), vinculada ao paciente
+"Rafael (teste Disparos)" já existente (mesmo número usado no teste de Disparos), gerando o marco
+`new_lead`. Um disparo vinculado a ela ("Teste Campanhas — disparo de verificação") foi criado e
+iniciado — o worker já rodando em produção pegou sozinho e mandou a mensagem de verdade pro
+WhatsApp do Rafael (`evolution_message_id` confirmado, `{primeiro_nome}` resolvido certo pra
+"Rafael"). Confirma que campanha→disparo→worker→WhatsApp funciona de ponta a ponta com envio real,
+não só com dado sintético. **Dados ficam no banco de propósito** — Rafael pediu explicitamente pra
+deixar configurado; entram no mesmo apagão de dados de teste (Disparos + Campanhas) antes da
+produção real com clientes (pendência em `agora.md`).
 
 ## Onde está (2026-09-16, Disparos — Fase B testada em produção; próximo: Fase 6)
 
