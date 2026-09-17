@@ -44,7 +44,6 @@ export function FluxoPainelTeste({
   const [contatos, setContatos] = useState<ContatoTeste[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [contato, setContato] = useState<ContatoTeste | null>(null);
-  const [execucaoId, setExecucaoId] = useState<string | null>(null);
   const [estado, setEstado] = useState<EstadoExecucao | null>(null);
   const [eventos, setEventos] = useState<EventoExecucao[]>([]);
   const [iniciando, setIniciando] = useState(false);
@@ -75,9 +74,8 @@ export function FluxoPainelTeste({
     }
   }
 
-  async function consultarEvento() {
-    if (!execucaoId) return;
-    const resposta = await fetch(`/api/fluxos/execucoes/${execucaoId}/eventos`);
+  async function consultarEvento(idExecucao: string) {
+    const resposta = await fetch(`/api/fluxos/execucoes/${idExecucao}/eventos`);
     const resultado = (await resposta.json()) as {
       ok: boolean;
       execucao?: { estado: EstadoExecucao; noAtualId: string | null; erro: string | null };
@@ -113,12 +111,12 @@ export function FluxoPainelTeste({
         return;
       }
 
-      setExecucaoId(resultado.execucaoId);
+      const idExecucao = resultado.execucaoId;
       setEventos([]);
       setEstado("queued");
       pararPolling();
-      intervaloRef.current = setInterval(() => void consultarEvento(), INTERVALO_POLLING_MS);
-      void consultarEvento();
+      intervaloRef.current = setInterval(() => void consultarEvento(idExecucao), INTERVALO_POLLING_MS);
+      void consultarEvento(idExecucao);
     } finally {
       setIniciando(false);
     }
