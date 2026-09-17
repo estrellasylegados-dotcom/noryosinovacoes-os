@@ -327,3 +327,19 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   já usado pra adiar o Pixel até existir tráfego pago real); `appointment_attended`/
   `treatment_closed` só por registro manual (ControleODONTO ainda sem credencial). Detalhe completo
   em `clientes/odontominas/crm/docs/campanhas.md`.
+- **2026-09-16** (Rafael, recomendação de Claude) [odontominas]: reconstrução do módulo "Ferramentas
+  → Fluxo de Conversa" do CRM vira motor de automação conversacional determinístico, tratado como
+  infraestrutura crítica, fatiado em 6 fases com checkpoint do Rafael entre elas — Fase 0 (auditoria
+  só-leitura do módulo atual: tabelas, rotas, editor, execução, riscos de loop/duplicidade/corrida),
+  Fase 1 (arquitetura/schema/migrations, propostas antes de aplicar), Fase 2 (engine assíncrona +
+  worker, fora do request HTTP), Fase 3 (paleta de blocos + editor visual), Fase 4 (testes
+  unit/integração/e2e/carga/regressão), Fase 5 (teste real controlado no WhatsApp). Dois pontos do
+  escopo original — aplicar migration em produção e enviar mensagem real de teste — nunca rodam
+  sozinhos dentro de um fluxo automático, mesmo com todas as validações do próprio fluxo passando:
+  exigem confirmação explícita do Rafael a cada vez. Fase 0 começa numa sessão nova, não na que
+  gerou esta decisão. Por quê: o pedido original (prompt único cobrindo auditoria + arquitetura +
+  engine + editor + testes + envio real de WhatsApp) é do tamanho de um programa de várias semanas,
+  não de uma tarefa — rodar tudo de uma vez, ainda mais numa sessão perto do limite de contexto,
+  arrisca fazer com pressa exatamente o módulo que precisa ser determinístico, auditável e seguro;
+  fatiar com checkpoint evita isso e cria pontos de decisão antes de qualquer ação irreversível
+  (schema de produção, envio real).

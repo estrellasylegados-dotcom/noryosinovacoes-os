@@ -41,5 +41,10 @@ Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente.
 
 - Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos e Campanhas testados com sucesso;
   Fase 6 (demo) é a frente aberta agora. Painel tem 5 conversas fictícias — falta decidir se apaga.
+- Fluxo de Conversa (CRM OdontoMinas): decisão tomada de reconstruir como motor de automação
+  determinístico, fatiado em 6 fases com checkpoint do Rafael entre elas (ver decisoes.md
+  2026-09-16). **Fase 0 (auditoria) ainda não começou** — começar em sessão nova, lendo primeiro
+  `clientes/odontominas/AGENTS.md`/`contexto.md`/`andamento.md`. Migration em produção e envio real
+  de WhatsApp exigem aprovação explícita a cada fase, nunca automáticas.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).

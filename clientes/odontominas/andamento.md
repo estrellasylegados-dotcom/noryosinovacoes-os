@@ -507,6 +507,10 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   Agente de IA, aba Marketing em Relatórios — construído, testado (typecheck/lint/build/340
   testes) e verificado fim a ponta contra produção (2026-09-16) — ver "Feito" e
   `crm/docs/campanhas.md`.
+- [ ] Fluxo de Conversa — reconstrução do módulo "Ferramentas → Fluxo de Conversa" como motor de
+  automação conversacional determinístico (infraestrutura crítica), fatiada em 6 fases com
+  checkpoint do Rafael entre elas — decisão completa em `_memoria/decisoes.md` (2026-09-16). Fase 0
+  (auditoria do módulo atual) ainda não começou; começa em sessão nova.
 
 ## Plano técnico do CRM (2026-09-14)
 
