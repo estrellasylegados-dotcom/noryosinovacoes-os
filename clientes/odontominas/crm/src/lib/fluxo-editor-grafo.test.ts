@@ -27,6 +27,10 @@ describe("criarNoPadrao", () => {
     "mudar_status",
     "marcar_prioridade",
     "atribuir_atendente",
+    "transferir_humano",
+    "criar_alerta_interno",
+    "pausar_automacao",
+    "iniciar_agente_ia",
   ] as const)("tipo %s nasce sintaticamente válido (passa validarFormaDefinicao)", (tipo) => {
     const no = criarNoPadrao(tipo, "novo");
     const resultado = validarFormaDefinicao({ nodes: [no], edges: [], config: {} });
@@ -48,6 +52,13 @@ describe("criarNoPadrao", () => {
     expect(criarNoPadrao("marcar_prioridade", "p1")).toMatchObject({ prioridade: "normal", proximo: "p1" });
     expect(criarNoPadrao("atribuir_atendente", "at1")).toMatchObject({ atendenteId: null, proximo: "at1" });
   });
+
+  it("Humano + IA: os 2 passthrough nascem auto-referenciados; os 2 terminais nascem sem proximo (mesmo desenho de finalizar)", () => {
+    expect(criarNoPadrao("criar_alerta_interno", "al1")).toMatchObject({ mensagem: "Alerta interno do fluxo.", numeros: "", proximo: "al1" });
+    expect(criarNoPadrao("pausar_automacao", "pa1")).toMatchObject({ proximo: "pa1" });
+    expect(criarNoPadrao("transferir_humano", "th1")).toEqual({ id: "th1", tipo: "transferir_humano" });
+    expect(criarNoPadrao("iniciar_agente_ia", "ia1")).toEqual({ id: "ia1", tipo: "iniciar_agente_ia", agenteId: "" });
+  });
 });
 
 describe("derivarArestasXyflow", () => {
@@ -66,8 +77,10 @@ describe("derivarArestasXyflow", () => {
     ]);
   });
 
-  it("finalizar: 0 arestas", () => {
+  it("finalizar/transferir_humano/iniciar_agente_ia: 0 arestas (terminais)", () => {
     expect(derivarArestasXyflow([{ id: "f", tipo: "finalizar" }])).toEqual([]);
+    expect(derivarArestasXyflow([{ id: "th", tipo: "transferir_humano" }])).toEqual([]);
+    expect(derivarArestasXyflow([{ id: "ia", tipo: "iniciar_agente_ia", agenteId: "a1" }])).toEqual([]);
   });
 
   it("menu: 1 aresta por opção + timeout só se definido", () => {
@@ -96,6 +109,15 @@ describe("derivarArestasXyflow", () => {
     ]);
     expect(derivarArestasXyflow([{ id: "at", tipo: "atribuir_atendente", atendenteId: null, proximo: "fim" }])).toEqual([
       { id: "at::default", source: "at", sourceHandle: "default", target: "fim" },
+    ]);
+  });
+
+  it("criar_alerta_interno/pausar_automacao: 1 aresta 'default', mesmo padrão de mensagem/espera", () => {
+    expect(derivarArestasXyflow([{ id: "al", tipo: "criar_alerta_interno", mensagem: "oi", numeros: "1", proximo: "fim" }])).toEqual([
+      { id: "al::default", source: "al", sourceHandle: "default", target: "fim" },
+    ]);
+    expect(derivarArestasXyflow([{ id: "pa", tipo: "pausar_automacao", proximo: "fim" }])).toEqual([
+      { id: "pa::default", source: "pa", sourceHandle: "default", target: "fim" },
     ]);
   });
 
@@ -153,13 +175,23 @@ describe("aplicarConexao", () => {
     expect(nodes[0].proximoTimeout).toBe("fim");
   });
 
-  it("finalizar: nunca muta (não tem conector de saída)", () => {
-    const nodes = aplicarConexao([{ id: "f", tipo: "finalizar" }], "f", "default", "x");
-    expect(nodes[0]).toEqual({ id: "f", tipo: "finalizar" });
+  it("finalizar/transferir_humano/iniciar_agente_ia: nunca mutam (terminais, sem conector de saída)", () => {
+    expect(aplicarConexao([{ id: "f", tipo: "finalizar" }], "f", "default", "x")[0]).toEqual({ id: "f", tipo: "finalizar" });
+    expect(aplicarConexao([{ id: "th", tipo: "transferir_humano" }], "th", "default", "x")[0]).toEqual({ id: "th", tipo: "transferir_humano" });
+    expect(aplicarConexao([{ id: "ia", tipo: "iniciar_agente_ia", agenteId: "a1" }], "ia", "default", "x")[0]).toEqual({
+      id: "ia",
+      tipo: "iniciar_agente_ia",
+      agenteId: "a1",
+    });
   });
 
   it("Ações CRM: reconecta 'default', mesmo padrão de mensagem/espera", () => {
     const nodes = aplicarConexao([{ id: "st", tipo: "mudar_status", status: "respondido", proximo: "st" }], "st", "default", "fim");
+    expect(nodes[0]).toMatchObject({ proximo: "fim" });
+  });
+
+  it("criar_alerta_interno/pausar_automacao: reconecta 'default', mesmo padrão de mensagem/espera", () => {
+    const nodes = aplicarConexao([{ id: "pa", tipo: "pausar_automacao", proximo: "pa" }], "pa", "default", "fim");
     expect(nodes[0]).toMatchObject({ proximo: "fim" });
   });
 

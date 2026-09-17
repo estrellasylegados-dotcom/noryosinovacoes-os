@@ -17,6 +17,7 @@ import type { ExecucaoFluxoResumo } from "@/lib/fluxo-execucoes-consulta";
 import type { FluxoParaEditor, StatusVersaoFluxo } from "@/lib/fluxo-versoes";
 import type { Etiqueta } from "@/lib/etiquetas";
 import type { Atendente } from "@/lib/atendentes";
+import type { AgenteIA } from "@/lib/agentes";
 import { FluxoBarraAcoes } from "@/components/fluxos/FluxoBarraAcoes";
 import { FluxoCanvas } from "@/components/fluxos/FluxoCanvas";
 import { FluxoPaletaBlocos } from "@/components/fluxos/FluxoPaletaBlocos";
@@ -48,12 +49,14 @@ export function FluxoEditor({
   controleOdontoConfigurado,
   etiquetas,
   atendentes,
+  agentes,
 }: {
   fluxo: FluxoParaEditor;
   execucoesTesteIniciais: ExecucaoFluxoResumo[];
   controleOdontoConfigurado: boolean;
   etiquetas: Etiqueta[];
   atendentes: Atendente[];
+  agentes: AgenteIA[];
 }) {
   const router = useRouter();
 
@@ -335,6 +338,7 @@ export function FluxoEditor({
             noEmExecucaoId={noEmExecucaoId}
             etiquetas={etiquetas}
             atendentes={atendentes}
+            agentes={agentes}
             onSelecionar={setSelecionadoId}
             onMoverNo={onMoverNo}
             onConectar={onConectar}
@@ -367,6 +371,7 @@ export function FluxoEditor({
             onMudarGatilho={onMudarGatilho}
             etiquetas={etiquetas}
             atendentes={atendentes}
+            agentes={agentes}
           />
         </div>
       </div>

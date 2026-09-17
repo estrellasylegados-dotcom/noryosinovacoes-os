@@ -159,6 +159,69 @@ describe("processarNo — Ações CRM (não dependem de ControleODONTO)", () => 
   });
 });
 
+describe("processarNo — Humano + IA (só os 4 blocos seguros na arquitetura atual)", () => {
+  it("transferir_humano sem mensagem: terminal, transferred, sem próximo nó, acaoCrm null (a troca de dono_conversa é de graça, ver fluxo-execucoes.ts)", () => {
+    const definicao = def([{ id: "th", tipo: "transferir_humano", motivo: "pediu atendente" }]);
+    const resultado = processarNo(definicao, "th", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: null,
+      novoEstado: "transferred",
+      mensagensParaEnviar: [],
+      acaoCrm: null,
+      motivoFinalizacao: "pediu atendente",
+      tipoEvento: "transferido_humano",
+    });
+  });
+
+  it("transferir_humano com mensagem: resolve variáveis, manda a mensagem antes de encerrar", () => {
+    const definicao = def([{ id: "th", tipo: "transferir_humano", mensagem: "Um momento, {primeiro_nome}!" }]);
+    const resultado = processarNo(definicao, "th", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({ ok: true, novoEstado: "transferred", mensagensParaEnviar: ["Um momento, Maria!"] });
+  });
+
+  it("criar_alerta_interno: acaoCrm com mensagem resolvida e números, avança sem mandar mensagem pro paciente", () => {
+    const definicao = def([
+      { id: "al", tipo: "criar_alerta_interno", mensagem: "{primeiro_nome} pediu ajuda", numeros: "5561999998888, 5561988887777", proximo: "fim" },
+    ]);
+    const resultado = processarNo(definicao, "al", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      novoEstado: "queued",
+      mensagensParaEnviar: [],
+      acaoCrm: { tipo: "criar_alerta_interno", mensagem: "Maria pediu ajuda", numeros: "5561999998888, 5561988887777" },
+      tipoEvento: "alerta_interno_criado",
+    });
+  });
+
+  it("pausar_automacao: acaoCrm sem dados, avança, não é terminal", () => {
+    const definicao = def([{ id: "pa", tipo: "pausar_automacao", proximo: "fim" }]);
+    const resultado = processarNo(definicao, "pa", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: "fim",
+      novoEstado: "queued",
+      acaoCrm: { tipo: "pausar_automacao" },
+      tipoEvento: "automacao_pausada",
+    });
+  });
+
+  it("iniciar_agente_ia: terminal, transferred, sem próximo nó, acaoCrm com o agente escolhido", () => {
+    const definicao = def([{ id: "ia", tipo: "iniciar_agente_ia", agenteId: "agente-1", motivo: "triagem" }]);
+    const resultado = processarNo(definicao, "ia", {}, { tipo: "avancar" }, PACIENTE, SEM_VISITAS, AGORA);
+    expect(resultado).toMatchObject({
+      ok: true,
+      proximoNoId: null,
+      novoEstado: "transferred",
+      mensagensParaEnviar: [],
+      acaoCrm: { tipo: "iniciar_agente_ia", agenteId: "agente-1" },
+      motivoFinalizacao: "triagem",
+      tipoEvento: "agente_ia_iniciado",
+    });
+  });
+});
+
 describe("processarNo — menu", () => {
   const definicao = def([
     {

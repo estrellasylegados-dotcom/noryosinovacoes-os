@@ -8,6 +8,7 @@ import { combinaGatilhoMensagem, dedupeKeyParaGatilho } from "@/lib/fluxo-gatilh
 import { adicionarEtiquetaConversa, removerEtiquetaConversa } from "@/lib/etiquetas";
 import { atualizarStatus } from "@/lib/conversas";
 import { isPrioridadeValida } from "@/lib/prioridade";
+import { buscarAgente } from "@/lib/agentes";
 
 /**
  * Camada de I/O do motor de Fluxo de Conversa (Fase 2a — ver
@@ -46,47 +47,60 @@ async function enviarComRetry(telefone: string, texto: string): Promise<{ ok: bo
 }
 
 /**
- * Aplica o efeito de um bloco de Ações CRM contra o banco. `atribuido_a`/
- * `prioridade` são escritos direto aqui (não via `chat.ts:atualizarConversaChat`)
- * de propósito: `chat.ts` já importa `transferirExecucaoAtivaParaHumano` deste
- * mesmo arquivo — reusar a função de lá criaria um ciclo de import
- * (`fluxo-execucoes.ts` → `chat.ts` → `fluxo-execucoes.ts`). `mudar_status` e
- * as duas de etiqueta reusam as libs existentes (`conversas.ts`/`etiquetas.ts`),
- * que não têm esse problema — inclusive dando de graça o Pixel de Conversão/
- * evento de Campanha já ligados a `atualizarStatus`. Nunca deixa uma falha
- * aqui derrubar o passo do fluxo: só loga, mesmo critério de envio de mensagem.
+ * Aplica o efeito de um bloco de Ações CRM/Humano+IA contra o banco (e, pro
+ * alerta interno, o WhatsApp). `atribuido_a`/`prioridade` são escritos direto
+ * aqui (não via `chat.ts:atualizarConversaChat`) de propósito: `chat.ts` já
+ * importa `transferirExecucaoAtivaParaHumano` deste mesmo arquivo — reusar a
+ * função de lá criaria um ciclo de import (`fluxo-execucoes.ts` → `chat.ts` →
+ * `fluxo-execucoes.ts`). `mudar_status` e as duas de etiqueta reusam as libs
+ * existentes (`conversas.ts`/`etiquetas.ts`), que não têm esse problema —
+ * inclusive dando de graça o Pixel de Conversão/evento de Campanha já
+ * ligados a `atualizarStatus`. Nunca deixa uma falha aqui derrubar o passo do
+ * fluxo: só loga, mesmo critério de envio de mensagem.
+ *
+ * `donoTransferido: true` só na ÚNICA ação que muda `dono_conversa` ela
+ * mesma (`iniciar_agente_ia`, com sucesso) — é o sinal que
+ * `processarPassoReivindicado` usa pra NÃO chamar o `liberarControle`
+ * genérico (que devolveria a conversa pro humano por cima da entrega que
+ * acabou de acontecer pro agente). Toda outra ação devolve `false`, mesmo as
+ * que nem tocam `dono_conversa`.
  */
-async function aplicarAcaoCrm(supabase: SupabaseClient, clinicaId: string, conversaId: string, acao: AcaoCrm): Promise<void> {
+async function aplicarAcaoCrm(
+  supabase: SupabaseClient,
+  clinicaId: string,
+  conversaId: string,
+  acao: AcaoCrm
+): Promise<{ donoTransferido: boolean }> {
   switch (acao.tipo) {
     case "adicionar_etiqueta": {
-      if (!acao.etiquetaId) return; // nó publicado sem etiqueta não deveria existir (validarGrafo barra), defesa extra
+      if (!acao.etiquetaId) return { donoTransferido: false }; // nó publicado sem etiqueta não deveria existir (validarGrafo barra), defesa extra
       const resultado = await adicionarEtiquetaConversa(clinicaId, conversaId, acao.etiquetaId);
       if (!resultado.ok) {
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: resultado.error ?? null }));
       }
-      return;
+      return { donoTransferido: false };
     }
     case "remover_etiqueta": {
-      if (!acao.etiquetaId) return;
+      if (!acao.etiquetaId) return { donoTransferido: false };
       await removerEtiquetaConversa(conversaId, acao.etiquetaId);
-      return;
+      return { donoTransferido: false };
     }
     case "mudar_status": {
       const resultado = await atualizarStatus(clinicaId, conversaId, acao.status);
       if (!resultado.ok) {
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: resultado.error ?? null }));
       }
-      return;
+      return { donoTransferido: false };
     }
     case "marcar_prioridade": {
-      if (!isPrioridadeValida(acao.prioridade)) return;
+      if (!isPrioridadeValida(acao.prioridade)) return { donoTransferido: false };
       const { error } = await supabase
         .from("conversas")
         .update({ prioridade: acao.prioridade, updated_at: new Date().toISOString() })
         .eq("id", conversaId)
         .eq("clinica_id", clinicaId);
       if (error) console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error.code ?? null }));
-      return;
+      return { donoTransferido: false };
     }
     case "atribuir_atendente": {
       const { error } = await supabase
@@ -95,7 +109,49 @@ async function aplicarAcaoCrm(supabase: SupabaseClient, clinicaId: string, conve
         .eq("id", conversaId)
         .eq("clinica_id", clinicaId);
       if (error) console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error.code ?? null }));
-      return;
+      return { donoTransferido: false };
+    }
+    case "criar_alerta_interno": {
+      const numeros = acao.numeros
+        .split(",")
+        .map((n) => n.trim())
+        .filter(Boolean);
+      for (const numero of numeros) {
+        const envio = await enviarMensagemWhatsapp(numero, acao.mensagem);
+        if (!envio.ok) {
+          console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, numero, error: envio.error ?? null }));
+        }
+      }
+      return { donoTransferido: false };
+    }
+    case "pausar_automacao": {
+      // Só neutraliza o agente (pra não retomar sozinho depois) — nunca toca
+      // dono_conversa: o fluxo continua dono, ainda vai processar o próximo nó.
+      const { error } = await supabase
+        .from("conversas")
+        .update({ agente_ativo_id: null, agente_pausado_ate: null, updated_at: new Date().toISOString() })
+        .eq("id", conversaId)
+        .eq("clinica_id", clinicaId);
+      if (error) console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error.code ?? null }));
+      return { donoTransferido: false };
+    }
+    case "iniciar_agente_ia": {
+      if (!acao.agenteId) return { donoTransferido: false }; // validarGrafo barra publicar sem agente, defesa extra
+      const agente = await buscarAgente(clinicaId, acao.agenteId);
+      if (!agente) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "agente_nao_encontrado" }));
+        return { donoTransferido: false };
+      }
+      const resultado = await assumirControle(clinicaId, conversaId, "agente_ia", {
+        agente_ativo_id: agente.id,
+        agente_pausado_ate: null,
+        ultimo_agente_id: agente.id,
+      });
+      if (!resultado.ok) {
+        console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: resultado.error ?? null }));
+        return { donoTransferido: false };
+      }
+      return { donoTransferido: true };
     }
   }
 }
@@ -261,8 +317,9 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
     return;
   }
 
+  let donoTransferidoPorAcao = false;
   if (resultado.acaoCrm) {
-    await aplicarAcaoCrm(supabase, clinicaId, contexto.conversaId, resultado.acaoCrm);
+    donoTransferidoPorAcao = (await aplicarAcaoCrm(supabase, clinicaId, contexto.conversaId, resultado.acaoCrm)).donoTransferido;
   }
 
   // Opt-out checado AQUI, imediatamente antes de qualquer envio — nunca
@@ -336,7 +393,18 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
     .eq("sequencia", sequencia);
 
   if (terminou) {
-    await liberarControle(clinicaId, contexto.conversaId, { fluxo_execucao_ativa_id: null });
+    if (donoTransferidoPorAcao) {
+      // iniciar_agente_ia já entregou dono_conversa pro agente (aplicarAcaoCrm,
+      // acima) — chamar liberarControle aqui devolveria pro humano por cima
+      // dessa entrega, um instante depois. Só solta o ponteiro da execução.
+      await supabase
+        .from("conversas")
+        .update({ fluxo_execucao_ativa_id: null })
+        .eq("id", contexto.conversaId)
+        .eq("clinica_id", clinicaId);
+    } else {
+      await liberarControle(clinicaId, contexto.conversaId, { fluxo_execucao_ativa_id: null });
+    }
   }
 }
 

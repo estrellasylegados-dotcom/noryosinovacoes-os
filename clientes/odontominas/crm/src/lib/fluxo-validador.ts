@@ -37,8 +37,12 @@ function proximosDe(no: NoFluxo): string[] {
     case "mudar_status":
     case "marcar_prioridade":
     case "atribuir_atendente":
+    case "criar_alerta_interno":
+    case "pausar_automacao":
       return [no.proximo];
     case "finalizar":
+    case "transferir_humano":
+    case "iniciar_agente_ia":
       return [];
   }
 }
@@ -46,6 +50,11 @@ function proximosDe(no: NoFluxo): string[] {
 /** Nós que "guardam" um ciclo — introduzem espera real (tempo ou input humano), tornando o loop seguro. */
 function ehNoDeGuarda(no: NoFluxo): boolean {
   return no.tipo === "espera" || no.tipo === "menu";
+}
+
+/** Nós que terminam a execução — usado pra checar "todo caminho tem uma saída", não só `finalizar` (ver proximosDe). */
+function ehNoTerminal(no: NoFluxo): boolean {
+  return no.tipo === "finalizar" || no.tipo === "transferir_humano" || no.tipo === "iniciar_agente_ia";
 }
 
 export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo {
@@ -72,11 +81,17 @@ export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo
     }
   }
 
-  // 2.1. Ações CRM de etiqueta sem etiqueta escolhida — a FORMA tolera vazio
-  // (bloco recém-arrastado da paleta, ver fluxo-tipos.ts), mas publicar exige.
+  // 2.1. Blocos que referenciam outro registro por id, mas a FORMA tolera
+  // vazio (recém-arrastado da paleta, ver fluxo-tipos.ts) — publicar exige.
   for (const no of definicao.nodes) {
     if ((no.tipo === "adicionar_etiqueta" || no.tipo === "remover_etiqueta") && !no.etiquetaId) {
       erros.push({ noIds: [no.id], mensagem: `nó ${no.id}: selecione uma etiqueta` });
+    }
+    if (no.tipo === "iniciar_agente_ia" && !no.agenteId) {
+      erros.push({ noIds: [no.id], mensagem: `nó ${no.id}: selecione um agente de IA` });
+    }
+    if (no.tipo === "criar_alerta_interno" && !no.numeros.trim()) {
+      erros.push({ noIds: [no.id], mensagem: `nó ${no.id}: informe ao menos um número pra alertar` });
     }
   }
 
@@ -105,9 +120,10 @@ export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo
     }
   }
 
-  // 4. Ao menos um "finalizar" alcançável (caminho que sempre termina em algum ponto).
-  const finalizaresAlcancados = definicao.nodes.filter((n) => n.tipo === "finalizar" && alcancados.has(n.id));
-  if (finalizaresAlcancados.length === 0) {
+  // 4. Ao menos um nó terminal alcançável (finalizar, transferir_humano ou
+  // iniciar_agente_ia — caminho que sempre termina em algum ponto).
+  const terminaisAlcancados = definicao.nodes.filter((n) => ehNoTerminal(n) && alcancados.has(n.id));
+  if (terminaisAlcancados.length === 0) {
     avisos.push({ noIds: [], mensagem: "nenhum nó de finalizar alcançável — este fluxo pode nunca terminar" });
   }
 

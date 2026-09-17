@@ -147,6 +147,38 @@ describe("validarGrafo", () => {
     expect(resultado.erros).toContainEqual({ noIds: ["et"], mensagem: "nó et: selecione uma etiqueta" });
   });
 
+  it("transferir_humano e iniciar_agente_ia são terminais: alcançáveis, sem exigir finalizar depois", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "th" },
+        { id: "th", tipo: "transferir_humano" },
+      ])
+    );
+    expect(resultado.avisos).toEqual([]);
+    expect(resultado.erros).toEqual([]);
+  });
+
+  it("iniciar_agente_ia sem agente escolhido: erro bloqueia publicação", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "ia" },
+        { id: "ia", tipo: "iniciar_agente_ia", agenteId: "" },
+      ])
+    );
+    expect(resultado.erros).toContainEqual({ noIds: ["ia"], mensagem: "nó ia: selecione um agente de IA" });
+  });
+
+  it("criar_alerta_interno sem número configurado: erro bloqueia publicação", () => {
+    const resultado = validarGrafo(
+      def([
+        { id: "inicio", tipo: "inicio", proximo: "al" },
+        { id: "al", tipo: "criar_alerta_interno", mensagem: "oi", numeros: "   ", proximo: "fim" },
+        { id: "fim", tipo: "finalizar" },
+      ])
+    );
+    expect(resultado.erros).toContainEqual({ noIds: ["al"], mensagem: "nó al: informe ao menos um número pra alertar" });
+  });
+
   it("mudar_status/marcar_prioridade/atribuir_atendente em loop sem guarda: mesmo erro de loop perigoso que qualquer outro nó de passagem", () => {
     const resultado = validarGrafo(
       def([

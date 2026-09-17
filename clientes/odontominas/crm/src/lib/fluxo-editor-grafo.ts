@@ -42,6 +42,14 @@ export function criarNoPadrao(tipo: NoFluxo["tipo"], id: string): NoFluxo {
       return { id, tipo: "marcar_prioridade", prioridade: "normal", proximo: id };
     case "atribuir_atendente":
       return { id, tipo: "atribuir_atendente", atendenteId: null, proximo: id };
+    case "transferir_humano":
+      return { id, tipo: "transferir_humano" };
+    case "criar_alerta_interno":
+      return { id, tipo: "criar_alerta_interno", mensagem: "Alerta interno do fluxo.", numeros: "", proximo: id };
+    case "pausar_automacao":
+      return { id, tipo: "pausar_automacao", proximo: id };
+    case "iniciar_agente_ia":
+      return { id, tipo: "iniciar_agente_ia", agenteId: "" };
   }
 }
 
@@ -58,6 +66,8 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
       case "mudar_status":
       case "marcar_prioridade":
       case "atribuir_atendente":
+      case "criar_alerta_interno":
+      case "pausar_automacao":
         arestas.push({ id: `${no.id}::default`, source: no.id, sourceHandle: "default", target: no.proximo });
         break;
       case "condicao":
@@ -73,6 +83,8 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
         }
         break;
       case "finalizar":
+      case "transferir_humano":
+      case "iniciar_agente_ia":
         break;
     }
   }
@@ -92,6 +104,8 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
       case "mudar_status":
       case "marcar_prioridade":
       case "atribuir_atendente":
+      case "criar_alerta_interno":
+      case "pausar_automacao":
         return sourceHandle === "default" ? { ...no, proximo: target } : no;
       case "condicao":
         if (sourceHandle === "verdadeiro") return { ...no, seVerdadeiro: target };
@@ -106,6 +120,8 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
         return { ...no, opcoes: no.opcoes.map((o, i) => (i === indice ? { ...o, proximo: target } : o)) };
       }
       case "finalizar":
+      case "transferir_humano":
+      case "iniciar_agente_ia":
         return no;
     }
   });

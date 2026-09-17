@@ -21,20 +21,25 @@ import {
 import { NoAdicionarEtiquetaCard } from "@/components/fluxos/nos/NoAdicionarEtiquetaCard";
 import { NoAtribuirAtendenteCard } from "@/components/fluxos/nos/NoAtribuirAtendenteCard";
 import { NoCondicaoCard } from "@/components/fluxos/nos/NoCondicaoCard";
+import { NoCriarAlertaInternoCard } from "@/components/fluxos/nos/NoCriarAlertaInternoCard";
 import { NoEsperaCard } from "@/components/fluxos/nos/NoEsperaCard";
 import { NoFinalizarCard } from "@/components/fluxos/nos/NoFinalizarCard";
+import { NoIniciarAgenteIACard } from "@/components/fluxos/nos/NoIniciarAgenteIACard";
 import { NoInicioCard } from "@/components/fluxos/nos/NoInicioCard";
 import { NoMarcarPrioridadeCard } from "@/components/fluxos/nos/NoMarcarPrioridadeCard";
 import { NoMenuCard } from "@/components/fluxos/nos/NoMenuCard";
 import { NoMensagemCard } from "@/components/fluxos/nos/NoMensagemCard";
 import { NoMudarStatusCard } from "@/components/fluxos/nos/NoMudarStatusCard";
+import { NoPausarAutomacaoCard } from "@/components/fluxos/nos/NoPausarAutomacaoCard";
 import { NoRemoverEtiquetaCard } from "@/components/fluxos/nos/NoRemoverEtiquetaCard";
+import { NoTransferirHumanoCard } from "@/components/fluxos/nos/NoTransferirHumanoCard";
 import type { NoCanvasData } from "@/components/fluxos/nos/tipos";
 import { derivarArestasXyflow, podeDeletarAresta } from "@/lib/fluxo-editor-grafo";
 import type { PosicaoNo } from "@/lib/fluxo-editor-layout";
 import type { NoFluxo } from "@/lib/fluxo-tipos";
 import type { Etiqueta } from "@/lib/etiquetas";
 import type { Atendente } from "@/lib/atendentes";
+import type { AgenteIA } from "@/lib/agentes";
 
 const TIPOS_NO: NodeTypes = {
   inicio: NoInicioCard,
@@ -48,6 +53,10 @@ const TIPOS_NO: NodeTypes = {
   mudar_status: NoMudarStatusCard,
   marcar_prioridade: NoMarcarPrioridadeCard,
   atribuir_atendente: NoAtribuirAtendenteCard,
+  transferir_humano: NoTransferirHumanoCard,
+  criar_alerta_interno: NoCriarAlertaInternoCard,
+  pausar_automacao: NoPausarAutomacaoCard,
+  iniciar_agente_ia: NoIniciarAgenteIACard,
 };
 
 /** Formato do arrasto vindo da paleta (`FluxoPaletaBlocos`) — nome de tipo MIME próprio, não colide com nada externo. */
@@ -61,6 +70,7 @@ export type FluxoCanvasProps = {
   noEmExecucaoId?: string | null;
   etiquetas: Etiqueta[];
   atendentes: Atendente[];
+  agentes: AgenteIA[];
   onSelecionar: (id: string | null) => void;
   onMoverNo: (id: string, posicao: PosicaoNo) => void;
   onConectar: (source: string, sourceHandle: string, target: string) => void;
@@ -78,6 +88,7 @@ function FluxoCanvasInterno(props: FluxoCanvasProps) {
     noEmExecucaoId,
     etiquetas,
     atendentes,
+    agentes,
     onSelecionar,
     onMoverNo,
     onConectar,
@@ -89,6 +100,7 @@ function FluxoCanvasInterno(props: FluxoCanvasProps) {
   const [xyNodes, setXyNodes] = useNodesState<Node<NoCanvasData>>([]);
   const etiquetaNomePorId = useMemo(() => new Map(etiquetas.map((e) => [e.id, e.nome])), [etiquetas]);
   const atendenteNomePorId = useMemo(() => new Map(atendentes.map((a) => [a.id, a.nome])), [atendentes]);
+  const agenteNomePorId = useMemo(() => new Map(agentes.map((a) => [a.id, a.nome])), [agentes]);
 
   // Reposta a lista de nós do xyflow sempre que a estrutura/seleção/estado
   // de execução muda. Posição vem sempre de `posicoes` (nunca de um estado
@@ -101,12 +113,12 @@ function FluxoCanvasInterno(props: FluxoCanvasProps) {
         id: no.id,
         type: no.tipo,
         position: posicoes[no.id] ?? { x: 0, y: 0 },
-        data: { no, problema: problemasPorNo.get(no.id), emExecucao: no.id === noEmExecucaoId, etiquetaNomePorId, atendenteNomePorId },
+        data: { no, problema: problemasPorNo.get(no.id), emExecucao: no.id === noEmExecucaoId, etiquetaNomePorId, atendenteNomePorId, agenteNomePorId },
         selected: no.id === selecionadoId,
         deletable: no.tipo !== "inicio",
       }))
     );
-  }, [nodes, posicoes, problemasPorNo, noEmExecucaoId, selecionadoId, etiquetaNomePorId, atendenteNomePorId, setXyNodes]);
+  }, [nodes, posicoes, problemasPorNo, noEmExecucaoId, selecionadoId, etiquetaNomePorId, atendenteNomePorId, agenteNomePorId, setXyNodes]);
 
   const arestas = useMemo<Edge[]>(
     () => derivarArestasXyflow(nodes).map((a) => ({ id: a.id, source: a.source, sourceHandle: a.sourceHandle, target: a.target, type: "smoothstep" })),

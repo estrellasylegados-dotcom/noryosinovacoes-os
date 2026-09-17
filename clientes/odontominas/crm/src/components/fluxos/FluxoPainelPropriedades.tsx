@@ -6,18 +6,22 @@ import type {
   NoAdicionarEtiqueta,
   NoAtribuirAtendente,
   NoCondicao,
+  NoCriarAlertaInterno,
   NoEspera,
   NoFinalizar,
   NoFluxo,
+  NoIniciarAgenteIA,
   NoMarcarPrioridade,
   NoMenu,
   NoMensagem,
   NoMudarStatus,
   NoRemoverEtiqueta,
+  NoTransferirHumano,
   OperadorCondicao,
 } from "@/lib/fluxo-tipos";
 import type { Etiqueta } from "@/lib/etiquetas";
 import type { Atendente } from "@/lib/atendentes";
+import type { AgenteIA } from "@/lib/agentes";
 import { STATUS_CONFIG, STATUS_ORDEM } from "@/lib/status";
 import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM } from "@/lib/prioridade";
 
@@ -198,6 +202,70 @@ function PropriedadesAtribuirAtendente({
   );
 }
 
+function PropriedadesTransferirHumano({ no, onAtualizar }: { no: NoTransferirHumano; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Mensagem antes de transferir (opcional)" hint="Variáveis: {nome}, {primeiro_nome}, {telefone}">
+        <textarea
+          value={no.mensagem ?? ""}
+          onChange={(e) => onAtualizar({ ...no, mensagem: e.target.value || undefined })}
+          rows={3}
+          className={CLASSE_INPUT}
+        />
+      </Campo>
+      <Campo label="Motivo (opcional)" hint="Aparece no histórico de execuções">
+        <input value={no.motivo ?? ""} onChange={(e) => onAtualizar({ ...no, motivo: e.target.value || undefined })} className={CLASSE_INPUT} />
+      </Campo>
+    </div>
+  );
+}
+
+function PropriedadesCriarAlertaInterno({ no, onAtualizar }: { no: NoCriarAlertaInterno; onAtualizar: (no: NoFluxo) => void }) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Mensagem do alerta" hint="Variáveis: {nome}, {primeiro_nome}, {telefone} e as que você definir em Condição">
+        <textarea value={no.mensagem} onChange={(e) => onAtualizar({ ...no, mensagem: e.target.value })} rows={4} className={CLASSE_INPUT} />
+      </Campo>
+      <Campo label="Números pra avisar" hint="WhatsApp, separados por vírgula (ex: 5561999998888, 5561988887777)">
+        <input value={no.numeros} onChange={(e) => onAtualizar({ ...no, numeros: e.target.value })} className={CLASSE_INPUT} />
+      </Campo>
+    </div>
+  );
+}
+
+function PropriedadesIniciarAgenteIA({
+  no,
+  agentes,
+  onAtualizar,
+}: {
+  no: NoIniciarAgenteIA;
+  agentes: AgenteIA[];
+  onAtualizar: (no: NoFluxo) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <Campo label="Agente de IA" hint={agentes.length === 0 ? "Nenhum agente cadastrado ainda — crie um em Ferramentas → Agentes de IA" : undefined}>
+        <select value={no.agenteId} onChange={(e) => onAtualizar({ ...no, agenteId: e.target.value })} className={CLASSE_INPUT}>
+          <option value="">selecione...</option>
+          {agentes.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.nome}
+              {a.ativo ? "" : " (inativo)"}
+            </option>
+          ))}
+        </select>
+      </Campo>
+      <Campo label="Motivo (opcional)" hint="Aparece no histórico de execuções">
+        <input value={no.motivo ?? ""} onChange={(e) => onAtualizar({ ...no, motivo: e.target.value || undefined })} className={CLASSE_INPUT} />
+      </Campo>
+    </div>
+  );
+}
+
+function PropriedadesPausarAutomacao() {
+  return <p className="text-sm text-neutral-500">Sem campos — impede o agente de IA de retomar esta conversa sozinho, sem encerrar o fluxo.</p>;
+}
+
 function PropriedadesMenu({ no, onAtualizar }: { no: NoMenu; onAtualizar: (no: NoFluxo) => void }) {
   return (
     <div className="space-y-3">
@@ -282,6 +350,7 @@ export function FluxoPainelPropriedades({
   onMudarGatilho,
   etiquetas,
   atendentes,
+  agentes,
 }: {
   noSelecionado: NoFluxo | null;
   onAtualizarNo: (no: NoFluxo) => void;
@@ -290,6 +359,7 @@ export function FluxoPainelPropriedades({
   onMudarGatilho: (tipo: string, palavras: string) => void;
   etiquetas: Etiqueta[];
   atendentes: Atendente[];
+  agentes: AgenteIA[];
 }) {
   const [aba, setAba] = useState<Aba>("no");
 
@@ -316,6 +386,12 @@ export function FluxoPainelPropriedades({
             {noSelecionado.tipo === "marcar_prioridade" && <PropriedadesMarcarPrioridade no={noSelecionado} onAtualizar={onAtualizarNo} />}
             {noSelecionado.tipo === "atribuir_atendente" && (
               <PropriedadesAtribuirAtendente no={noSelecionado} atendentes={atendentes} onAtualizar={onAtualizarNo} />
+            )}
+            {noSelecionado.tipo === "transferir_humano" && <PropriedadesTransferirHumano no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "criar_alerta_interno" && <PropriedadesCriarAlertaInterno no={noSelecionado} onAtualizar={onAtualizarNo} />}
+            {noSelecionado.tipo === "pausar_automacao" && <PropriedadesPausarAutomacao />}
+            {noSelecionado.tipo === "iniciar_agente_ia" && (
+              <PropriedadesIniciarAgenteIA no={noSelecionado} agentes={agentes} onAtualizar={onAtualizarNo} />
             )}
             {noSelecionado.tipo === "inicio" && (
               <p className="text-sm text-neutral-500">O nó de início não tem campos — configure o gatilho na aba ao lado.</p>

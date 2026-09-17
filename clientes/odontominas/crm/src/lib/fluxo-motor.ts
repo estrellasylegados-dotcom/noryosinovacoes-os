@@ -36,13 +36,24 @@ export type ContadoresNo = {
   tentativasInvalidas: number;
 };
 
-/** Efeito colateral de CRM de um passo — sempre 0 ou 1 por nó (nunca lista: cada bloco de Ações CRM faz uma coisa só). A camada de I/O (`fluxo-execucoes.ts`) é quem aplica de verdade contra o banco. */
+/**
+ * Efeito colateral de I/O de um passo — sempre 0 ou 1 por nó (nunca lista:
+ * cada bloco de Ações CRM/Humano+IA faz uma coisa só). A camada de I/O
+ * (`fluxo-execucoes.ts`) é quem aplica de verdade contra o banco/WhatsApp.
+ * Nome ficou "Crm" da 1ª categoria (Ações CRM); os 4 blocos de Humano+IA
+ * entraram no mesmo canal em vez de um campo novo — mecanicamente é o mesmo
+ * "uma ação, aplicada por quem faz I/O", não vale abstração nem rename só
+ * por causa do nome.
+ */
 export type AcaoCrm =
   | { tipo: "adicionar_etiqueta"; etiquetaId: string }
   | { tipo: "remover_etiqueta"; etiquetaId: string }
   | { tipo: "mudar_status"; status: StatusConversa }
   | { tipo: "marcar_prioridade"; prioridade: Prioridade }
-  | { tipo: "atribuir_atendente"; atendenteId: string | null };
+  | { tipo: "atribuir_atendente"; atendenteId: string | null }
+  | { tipo: "criar_alerta_interno"; mensagem: string; numeros: string }
+  | { tipo: "pausar_automacao" }
+  | { tipo: "iniciar_agente_ia"; agenteId: string };
 
 export type ResultadoPasso =
   | {
@@ -339,6 +350,65 @@ export function processarNo(
         acaoCrm: null,
         motivoFinalizacao: no.motivo,
         tipoEvento: "finalizado",
+      };
+
+    // Terminal: dono_conversa volta pro humano de graça, pelo `liberarControle`
+    // genérico que já roda ao terminar qualquer execução — ver fluxo-execucoes.ts.
+    case "transferir_humano": {
+      const mensagem = no.mensagem ? resolverVariaveisFluxo(no.mensagem, variaveis, paciente) : null;
+      return {
+        ok: true,
+        proximoNoId: null,
+        novoEstado: "transferred",
+        aguardandoAte: null,
+        mensagensParaEnviar: mensagem ? [mensagem] : [],
+        variaveisAtualizadas: {},
+        acaoCrm: null,
+        motivoFinalizacao: no.motivo,
+        tipoEvento: "transferido_humano",
+      };
+    }
+
+    case "criar_alerta_interno": {
+      const mensagem = resolverVariaveisFluxo(no.mensagem, variaveis, paciente);
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "criar_alerta_interno", mensagem, numeros: no.numeros },
+        tipoEvento: "alerta_interno_criado",
+      };
+    }
+
+    case "pausar_automacao":
+      return {
+        ok: true,
+        proximoNoId: no.proximo,
+        novoEstado: "queued",
+        aguardandoAte: agora.toISOString(),
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "pausar_automacao" },
+        tipoEvento: "automacao_pausada",
+      };
+
+    // Terminal: entrega a conversa pro agente escolhido — dono_conversa vira
+    // 'agente_ia', NUNCA 'humano' (o `liberarControle` genérico é pulado
+    // pra este tipo especificamente, ver fluxo-execucoes.ts).
+    case "iniciar_agente_ia":
+      return {
+        ok: true,
+        proximoNoId: null,
+        novoEstado: "transferred",
+        aguardandoAte: null,
+        mensagensParaEnviar: [],
+        variaveisAtualizadas: {},
+        acaoCrm: { tipo: "iniciar_agente_ia", agenteId: no.agenteId },
+        motivoFinalizacao: no.motivo,
+        tipoEvento: "agente_ia_iniciado",
       };
   }
 }

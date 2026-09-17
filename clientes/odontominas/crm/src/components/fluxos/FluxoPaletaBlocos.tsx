@@ -21,6 +21,17 @@ const BLOCOS_ACAO_CRM: { tipo: NoFluxo["tipo"]; label: string; descricao: string
   { tipo: "atribuir_atendente", label: "Atribuir atendente", descricao: "Define quem cuida da conversa" },
 ];
 
+/** Só os 4 blocos que cabem com segurança na arquitetura atual (ver decisão registrada quando esta fatia entrou) — "Enviar contexto pra agente"/"Retomar fluxo após IA"/"Encerrar IA" ficam de fora até existir um protocolo de handoff `agentes.ts` ↔ motor do fluxo. */
+const BLOCOS_HUMANO: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[] = [
+  { tipo: "transferir_humano", label: "Transferir p/ humano", descricao: "Encerra a automação, devolve pra equipe" },
+  { tipo: "criar_alerta_interno", label: "Criar alerta interno", descricao: "Manda um WhatsApp pra equipe" },
+  { tipo: "pausar_automacao", label: "Pausar automação", descricao: "Impede o agente de retomar sozinho" },
+];
+
+const BLOCOS_IA: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[] = [
+  { tipo: "iniciar_agente_ia", label: "Iniciar agente de IA", descricao: "Entrega a conversa pro agente escolhido" },
+];
+
 /** Categoria Odonto da visão original — depende do ControleODONTO, que ainda não tem capability validada (ver src/lib/controle-odonto/capabilities.ts). Aparece, mas não arrasta: mesmo padrão "Indisponível" já usado na tela de Integrações. */
 const BLOCOS_ODONTO = [
   "Escolher especialidade/unidade/profissional",
@@ -31,6 +42,35 @@ const BLOCOS_ODONTO = [
   "Paciente faltou",
   "Retorno pendente",
 ];
+
+function SecaoBlocos({
+  titulo,
+  blocos,
+  onDragStart,
+}: {
+  titulo: string;
+  blocos: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[];
+  onDragStart: (event: DragEvent<HTMLDivElement>, tipo: NoFluxo["tipo"]) => void;
+}) {
+  return (
+    <>
+      <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400 first:mt-0">{titulo}</p>
+      <div className="space-y-2">
+        {blocos.map((bloco) => (
+          <div
+            key={bloco.tipo}
+            draggable
+            onDragStart={(e) => onDragStart(e, bloco.tipo)}
+            className="cursor-grab rounded-lg border border-neutral-200 bg-neutral-50 p-2 text-sm hover:border-teal-400 hover:bg-teal-50 active:cursor-grabbing"
+          >
+            <p className="font-medium text-neutral-800">{bloco.label}</p>
+            <p className="text-xs text-neutral-500">{bloco.descricao}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
 export function FluxoPaletaBlocos({ controleOdontoConfigurado }: { controleOdontoConfigurado: boolean }) {
   function handleDragStart(event: DragEvent<HTMLDivElement>, tipo: NoFluxo["tipo"]) {
@@ -44,35 +84,10 @@ export function FluxoPaletaBlocos({ controleOdontoConfigurado }: { controleOdont
 
   return (
     <aside className="w-56 shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-3">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Blocos</p>
-      <div className="space-y-2">
-        {BLOCOS_BASICOS.map((bloco) => (
-          <div
-            key={bloco.tipo}
-            draggable
-            onDragStart={(e) => handleDragStart(e, bloco.tipo)}
-            className="cursor-grab rounded-lg border border-neutral-200 bg-neutral-50 p-2 text-sm hover:border-teal-400 hover:bg-teal-50 active:cursor-grabbing"
-          >
-            <p className="font-medium text-neutral-800">{bloco.label}</p>
-            <p className="text-xs text-neutral-500">{bloco.descricao}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Ações CRM</p>
-      <div className="space-y-2">
-        {BLOCOS_ACAO_CRM.map((bloco) => (
-          <div
-            key={bloco.tipo}
-            draggable
-            onDragStart={(e) => handleDragStart(e, bloco.tipo)}
-            className="cursor-grab rounded-lg border border-neutral-200 bg-neutral-50 p-2 text-sm hover:border-teal-400 hover:bg-teal-50 active:cursor-grabbing"
-          >
-            <p className="font-medium text-neutral-800">{bloco.label}</p>
-            <p className="text-xs text-neutral-500">{bloco.descricao}</p>
-          </div>
-        ))}
-      </div>
+      <SecaoBlocos titulo="Blocos" blocos={BLOCOS_BASICOS} onDragStart={handleDragStart} />
+      <SecaoBlocos titulo="Ações CRM" blocos={BLOCOS_ACAO_CRM} onDragStart={handleDragStart} />
+      <SecaoBlocos titulo="Humano" blocos={BLOCOS_HUMANO} onDragStart={handleDragStart} />
+      <SecaoBlocos titulo="IA" blocos={BLOCOS_IA} onDragStart={handleDragStart} />
 
       <p className="mb-2 mt-5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Odonto</p>
       <div className="space-y-2">

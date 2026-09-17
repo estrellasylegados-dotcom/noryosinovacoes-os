@@ -61,6 +61,30 @@ export type NoMarcarPrioridade = { id: string; tipo: "marcar_prioridade"; priori
 /** `atendenteId: null` é estado válido de negócio (desatribuir), não "não configurado" — sem tolerância especial na forma. */
 export type NoAtribuirAtendente = { id: string; tipo: "atribuir_atendente"; atendenteId: string | null; proximo: string };
 
+/**
+ * Categoria "Humano + IA" (2ª fatia da ampliação da paleta, ver
+ * crm/docs/fluxo-conversa-visao.md) — só os 4 blocos que cabem com segurança
+ * na arquitetura atual. "Enviar contexto pra agente", "Retomar fluxo após
+ * IA" e "Encerrar IA" ficam de fora de propósito: pressupõem um protocolo de
+ * handoff `agentes.ts` ↔ motor do fluxo que ainda não existe (enquanto um nó
+ * do fluxo executa, `dono_conversa` já é `'fluxo'` — não há "IA ativa
+ * durante um passo do fluxo" pra encerrar ou retomar).
+ *
+ * `transferir_humano`/`iniciar_agente_ia` não têm `proximo`: são terminais,
+ * mesmo desenho de `NoFinalizar` — a execução termina como `transferred`. A
+ * troca de `dono_conversa` de `transferir_humano` é de graça (o
+ * `liberarControle` genérico que já roda ao terminar qualquer execução cobre
+ * isso); `iniciar_agente_ia` é o único caso em que esse genérico precisa ser
+ * pulado, porque a ação já entregou a conversa pro agente, não pro humano
+ * (ver o comentário em `fluxo-execucoes.ts`).
+ */
+export type NoTransferirHumano = { id: string; tipo: "transferir_humano"; mensagem?: string; motivo?: string };
+/** `numeros`: mesmo formato livre separado por vírgula de `AgenteIA.notificarNumeros` (ver agentes-notificacoes.ts). */
+export type NoCriarAlertaInterno = { id: string; tipo: "criar_alerta_interno"; mensagem: string; numeros: string; proximo: string };
+export type NoPausarAutomacao = { id: string; tipo: "pausar_automacao"; proximo: string };
+/** `agenteId` aceita vazio na forma pelo mesmo motivo de `etiquetaId` (ver acima) — barrado na publicação. */
+export type NoIniciarAgenteIA = { id: string; tipo: "iniciar_agente_ia"; agenteId: string; motivo?: string };
+
 export type NoFluxo =
   | NoInicio
   | NoMensagem
@@ -72,7 +96,11 @@ export type NoFluxo =
   | NoRemoverEtiqueta
   | NoMudarStatus
   | NoMarcarPrioridade
-  | NoAtribuirAtendente;
+  | NoAtribuirAtendente
+  | NoTransferirHumano
+  | NoCriarAlertaInterno
+  | NoPausarAutomacao
+  | NoIniciarAgenteIA;
 
 export type FluxoDefinicao = {
   nodes: NoFluxo[];
@@ -182,6 +210,26 @@ function validarNo(bruto: unknown, indice: number): NoFluxo | string {
     case "finalizar":
       if (!ehStringOpcional(n.motivo)) return `nó ${n.id}: "motivo" inválido`;
       return { id: n.id, tipo: "finalizar", motivo: n.motivo };
+
+    case "transferir_humano":
+      if (!ehStringOpcional(n.mensagem)) return `nó ${n.id}: "mensagem" inválida`;
+      if (!ehStringOpcional(n.motivo)) return `nó ${n.id}: "motivo" inválido`;
+      return { id: n.id, tipo: "transferir_humano", mensagem: n.mensagem, motivo: n.motivo };
+
+    case "criar_alerta_interno":
+      if (!ehString(n.mensagem)) return `nó ${n.id}: "mensagem" ausente`;
+      if (typeof n.numeros !== "string") return `nó ${n.id}: "numeros" ausente`;
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "criar_alerta_interno", mensagem: n.mensagem, numeros: n.numeros, proximo: n.proximo };
+
+    case "pausar_automacao":
+      if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
+      return { id: n.id, tipo: "pausar_automacao", proximo: n.proximo };
+
+    case "iniciar_agente_ia":
+      if (typeof n.agenteId !== "string") return `nó ${n.id}: "agenteId" ausente`;
+      if (!ehStringOpcional(n.motivo)) return `nó ${n.id}: "motivo" inválido`;
+      return { id: n.id, tipo: "iniciar_agente_ia", agenteId: n.agenteId, motivo: n.motivo };
 
     case "adicionar_etiqueta":
       if (typeof n.etiquetaId !== "string") return `nó ${n.id}: "etiquetaId" ausente`;
