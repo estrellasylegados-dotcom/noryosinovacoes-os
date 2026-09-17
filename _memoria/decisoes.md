@@ -459,3 +459,22 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   - **Nada disso está em produção ainda** — sem deploy no Railway, sem fluxo de teste criado. Deploy
     + validação manual (fixture → worker sozinho → webhook real) é o próximo passo, com aprovação
     separada antes de qualquer mensagem real de WhatsApp.
+- **2026-09-17** (Rafael) [odontominas]: avançar direto pra Fase 2b/3 (editor visual) do Fluxo de
+  Conversa em vez da Fase 6 (demo pro marido). Por quê: uma demo com "criar fluxo → arrastar blocos
+  → conectar → publicar → receber mensagem real" é muito mais forte do que mostrar só backend
+  funcionando — o motor (Fase 2a) já estava validado. Prioridades definidas, nesta ordem: editor
+  visual estável, blocos odontológicos, conexões e validação, versionamento, modo teste, publicação
+  segura, execução real usando o motor já validado. Critério de sucesso explícito: criar um fluxo
+  simples no editor, publicar em modo teste, receber a mensagem no número de teste já conhecido do
+  projeto. Fora de escopo por enquanto, exceto se bloquear tecnicamente: limpeza de dados de teste,
+  troca de senhas de demo, rename `.ratosos`/`.noryosinovacoes`. Sequência: 2b/3 → teste real ponta
+  a ponta → Fase 6 (demo) → limpeza/hardening final.
+- **2026-09-17** (Rafael, recomendação de Claude) [odontominas]: `@xyflow/react` aprovado como
+  dependência nova pro canvas do editor de Fluxo de Conversa — única exceção à política de
+  zero-dependência do projeto (que já tinha recusado `zod` e CTE/RPC de banco por esse mesmo
+  critério). Por quê: não existe equivalente hand-rolled razoável pra zoom/pan/minimap/seleção
+  múltipla profissionais — construir isso à mão seria meses de trabalho reinventando algo já
+  resolvido, e o próprio doc de arquitetura da Fase 1 (`crm/docs/fluxo-conversa-arquitetura.md`) já
+  antecipava "React Flow ou similar" pra este momento. O motor (`fluxo-motor.ts`/`fluxo-tipos.ts`)
+  não muda: arestas do xyflow são sempre derivadas dos 6 tipos de `NoFluxo` existentes, nunca uma
+  fonte de verdade paralela.

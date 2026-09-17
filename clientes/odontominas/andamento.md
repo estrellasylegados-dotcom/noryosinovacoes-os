@@ -1,5 +1,68 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-17, Fluxo de Conversa — Fase 2b/3 completa, editor visual em produção)
+
+**Fase 2b/3 (editor visual do Fluxo de Conversa) construída, deployada e validada em produção com
+envio real de WhatsApp direto do editor.** Rafael pediu pra avançar direto pra esta fase em vez da
+Fase 6 (demo), pra poder mostrar "criar fluxo → arrastar blocos → conectar → publicar → receber
+mensagem real" em vez de só backend funcionando. Planejamento formal (`EnterPlanMode`, 2 agentes
+Explore mapeando a engine e as convenções do CRM, 1 agente Plan) antes de codar.
+
+**Motor intocado** (`fluxo-motor.ts`, `fluxo-tipos.ts` — a união dos 6 tipos de nó — e
+`fluxo-lock.ts`/`fluxo-worker.ts`), com 2 ajustes cirúrgicos e sinalizados:
+`fluxo-execucoes.ts:iniciarExecucaoFluxo` ganhou `isTest`/`versaoIdForcada` (só têm efeito quando
+`isTest=true` — o call site real, `tentarIniciarFluxoPorMensagem` do webhook, segue chamando sem
+os dois parâmetros, comportamento idêntico por construção) e `fluxo-validador.ts:validarGrafo`
+passou a devolver `{noIds, mensagem}` estruturado em vez de string solta (mesmo texto, só ganhou
+metadado pro editor destacar o nó certo no canvas).
+
+**`@xyflow/react` aprovado como única exceção à política de zero-dependência nova** do projeto —
+construir zoom/pan/minimap/seleção múltipla à mão seria meses reinventando algo resolvido, e o
+próprio doc de arquitetura da Fase 1 já antecipava "React Flow ou similar".
+
+**Construído:** 3 libs puras (`fluxo-editor-grafo.ts` — ponte nodes/edges do xyflow↔`NoFluxo`, sem
+duplicar fonte de verdade: arestas são sempre derivadas dos nós, nunca guardadas à parte;
+`fluxo-editor-layout.ts` — posição/viewport em `definicao.config.layout`, mais layout automático em
+camadas; `fluxo-templates.ts` — 3 templates odontológicos, "Atendimento inicial"/"Confirmação de
+consulta"/"Recuperação-Reativação", combinando só os 6 tipos de nó existentes, sem criar tipo
+novo); 3 libs de I/O (`fluxo-versoes.ts` — CRUD e versionamento rascunho→publicada→substituída,
+fork lazy do rascunho quando só existe a publicada; `fluxo-execucoes-consulta.ts`;
+`fluxo-contatos-teste.ts` — busca por nome/telefone, nunca número hardcoded); 9 rotas de API; 3
+páginas (`/fluxos`, `/fluxos/nova`, `/fluxos/[id]/editar`); 13 componentes (`FluxoEditor` como
+shell com undo/redo e autosave, `FluxoCanvas` sobre `@xyflow/react`, paleta com categoria "Odonto"
+visível-mas-desabilitada — mesmo padrão de dois estados da tela de Integrações ControleODONTO,
+sem fingir que agenda funciona —, painel de validação clicável que seleciona o nó com problema,
+modo teste com timeline por polling). 49 testes novos (430 no total, incluindo um que garante que
+cada template passa em `validarGrafo` sem erro nenhum). `typecheck`/`lint`/`build` limpos.
+
+**Deploy em produção via Railway (`railway up`), 2 vezes.** O teste real de ponta a ponta — feito
+com navegador automatizado (Playwright instalado num diretório de trabalho temporário, fora do
+projeto; credencial de admin fornecida pelo Rafael) — achou 1 bug real: o painel "Testar" ficava
+preso em "na fila" pra sempre. Causa: `FluxoPainelTeste.tsx` lia `execucaoId` do estado React de
+dentro do `setInterval` criado em `iniciarTeste` — closure fechado ANTES do `setExecucaoId`
+aplicar, então o polling nunca via o id de verdade e nunca buscava a atualização. Confirmado
+direto no banco que o **backend funcionou certinho o tempo todo** (execução `completed`, 3 eventos
+sem erro, `evolution_message_id` presente) — só a tela não atualizava. Corrigido (passar o id da
+execução direto pro polling, sem depender do estado assíncrono) e redeployado.
+
+**Teste real de ponta a ponta pelo próprio editor** (primeira vez que isso acontece via UI, não
+mais só via fixture/DB direto como na Fase 2a): fluxo "TESTE - Fluxo Odonto" criado em
+`/fluxos/nova` (em branco), aberto no editor, um bloco Mensagem arrastado da paleta pro canvas,
+texto editado no painel de propriedades, conectado Início→Mensagem→Finalizar arrastando entre os
+handles (achado no processo: arrastar uma conexão com os cartões muito próximos/sobrepostos falha
+silenciosamente — não é bug do produto, é como qualquer editor visual se comporta; resolvido
+afastando o nó antes de conectar), validação chegou em "Sem erros nem avisos", contato de teste
+buscado por nome ("Rafael" → "Rafael (teste Disparos)", nunca um número fixo), "Iniciar teste"
+disparou a execução real — mensagem "Teste de fluxo OdontoMinas concluído com sucesso." chegou de
+verdade no WhatsApp (`evolution_message_id: 3EB09B9C7B0FF1AFDCD57494B35D1FD254D21B3C`). Fluxo
+arquivado ao final (não apagado); dados de teste ficam no banco por enquanto (mesma política já
+usada em Disparos/Campanhas/Fase 2a, pendência de limpeza única registrada em `agora.md`).
+
+**Fase 2b/3 completa e validada em produção.** Próximo passo: ampliar a paleta (blocos Odonto reais
+quando o ControleODONTO estiver validado, ou os tipos de nó da visão original que ainda faltam —
+Ações CRM, IA dentro do fluxo, Webhook/API, entrada estruturada) ou Fase 6 (demo pro marido) —
+nenhuma das duas decidida ainda.
+
 ## Onde está (2026-09-17, Fluxo de Conversa — Fase 2a completa, deployada e validada com envio real)
 
 **Fase 2a (núcleo do motor, sem editor visual) construída, testada localmente e não deployada
@@ -675,13 +738,18 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
 - [x] Fluxo de Conversa — Fase 2a (núcleo do motor): construída, deployada e validada em produção
   (2026-09-17) — 1 bug real achado e corrigido (embed ambíguo do PostgREST); teste real de WhatsApp
   ("TESTE - Fluxo Odonto") confirmado de ponta a ponta pela Evolution. Ver "Onde está" no topo.
+- [x] Fluxo de Conversa — Fase 2b/3 (editor visual): construída, deployada e validada em produção
+  (2026-09-17) — `@xyflow/react` (única exceção à política de zero-dependência), 1 bug real achado
+  e corrigido (polling do painel "Testar" preso por closure desatualizado); teste real de ponta a
+  ponta feito pelo próprio editor (criar fluxo, arrastar bloco, conectar, testar) — mensagem
+  confirmada chegando no WhatsApp. Ver "Onde está" no topo.
 - [ ] Fluxo de Conversa — reconstrução do módulo "Ferramentas → Fluxo de Conversa" como motor de
   automação conversacional determinístico (infraestrutura crítica), fatiada em 6 fases com
   checkpoint do Rafael entre elas — decisão completa em `_memoria/decisoes.md` (2026-09-16). Fases
-  0, 1 e 2a completas, deployadas e validadas com envio real (2026-09-17). Falta apagar o fluxo de
-  teste "TESTE - Fluxo Odonto" (arquivado, não apagado) e os dados vinculados antes da produção real
-  com clientes — mesma pendência de Disparos/Campanhas, ver `agora.md`. Próximo passo: Fase 2b/3
-  (editor visual), sem data definida ainda.
+  0, 1, 2a e 2b/3 completas, deployadas e validadas com envio real (2026-09-17). Falta apagar os 2
+  fluxos de teste "TESTE - Fluxo Odonto" (ambos arquivados, não apagados) e os dados vinculados
+  antes da produção real com clientes — mesma pendência de Disparos/Campanhas, ver `agora.md`.
+  Próximo passo: ampliar a paleta (blocos Odonto reais) ou Fase 6 (demo), sem data definida ainda.
 
 ## Plano técnico do CRM (2026-09-14)
 
