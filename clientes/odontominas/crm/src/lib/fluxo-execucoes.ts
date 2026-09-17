@@ -231,7 +231,10 @@ async function aplicarAcaoCrm(
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: erroResposta.code ?? null }));
         return { donoTransferido: false };
       }
-      await supabase.from("pesquisas").update({ status: "respondida", respondido_em: new Date().toISOString() }).eq("id", pesquisaId);
+      // updated_at: mesmo padrão do resto do projeto (conversas.ts:atualizarStatus
+      // etc.) — sem trigger de banco, todo UPDATE seta o campo explicitamente.
+      const agoraResposta = new Date().toISOString();
+      await supabase.from("pesquisas").update({ status: "respondida", respondido_em: agoraResposta, updated_at: agoraResposta }).eq("id", pesquisaId);
       return { donoTransferido: false };
     }
   }
