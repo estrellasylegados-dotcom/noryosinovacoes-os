@@ -840,9 +840,10 @@ export async function transferirExecucaoAtivaParaHumano(clinicaId: string, conve
   const execucaoId = (conversa?.fluxo_execucao_ativa_id as string | null) ?? null;
   if (!execucaoId) return;
 
+  const agoraTransferencia = new Date().toISOString();
   const { error } = await supabase
     .from("fluxo_execucoes")
-    .update({ estado: "transferred", motivo_finalizacao: motivo, finalizado_em: new Date().toISOString() })
+    .update({ estado: "transferred", motivo_finalizacao: motivo, finalizado_em: agoraTransferencia, updated_at: agoraTransferencia })
     .eq("id", execucaoId)
     .eq("clinica_id", clinicaId)
     .in("estado", ["queued", "running", "waiting_input", "waiting_time"]);
