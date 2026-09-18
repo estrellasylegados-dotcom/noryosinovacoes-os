@@ -52,7 +52,7 @@ describe("categoriaDoGatilho (Fase 3 — motor central de automação)", () => {
     }
   );
 
-  it.each(["atendimento_concluido", "lead_convertido", "proposta_apresentada", "paciente_inativo"])(
+  it.each(["atendimento_concluido", "lead_convertido", "proposta_apresentada", "paciente_inativo", "solicitacao_avaliacao_google"])(
     "%s é categoria interno",
     (tipo) => {
       expect(categoriaDoGatilho(tipo)).toBe("interno");

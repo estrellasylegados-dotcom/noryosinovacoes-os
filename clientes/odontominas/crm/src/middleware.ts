@@ -18,6 +18,10 @@ const ROTAS_PUBLICAS = [
   "/api/cron/fluxo-temporal",
   "/api/integrations/controle-odonto/webhook",
   "/api/cron/controle-odonto-sync",
+  // Fase 5 (Reputação/Google Reviews) — o paciente clica no link recebido
+  // por WhatsApp sem estar logado no painel; a própria rota valida o token
+  // (ver src/app/api/r/review/[token]/route.ts).
+  "/api/r/review",
 ];
 
 function isRotaPublica(pathname: string): boolean {

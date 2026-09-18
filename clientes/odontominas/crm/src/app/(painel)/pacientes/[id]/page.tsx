@@ -8,6 +8,7 @@ import { LIMITE_ESPERA_MS, STATUS_CONFIG, labelStatus } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
 import { PacienteCampanhaOrigem } from "@/components/campanhas/PacienteCampanhaOrigem";
 import { PacienteDataNascimento } from "@/components/pacientes/PacienteDataNascimento";
+import { PacienteSolicitarAvaliacao } from "@/components/pacientes/PacienteSolicitarAvaliacao";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
 
         <div className="mb-6 space-y-2">
           <PacienteDataNascimento pacienteId={ficha.id} dataNascimentoAtual={ficha.dataNascimento} />
+          <PacienteSolicitarAvaliacao pacienteId={ficha.id} />
           {sessao?.papel === "admin" && (
             <PacienteCampanhaOrigem
               pacienteId={ficha.id}

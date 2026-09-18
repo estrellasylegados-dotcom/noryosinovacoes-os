@@ -75,6 +75,12 @@ const CATEGORIA_POR_GATILHO: Record<string, CategoriaGatilho> = {
   lead_convertido: "interno",
   proposta_apresentada: "interno",
   paciente_inativo: "interno",
+  // Fase 5 (Reputação/Google Reviews) — hoje só emitido pela ação manual
+  // ("Solicitar avaliação Google" na ficha do paciente, ver
+  // src/app/api/reputacao/solicitar/route.ts). Quando existir uma origem
+  // confiável de atendimento concluído, ela pode emitir este MESMO tipo
+  // (referenciaId = atendimento_id) sem precisar de um fluxo novo.
+  solicitacao_avaliacao_google: "interno",
 };
 
 export function categoriaDoGatilho(gatilhoTipo: string): CategoriaGatilho | null {

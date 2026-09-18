@@ -11,6 +11,8 @@ import { isPrioridadeValida } from "@/lib/prioridade";
 import { buscarAgente } from "@/lib/agentes";
 import { buscarClinicaAtual } from "@/lib/clinica";
 import { classificarNps } from "@/lib/nps";
+import { buscarConfigReputacao } from "@/lib/reputacao-config";
+import { calcularExpiracaoToken, gerarTrackingToken, montarUrlRastreavel } from "@/lib/reputacao-tracking";
 
 /**
  * Camada de I/O do motor de Fluxo de Conversa (Fase 2a — ver
@@ -174,6 +176,33 @@ async function aplicarAcaoCrm(
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "sem_paciente" }));
         return { donoTransferido: false };
       }
+
+      // Fase 5 (Reputação/Google Reviews) — só este tipo carrega link: o
+      // valor salvo em `variavelDestino` vira o texto que o nó "mensagem"
+      // vai mandar, então precisa ser uma URL, não o `pesquisa_id` cru (que
+      // é o que nps/satisfacao continuam recebendo, pra `capturar_resposta`
+      // casar a resposta com a pesquisa certa). Recusa criar se o módulo
+      // não estiver configurado — nunca manda pesquisa sem link nenhum.
+      let trackingToken: string | null = null;
+      let trackingExpiraEm: string | null = null;
+      let linkParaVariavel: string | null = null;
+      if (acao.tipoPesquisa === "avaliacao_google") {
+        const config = await buscarConfigReputacao(clinicaId);
+        if (!config.ativo || !config.googleReviewUrl) {
+          console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, error: "reputacao_nao_configurada" }));
+          return { donoTransferido: false };
+        }
+        if (config.rastrearCliques) {
+          trackingToken = gerarTrackingToken();
+          trackingExpiraEm = calcularExpiracaoToken();
+          // APP_URL ausente: cai pro link direto do Google — nunca deixa a
+          // mensagem sair sem link só porque o tracking não pôde montar a URL.
+          linkParaVariavel = montarUrlRastreavel(trackingToken) ?? config.googleReviewUrl;
+        } else {
+          linkParaVariavel = config.googleReviewUrl;
+        }
+      }
+
       const agora = new Date().toISOString();
       const { data, error } = await supabase
         .from("pesquisas")
@@ -186,6 +215,8 @@ async function aplicarAcaoCrm(
           status: "enviada",
           referencia_id: acao.referenciaId,
           enviado_em: agora,
+          tracking_token: trackingToken,
+          tracking_token_expira_em: trackingExpiraEm,
         })
         .select("id")
         .single();
@@ -193,7 +224,8 @@ async function aplicarAcaoCrm(
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error?.code ?? null }));
         return { donoTransferido: false };
       }
-      return { donoTransferido: false, variaveisExtra: { [acao.variavelDestino]: data.id as string } };
+      const valorVariavel = acao.tipoPesquisa === "avaliacao_google" ? (linkParaVariavel as string) : (data.id as string);
+      return { donoTransferido: false, variaveisExtra: { [acao.variavelDestino]: valorVariavel } };
     }
 
     // Fase 3 — único responsável por gravar `pesquisa_respostas`: nunca o

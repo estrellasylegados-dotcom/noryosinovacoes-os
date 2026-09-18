@@ -607,6 +607,7 @@ export function FluxoPainelPropriedades({
               <option value="nova_conversa">Nova conversa</option>
               <option value="primeira_mensagem">Primeira mensagem</option>
               <option value="palavra_chave">Palavra-chave</option>
+              <option value="solicitacao_avaliacao_google">Solicitação de avaliação Google (evento interno)</option>
             </select>
           </Campo>
           {gatilhoTipo === "palavra_chave" && (

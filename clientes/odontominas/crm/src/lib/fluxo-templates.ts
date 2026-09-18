@@ -146,6 +146,38 @@ function gerarRecuperacaoReativacao(): FluxoDefinicao {
   ]);
 }
 
+/**
+ * Fase 5 (Reputação/Google Reviews) — o gatilho `solicitacao_avaliacao_google`
+ * ainda precisa ser escolhido à mão na aba "Gatilho" depois de aplicar o
+ * template (o gerador de definição não toca `fluxos.gatilho_tipo`, só os
+ * nós). `criar_pesquisa` grava a URL rastreável (ou a direta do Google, se
+ * o tracking estiver desligado em Configurações → Reputação) na variável
+ * `link_avaliacao_google`, que o nó de mensagem usa pra montar o texto —
+ * ver src/lib/fluxo-execucoes.ts:aplicarAcaoCrm.
+ */
+function gerarSolicitacaoAvaliacaoGoogle(): FluxoDefinicao {
+  return comLayoutAutomatico([
+    { id: "inicio", tipo: "inicio", proximo: "criar_solicitacao" },
+    {
+      id: "criar_solicitacao",
+      tipo: "criar_pesquisa",
+      tipoPesquisa: "avaliacao_google",
+      variavelDestino: "link_avaliacao_google",
+      proximo: "msg_pedido",
+    },
+    {
+      id: "msg_pedido",
+      tipo: "mensagem",
+      texto:
+        "Olá, {primeiro_nome}! Foi um prazer atender você na {clinica_nome}.\n\n" +
+        "Se puder, conte como foi sua experiência deixando uma avaliação no Google:\n{link_avaliacao_google}\n\n" +
+        "Sua opinião é muito importante para nós.",
+      proximo: "fim",
+    },
+    { id: "fim", tipo: "finalizar", motivo: "solicitacao_avaliacao_enviada" },
+  ]);
+}
+
 export const TEMPLATES_ODONTO: TemplateFluxo[] = [
   {
     id: "atendimento-inicial",
@@ -168,6 +200,14 @@ export const TEMPLATES_ODONTO: TemplateFluxo[] = [
       "Mensagem de reengajamento pra quem parou de responder, com espera de 24h e checagem de resposta. " +
       "A condição usa uma variável de exemplo ({respondeu_reativacao}) — ajuste conforme a integração disponível.",
     gerarDefinicao: gerarRecuperacaoReativacao,
+  },
+  {
+    id: "solicitacao-avaliacao-google",
+    nome: "Solicitação de Avaliação Google",
+    descricao:
+      "Cria a solicitação e manda o link de avaliação pelo WhatsApp. Depois de aplicar, escolha o gatilho " +
+      "\"Solicitação de avaliação Google\" na aba Gatilho, e configure a URL do Google em Configurações → Reputação.",
+    gerarDefinicao: gerarSolicitacaoAvaliacaoGoogle,
   },
 ];
 
