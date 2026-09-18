@@ -309,6 +309,13 @@ export async function calcularMetricaPrimeiraRespostaHumana(
   const config = await buscarSlaConfig(clinicaId);
   const horario = config.considerarApenasHorarioUtil ? await buscarConfiguracaoHorario(clinicaId) : null;
 
+  // Mesmo gate de avaliarStatusSlaConversa: sem horário configurado, não dá
+  // pra medir minutos úteis — 0 amostras/null é a resposta honesta, nunca
+  // "0 min" (que pareceria "respostas instantâneas", uma métrica falsa).
+  if (config.considerarApenasHorarioUtil && (!horario || horario.periodos.length === 0)) {
+    return { mediaMinutos: null, medianaMinutos: null, amostras: 0 };
+  }
+
   const { data: conversas } = await supabase
     .from("conversas")
     .select("id")
