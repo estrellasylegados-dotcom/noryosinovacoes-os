@@ -1,4 +1,5 @@
 import { normalizarTelefoneEntrada } from "@/lib/chat";
+import { variantesEquivalentesTelefoneBr } from "@/lib/telefone";
 import { getControleOdontoConfig } from "./config";
 import { getControleOdontoCapabilities } from "./capabilities";
 
@@ -38,7 +39,11 @@ export function encontrarCorrespondenciaPaciente(
 
   const telefoneNormalizado = entrada.telefone ? normalizarTelefoneEntrada(entrada.telefone) : null;
   if (telefoneNormalizado) {
-    const encontrados = candidatos.filter((c) => c.telefone === telefoneNormalizado);
+    // Mesma compatibilidade de transição do webhook (ver telefone.ts): um
+    // candidato pode estar gravado sem o 9º dígito do celular BR — nunca
+    // fuzzy, só as formas equivalentes determinísticas.
+    const variantes = variantesEquivalentesTelefoneBr(telefoneNormalizado);
+    const encontrados = candidatos.filter((c) => c.telefone && variantes.includes(c.telefone));
     if (encontrados.length > 1) return { tipo: "needs_review" };
     if (encontrados.length === 1) return { tipo: "telefone", candidato: encontrados[0] };
   }

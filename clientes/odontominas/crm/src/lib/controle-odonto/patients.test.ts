@@ -18,6 +18,12 @@ describe("encontrarCorrespondenciaPaciente", () => {
     expect(r).toEqual({ tipo: "telefone", candidato: candidatos[0] });
   });
 
+  it("telefone gravado sem o 9º dígito do celular BR ainda casa (mesma compatibilidade de transição do webhook)", () => {
+    const candidatos = [candidato({ telefone: "556181925241" })];
+    const r = encontrarCorrespondenciaPaciente({ telefone: "5561981925241" }, candidatos);
+    expect(r).toEqual({ tipo: "telefone", candidato: candidatos[0] });
+  });
+
   it("paciente sem telefone cai pro próximo critério (CPF)", () => {
     const candidatos = [candidato({ cpf: "11122233344" })];
     const r = encontrarCorrespondenciaPaciente({ telefone: null, cpf: "11122233344" }, candidatos);

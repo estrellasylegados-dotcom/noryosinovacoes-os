@@ -6,6 +6,7 @@ import { pausarAgenteManual, pausarAgenteSeConfigurado } from "@/lib/agentes";
 import { transferirExecucaoAtivaParaHumano } from "@/lib/fluxo-execucoes";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
+import { canonicalizarTelefoneBr, encontrarPorTelefoneEquivalente, variantesEquivalentesTelefoneBr } from "@/lib/telefone";
 
 /**
  * Chat ao Vivo — inbox estilo RoiZap (a pedido do Rafael, 2026-09-15): lista
@@ -322,12 +323,17 @@ export async function atualizarConversaChat(
   return { ok: true };
 }
 
-/** "11987654321" ou "(11) 98765-4321" → "5511987654321". Aceita já-com-DDI também. */
+/**
+ * "11987654321" ou "(11) 98765-4321" → "5511987654321". Aceita já-com-DDI
+ * também. Delega a equivalência de 9º dígito do celular BR (mesmo bug real
+ * achado no webhook, 2026-09-18) pra `telefone.ts` — central única, nunca
+ * duplicada aqui.
+ */
 export function normalizarTelefoneEntrada(bruto: string): string | null {
   const digitos = bruto.replace(/\D/g, "");
   if (!digitos) return null;
-  if (digitos.length === 10 || digitos.length === 11) return `55${digitos}`;
-  if ((digitos.length === 12 || digitos.length === 13) && digitos.startsWith("55")) return digitos;
+  if (digitos.length === 10 || digitos.length === 11) return canonicalizarTelefoneBr(`55${digitos}`);
+  if ((digitos.length === 12 || digitos.length === 13) && digitos.startsWith("55")) return canonicalizarTelefoneBr(digitos);
   return null;
 }
 
@@ -346,14 +352,19 @@ export async function iniciarConversaChat(
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
 
-  const { data: pacienteExistente } = await supabase
-    .from("pacientes")
-    .select("id")
-    .eq("clinica_id", clinicaId)
-    .eq("telefone", telefone)
-    .maybeSingle();
+  // Compatibilidade de transição (achado real 2026-09-18, ver telefone.ts):
+  // um registro legado pode ter sido gravado sem o 9º dígito do celular BR.
+  // Busca por qualquer forma equivalente antes de decidir criar, sem nunca
+  // reescrever o valor já gravado.
+  const variantesTelefone = variantesEquivalentesTelefoneBr(telefone);
 
-  let pacienteId = pacienteExistente?.id as string | undefined;
+  const { data: pacientesEncontrados } = await supabase
+    .from("pacientes")
+    .select("id, telefone")
+    .eq("clinica_id", clinicaId)
+    .in("telefone", variantesTelefone);
+
+  let pacienteId = encontrarPorTelefoneEquivalente(pacientesEncontrados ?? [], telefone)?.id as string | undefined;
   if (!pacienteId) {
     const { data: novoPaciente, error } = await supabase
       .from("pacientes")
@@ -364,14 +375,13 @@ export async function iniciarConversaChat(
     pacienteId = novoPaciente.id as string;
   }
 
-  const { data: conversaExistente } = await supabase
+  const { data: conversasEncontradas } = await supabase
     .from("conversas")
-    .select("id")
+    .select("id, telefone")
     .eq("clinica_id", clinicaId)
-    .eq("telefone", telefone)
-    .maybeSingle();
+    .in("telefone", variantesTelefone);
 
-  let conversaId = conversaExistente?.id as string | undefined;
+  let conversaId = encontrarPorTelefoneEquivalente(conversasEncontradas ?? [], telefone)?.id as string | undefined;
   const agora = new Date().toISOString();
 
   if (!conversaId) {

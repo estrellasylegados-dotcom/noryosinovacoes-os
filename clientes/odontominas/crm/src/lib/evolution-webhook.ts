@@ -5,6 +5,8 @@
  * nada se perde mesmo quando o tipo não é reconhecido aqui.
  */
 
+import { canonicalizarTelefoneBr } from "@/lib/telefone";
+
 type MessageContent = Record<string, unknown> | null | undefined;
 
 export type MensagemExtraida = { tipo: string; conteudo: string | null };
@@ -61,12 +63,17 @@ export function extractMensagem(message: MessageContent, messageType?: string): 
   return { tipo: messageType || "outro", conteudo: null };
 }
 
-/** Extrai o telefone (só dígitos) de um remoteJid, removendo sufixo de device (":16"). */
+/**
+ * Extrai o telefone (só dígitos) de um remoteJid, removendo sufixo de
+ * device (":16"). O WhatsApp/Baileys às vezes entrega o JID de um celular
+ * brasileiro sem o 9º dígito (achado real em produção, 2026-09-18) — a
+ * regra de equivalência BR fica centralizada em `telefone.ts`, nunca aqui.
+ */
 export function normalizeTelefone(remoteJid: string): string | null {
   const [user] = remoteJid.split("@");
   if (!user) return null;
   const digits = user.split(":")[0].replace(/\D/g, "");
-  return digits || null;
+  return digits ? canonicalizarTelefoneBr(digits) : null;
 }
 
 export function isGroupOrBroadcast(remoteJid: string): boolean {

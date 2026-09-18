@@ -3,16 +3,26 @@ import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/ev
 
 describe("normalizeTelefone", () => {
   it("extrai só dígitos do usuário antes do @", () => {
-    expect(normalizeTelefone("556299998888@s.whatsapp.net")).toBe("556299998888");
+    // Fixo (local começa em 2-5): mecânica de extração isolada da regra BR
+    // de 9º dígito, testada à parte logo abaixo.
+    expect(normalizeTelefone("556233334444@s.whatsapp.net")).toBe("556233334444");
   });
 
   it("remove o sufixo de device (:N)", () => {
-    expect(normalizeTelefone("556299998888:16@s.whatsapp.net")).toBe("556299998888");
+    expect(normalizeTelefone("556233334444:16@s.whatsapp.net")).toBe("556233334444");
   });
 
   it("devolve null pra remoteJid vazio ou sem dígitos", () => {
     expect(normalizeTelefone("@s.whatsapp.net")).toBeNull();
     expect(normalizeTelefone("abc@s.whatsapp.net")).toBeNull();
+  });
+
+  it("celular BR sem o 9º dígito no JID (achado real em produção, 2026-09-18) ganha o 9 de volta", () => {
+    expect(normalizeTelefone("556181925241@s.whatsapp.net")).toBe("5561981925241");
+  });
+
+  it("celular BR já com o 9º dígito no JID fica intacto", () => {
+    expect(normalizeTelefone("5561981925241@s.whatsapp.net")).toBe("5561981925241");
   });
 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { getClinicaId } from "@/lib/clinica";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
+import { encontrarPorTelefoneEquivalente, variantesEquivalentesTelefoneBr } from "@/lib/telefone";
 import { extrairAtribuicaoWebhook } from "@/lib/agentes-pixel";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido } from "@/lib/status";
@@ -112,13 +113,19 @@ export async function POST(request: Request) {
   const tsSeconds = tsRaw ? (typeof tsRaw === "string" ? parseInt(tsRaw, 10) : tsRaw) : null;
   const timestampWhatsapp = tsSeconds ? new Date(tsSeconds * 1000).toISOString() : new Date().toISOString();
 
-  const { data: pacienteExistente } = await supabase
-    .from("pacientes")
-    .select("id, nome")
-    .eq("clinica_id", clinicaId)
-    .eq("telefone", telefone)
-    .maybeSingle();
+  // Compatibilidade de transição (achado real 2026-09-18, ver telefone.ts):
+  // o WhatsApp/Baileys às vezes entrega o JID de um celular BR sem o 9º
+  // dígito — busca por qualquer forma equivalente antes de decidir criar,
+  // sem nunca reescrever telefone já gravado (não é migration, é lookup).
+  const variantesTelefone = variantesEquivalentesTelefoneBr(telefone);
 
+  const { data: pacientesEncontrados } = await supabase
+    .from("pacientes")
+    .select("id, nome, telefone")
+    .eq("clinica_id", clinicaId)
+    .in("telefone", variantesTelefone);
+
+  const pacienteExistente = encontrarPorTelefoneEquivalente(pacientesEncontrados ?? [], telefone);
   let pacienteId: string | null = pacienteExistente?.id ?? null;
   if (!pacienteId) {
     // Atribuição (Pixel de Conversão): melhor-esforço, só o que o próprio
@@ -142,12 +149,13 @@ export async function POST(request: Request) {
       .eq("id", pacienteId);
   }
 
-  const { data: conversaExistente } = await supabase
+  const { data: conversasEncontradas } = await supabase
     .from("conversas")
-    .select("id, status, mensagens_nao_lidas")
+    .select("id, status, mensagens_nao_lidas, telefone")
     .eq("clinica_id", clinicaId)
-    .eq("telefone", telefone)
-    .maybeSingle();
+    .in("telefone", variantesTelefone);
+
+  const conversaExistente = encontrarPorTelefoneEquivalente(conversasEncontradas ?? [], telefone);
 
   // Usado pelo gatilho de Fluxo de Conversa "nova_conversa"/"primeira_mensagem"
   // (src/lib/fluxo-execucoes.ts) — capturado ANTES do bloco de criação abaixo,

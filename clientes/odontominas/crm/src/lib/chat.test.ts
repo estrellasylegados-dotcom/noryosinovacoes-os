@@ -44,6 +44,22 @@ describe("normalizarTelefoneEntrada", () => {
     expect(normalizarTelefoneEntrada("")).toBeNull();
     expect(normalizarTelefoneEntrada("abc")).toBeNull();
   });
+
+  it("D. celular BR digitado sem o 9º dígito (10 dígitos locais) ganha o 9 de volta", () => {
+    expect(normalizarTelefoneEntrada("6181925241")).toBe("5561981925241");
+  });
+
+  it("E. celular BR digitado já com o 9º dígito fica intacto", () => {
+    expect(normalizarTelefoneEntrada("61981925241")).toBe("5561981925241");
+  });
+
+  it("H. celular BR sem o 9, formatado com parênteses/traço", () => {
+    expect(normalizarTelefoneEntrada("(61) 8192-5241")).toBe("5561981925241");
+  });
+
+  it("fixo BR de 10 dígitos locais nunca ganha 9º dígito", () => {
+    expect(normalizarTelefoneEntrada("6132345678")).toBe("556132345678");
+  });
 });
 
 describe("contarAbasChat", () => {
