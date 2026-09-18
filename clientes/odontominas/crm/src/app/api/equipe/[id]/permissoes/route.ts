@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { definirPermissoesCustomizadas, buscarAtendentePorId } from "@/lib/atendentes";
 import { getClinicaId } from "@/lib/clinica";
 import { requirePermission } from "@/lib/autorizacao";
-import { isPermissaoValida } from "@/lib/permissoes";
+import { isPermissaoValida, validarConcessaoPermissoes, type Permissao } from "@/lib/permissoes";
 
 export const runtime = "nodejs";
 
@@ -33,6 +33,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const alvo = await buscarAtendentePorId(clinicaId, id);
   if (!alvo) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+
+  // Quem pode conceder o quê: hierarquia do alvo + só o que o ator tem + plataforma só em plataforma.
+  const concessao = validarConcessaoPermissoes(sessao.perfil, sessao.permissoes, alvo.perfil, body.permissoes as Permissao[] | null);
+  if (!concessao.ok) return NextResponse.json({ ok: false, error: concessao.error }, { status: 403 });
 
   const resultado = await definirPermissoesCustomizadas(clinicaId, id, body.permissoes, sessao.atendenteId);
   if (!resultado.ok) return NextResponse.json(resultado, { status: 400 });

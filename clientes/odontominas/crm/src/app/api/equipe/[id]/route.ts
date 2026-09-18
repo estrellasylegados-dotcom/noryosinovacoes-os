@@ -30,18 +30,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const clinicaId = sessao.clinicaId ?? (await getClinicaId());
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
 
-  if (body.perfil !== undefined) {
-    const alvo = await buscarAtendentePorId(clinicaId, id);
-    if (!alvo) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  // Toda alteração (nome, status ou perfil) exige poder administrar o perfil
+  // ATUAL do alvo — sem isso, mudar só o status contornaria a hierarquia
+  // (ex.: bloquear uma Dona sem nunca poder criar uma).
+  const alvo = await buscarAtendentePorId(clinicaId, id);
+  if (!alvo) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  if (!podeAtribuirPerfil(sessao.perfil, alvo.perfil)) {
+    return NextResponse.json({ ok: false, error: "perfil_nao_permitido" }, { status: 403 });
+  }
 
-    // Regra de elevação nos dois sentidos: o ator precisa poder atribuir o
-    // perfil de destino E já precisar poder "atribuir" o perfil atual do
-    // alvo — senão um Gerente com usuarios.editar customizado poderia
-    // rebaixar uma Dona sem nunca ter permissão de criar uma.
-    const perfilAlvo = body.perfil as Perfil;
-    if (!podeAtribuirPerfil(sessao.perfil, perfilAlvo) || !podeAtribuirPerfil(sessao.perfil, alvo.perfil)) {
-      return NextResponse.json({ ok: false, error: "perfil_nao_permitido" }, { status: 403 });
-    }
+  // Mudança de perfil: além do alvo atual, o ator precisa poder atribuir o de destino.
+  if (body.perfil !== undefined && !podeAtribuirPerfil(sessao.perfil, body.perfil as Perfil)) {
+    return NextResponse.json({ ok: false, error: "perfil_nao_permitido" }, { status: 403 });
   }
 
   const resultado = await atualizarAtendente(clinicaId, id, body as never, sessao.atendenteId);

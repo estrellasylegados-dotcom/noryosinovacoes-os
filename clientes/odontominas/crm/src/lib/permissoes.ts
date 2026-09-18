@@ -254,3 +254,33 @@ const PERFIS_CUJA_CREDENCIAL_PODE_REDEFINIR: Record<Perfil, ReadonlyArray<Perfil
 export function podeRedefinirCredencial(atorPerfil: Perfil, perfilAlvo: Perfil): boolean {
   return PERFIS_CUJA_CREDENCIAL_PODE_REDEFINIR[atorPerfil].includes(perfilAlvo);
 }
+
+/** Permissões de identidade de plataforma — nunca atribuíveis a perfil de clínica, nem por Noryos Admin. */
+export function isPermissaoDePlataforma(p: Permissao): boolean {
+  return p.startsWith("platform.") || p.startsWith("suporte.");
+}
+
+export type ResultadoConcessao = { ok: true } | { ok: false; error: "perfil_nao_permitido" | "permissao_acima_do_escopo" | "permissao_de_plataforma_em_perfil_de_clinica" };
+
+/**
+ * Validação de "quem pode conceder o quê" pra `permissoes_customizadas`.
+ * Três travas, todas no backend: (1) o ator precisa poder administrar o perfil
+ * do alvo (mesma hierarquia de `podeAtribuirPerfil`: Dona nunca mexe em Dona
+ * nem em plataforma); (2) só concede o que ele mesmo tem (ninguém dá mais
+ * poder que o próprio); (3) permissão de plataforma só em perfil de
+ * plataforma. `permissoes = null` (voltar ao default do perfil) só passa por (1).
+ */
+export function validarConcessaoPermissoes(
+  atorPerfil: Perfil,
+  atorPermissoes: ReadonlySet<Permissao>,
+  alvoPerfil: Perfil,
+  permissoes: readonly Permissao[] | null
+): ResultadoConcessao {
+  if (!podeAtribuirPerfil(atorPerfil, alvoPerfil)) return { ok: false, error: "perfil_nao_permitido" };
+  if (permissoes === null) return { ok: true };
+  if (!permissoes.every((p) => atorPermissoes.has(p))) return { ok: false, error: "permissao_acima_do_escopo" };
+  if (!PERFIS_PLATAFORMA.has(alvoPerfil) && permissoes.some(isPermissaoDePlataforma)) {
+    return { ok: false, error: "permissao_de_plataforma_em_perfil_de_clinica" };
+  }
+  return { ok: true };
+}

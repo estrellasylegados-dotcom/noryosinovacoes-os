@@ -101,3 +101,34 @@ describe("podeRedefinirCredencial", () => {
     for (const ator of ["gerente", "supervisora", "atendente"] as const) expect(podeRedefinirCredencial(ator, "atendente")).toBe(false);
   });
 });
+
+describe("validarConcessaoPermissoes", () => {
+  it("Dona concede a perfil operacional só o que ela mesma tem", async () => {
+    const { validarConcessaoPermissoes, PERFIS_PADRAO } = await import("@/lib/permissoes");
+    const dona = PERFIS_PADRAO.dona;
+    expect(validarConcessaoPermissoes("dona", dona, "gerente", ["sla.configurar", "conversas.assumir"])).toEqual({ ok: true });
+    expect(validarConcessaoPermissoes("dona", dona, "atendente", null)).toEqual({ ok: true });
+  });
+  it("Dona não concede permissão de plataforma nem mexe em Dona/plataforma", async () => {
+    const { validarConcessaoPermissoes, PERFIS_PADRAO } = await import("@/lib/permissoes");
+    const dona = PERFIS_PADRAO.dona;
+    expect(validarConcessaoPermissoes("dona", dona, "gerente", ["platform.ops"])).toEqual({ ok: false, error: "permissao_acima_do_escopo" });
+    expect(validarConcessaoPermissoes("dona", dona, "gerente", ["suporte.acesso_tecnico"])).toEqual({ ok: false, error: "permissao_acima_do_escopo" });
+    expect(validarConcessaoPermissoes("dona", dona, "dona", ["sla.configurar"])).toEqual({ ok: false, error: "perfil_nao_permitido" });
+    expect(validarConcessaoPermissoes("dona", dona, "noryos_admin", null)).toEqual({ ok: false, error: "perfil_nao_permitido" });
+  });
+  it("Gerente, Supervisora, Atendente e Suporte nunca concedem", async () => {
+    const { validarConcessaoPermissoes, PERFIS_PADRAO } = await import("@/lib/permissoes");
+    for (const ator of ["gerente", "supervisora", "atendente", "noryos_suporte"] as const) {
+      expect(validarConcessaoPermissoes(ator, PERFIS_PADRAO[ator], "atendente", ["conversas.assumir"]).ok).toBe(false);
+      expect(validarConcessaoPermissoes(ator, PERFIS_PADRAO[ator], "gerente", null).ok).toBe(false);
+    }
+  });
+  it("Noryos Admin não põe permissão de plataforma em perfil de clínica, mas pode em plataforma", async () => {
+    const { validarConcessaoPermissoes, PERFIS_PADRAO } = await import("@/lib/permissoes");
+    const na = PERFIS_PADRAO.noryos_admin;
+    expect(validarConcessaoPermissoes("noryos_admin", na, "gerente", ["platform.ops"])).toEqual({ ok: false, error: "permissao_de_plataforma_em_perfil_de_clinica" });
+    expect(validarConcessaoPermissoes("noryos_admin", na, "noryos_suporte", ["suporte.visualizar_logs"])).toEqual({ ok: true });
+    expect(validarConcessaoPermissoes("noryos_admin", na, "dona", ["sla.configurar"])).toEqual({ ok: true });
+  });
+});
