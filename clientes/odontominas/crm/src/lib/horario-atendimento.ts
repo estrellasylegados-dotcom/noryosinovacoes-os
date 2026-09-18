@@ -136,6 +136,69 @@ export function calcularProximoHorario(config: ConfiguracaoHorario, timestamp: D
   return null;
 }
 
+export type ResultadoMinutosUteis =
+  | { ok: true; minutos: number }
+  | { ok: false; error: "intervalo_invalido" | "sem_configuracao" };
+
+/** Minutos entre 2 horários, dentro do dia (mesma unidade de `paraMinutos`, sem cruzar dia). */
+function overlapMinutos(inicioA: number, fimA: number, inicioB: number, fimB: number): number {
+  const inicio = Math.max(inicioA, inicioB);
+  const fim = Math.min(fimA, fimB);
+  return Math.max(0, fim - inicio);
+}
+
+/**
+ * Soma só os minutos que caem dentro do horário de atendimento entre 2
+ * instantes — nunca diferença bruta de timestamp (é o princípio central do
+ * SLA, ver relatório da fatia). Itera dia a dia (calendário local da
+ * clínica), somando a interseção de cada dia com os períodos configurados
+ * daquele dia. `sem_configuracao` é um erro explícito aqui (diferente de
+ * `avaliarHorarioAtendimento`, que assume "sempre aberto" pra nunca travar
+ * automação por falta de config) — SLA nunca pode fingir 24x7 silenciosamente.
+ */
+export function calcularMinutosUteisAtendimento(inicio: Date, fim: Date, config: ConfiguracaoHorario): ResultadoMinutosUteis {
+  if (inicio.getTime() > fim.getTime()) return { ok: false, error: "intervalo_invalido" };
+  if (config.periodos.length === 0) return { ok: false, error: "sem_configuracao" };
+  if (inicio.getTime() === fim.getTime()) return { ok: true, minutos: 0 };
+
+  const inicioPartes = partesLocais(inicio, config.timezone);
+  const fimPartes = partesLocais(fim, config.timezone);
+  const diaBaseUtc = Date.UTC(inicioPartes.ano, inicioPartes.mes - 1, inicioPartes.dia);
+
+  // Limite de segurança (>1 ano) — nunca deveria chegar perto disso numa
+  // conversa real; evita loop sem fim com entrada patológica.
+  const LIMITE_DIAS = 400;
+
+  let totalMinutos = 0;
+
+  for (let deslocamento = 0; deslocamento <= LIMITE_DIAS; deslocamento++) {
+    const diaCandidatoUtc = new Date(diaBaseUtc + deslocamento * 24 * 60 * 60 * 1000);
+    const ano = diaCandidatoUtc.getUTCFullYear();
+    const mes = diaCandidatoUtc.getUTCMonth() + 1;
+    const dia = diaCandidatoUtc.getUTCDate();
+
+    // Dia da semana local real desse calendário — meio-dia evita qualquer
+    // ambiguidade de transição de fuso perto da meia-noite.
+    const meioDia = construirInstanteNoTimezone(ano, mes, dia, "12:00", config.timezone);
+    const diaSemana = partesLocais(meioDia, config.timezone).diaSemana;
+
+    const ehPrimeiroDia = deslocamento === 0;
+    const ehUltimoDia = ano === fimPartes.ano && mes === fimPartes.mes && dia === fimPartes.dia;
+
+    const janelaInicio = ehPrimeiroDia ? inicioPartes.minutosDoDia : 0;
+    const janelaFim = ehUltimoDia ? fimPartes.minutosDoDia : 24 * 60;
+
+    for (const p of config.periodos) {
+      if (p.diaSemana !== diaSemana) continue;
+      totalMinutos += overlapMinutos(paraMinutos(p.horaInicio), paraMinutos(p.horaFim), janelaInicio, janelaFim);
+    }
+
+    if (ehUltimoDia) break;
+  }
+
+  return { ok: true, minutos: totalMinutos };
+}
+
 export function timezoneValido(tz: string): boolean {
   if (!tz) return false;
   try {

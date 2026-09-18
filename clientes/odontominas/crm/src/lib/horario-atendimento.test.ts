@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   avaliarHorarioAtendimento,
+  calcularMinutosUteisAtendimento,
   calcularProximoHorario,
   timezoneValido,
   validarConfiguracaoHorario,
@@ -261,5 +262,80 @@ describe("validarConfiguracaoHorario", () => {
         ],
       })
     ).toBe("periodos_sobrepostos");
+  });
+});
+
+describe("calcularMinutosUteisAtendimento", () => {
+  it("CASO 1 — segunda 10:00 → 10:10, 08-18 = 10 min", () => {
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T13:00:00Z"), new Date("2024-01-01T13:10:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 10 });
+  });
+
+  it("CASO 2 — segunda 07:00 → 08:10 = 10 min (só conta depois de abrir)", () => {
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T10:00:00Z"), new Date("2024-01-01T11:10:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 10 });
+  });
+
+  it("CASO 3 — segunda 17:50 → terça 08:10 = 20 min", () => {
+    // segunda 17:50 local = 20:50 UTC; terça 08:10 local = 11:10 UTC
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T20:50:00Z"), new Date("2024-01-02T11:10:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 20 });
+  });
+
+  it("CASO 4 — sexta 17:50 → segunda 08:10, fim de semana TOTALMENTE fechado = 20 min", () => {
+    const semFimDeSemana: ConfiguracaoHorario = { timezone: TZ, periodos: CONFIG_PADRAO.periodos.filter((p) => p.diaSemana !== 6) };
+    // sexta 17:50 local = 20:50 UTC, 2024-01-05; segunda 08:10 local = 11:10 UTC, 2024-01-08
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-05T20:50:00Z"), new Date("2024-01-08T11:10:00Z"), semFimDeSemana);
+    expect(r).toEqual({ ok: true, minutos: 20 });
+  });
+
+  it("CASO 5 — sexta 17:50 → sábado 08:10, sábado aberto (CONFIG_PADRAO) = 20 min", () => {
+    // sábado 08:10 local = 11:10 UTC, 2024-01-06
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-05T20:50:00Z"), new Date("2024-01-06T11:10:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 20 });
+  });
+
+  it("CASO 6 — domingo inteiro fechado = 0 min", () => {
+    // domingo 08:00 a 20:00 local = 11:00 a 23:00 UTC, 2024-01-07
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-07T11:00:00Z"), new Date("2024-01-07T23:00:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 0 });
+  });
+
+  it("CASO 7 — dois períodos no mesmo dia (08-12 e 14-18), 11:50 → 14:10 = 20 min", () => {
+    const configDoisPeriodos: ConfiguracaoHorario = {
+      timezone: TZ,
+      periodos: [
+        { diaSemana: 1, horaInicio: "08:00", horaFim: "12:00" },
+        { diaSemana: 1, horaInicio: "14:00", horaFim: "18:00" },
+      ],
+    };
+    // segunda 11:50 local = 14:50 UTC; segunda 14:10 local = 17:10 UTC
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T14:50:00Z"), new Date("2024-01-01T17:10:00Z"), configDoisPeriodos);
+    expect(r).toEqual({ ok: true, minutos: 20 });
+  });
+
+  it("CASO 8 — timezone São Paulo correto: mesma prova de conversão do avaliarHorarioAtendimento", () => {
+    // sábado 08:00 a 09:00 local (dentro de 08-12) = 11:00 a 12:00 UTC — se o
+    // código tratasse UTC como local sem converter, 11:00-12:00 aginda cairia
+    // dentro de 08-12 por coincidência; o teste decisivo é o mesmo do CASO 6
+    // (domingo em UTC que seria sábado em UTC-3 ou vice-versa) -- aqui só
+    // confirma que sábado soma certo via o mesmo motor de conversão.
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-06T11:00:00Z"), new Date("2024-01-06T12:00:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: true, minutos: 60 });
+  });
+
+  it("CASO 9 — início > fim → erro controlado, nunca lança", () => {
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T14:00:00Z"), new Date("2024-01-01T13:00:00Z"), CONFIG_PADRAO);
+    expect(r).toEqual({ ok: false, error: "intervalo_invalido" });
+  });
+
+  it("CASO 10 — sem configuração → erro explícito sem_configuracao, nunca finge 24x7", () => {
+    const r = calcularMinutosUteisAtendimento(new Date("2024-01-01T13:00:00Z"), new Date("2024-01-01T13:10:00Z"), SEM_CONFIGURACAO);
+    expect(r).toEqual({ ok: false, error: "sem_configuracao" });
+  });
+
+  it("início === fim → 0 min, sem percorrer nada", () => {
+    const t = new Date("2024-01-01T13:00:00Z");
+    expect(calcularMinutosUteisAtendimento(t, t, CONFIG_PADRAO)).toEqual({ ok: true, minutos: 0 });
   });
 });

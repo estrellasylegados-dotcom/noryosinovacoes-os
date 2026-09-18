@@ -19,6 +19,7 @@ const ITENS: Item[] = [
   { href: "/reputacao", label: "Reputação", adminOnly: true, group: "Ferramentas" },
   { href: "/integracoes/controle-odonto", label: "ControleODONTO", adminOnly: true, group: "Ferramentas" },
   { href: "/configuracoes/horario", label: "Horário de Atendimento", adminOnly: true, group: "Configurações" },
+  { href: "/configuracoes/sla", label: "SLA / Atendimento", adminOnly: true, group: "Configurações" },
 ];
 
 function ItemLink({ item, ativo, naoLidas }: { item: Item; ativo: boolean; naoLidas: number }) {

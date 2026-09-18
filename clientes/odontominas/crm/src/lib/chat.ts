@@ -253,6 +253,13 @@ export async function enviarRespostaChat(
       conteudo: texto,
       evolution_message_id: envio.mensagemId ?? null,
       timestamp_whatsapp: agora,
+      // Único ponto do projeto que marca autoria humana em `mensagens` — é o
+      // que distingue resposta humana de Fluxo/disparo/reativação pro SLA
+      // (src/lib/sla.ts). `atendenteId` pode ser null (iniciarConversaChat
+      // chama esta função sem sessão, ao abrir uma conversa nova pelo
+      // painel) — nesse caso a mensagem simplesmente não conta como
+      // resposta humana pro SLA.
+      enviada_por_atendente_id: atendenteId,
     })
     .select("id, direcao, tipo, conteudo, timestamp_whatsapp")
     .single();

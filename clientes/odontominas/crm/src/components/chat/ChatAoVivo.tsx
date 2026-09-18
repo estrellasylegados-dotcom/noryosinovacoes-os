@@ -13,10 +13,31 @@ import type { Etiqueta } from "@/lib/etiquetas";
 import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM, type Prioridade } from "@/lib/prioridade";
 import { STATUS_CONFIG, STATUS_ORDEM, type StatusConversa } from "@/lib/status";
 import { formatHoraCurta, formatTelefone } from "@/lib/tempo";
+import type { StatusSlaConversa } from "@/lib/sla";
 import { NotasInternas } from "@/components/chat/NotasInternas";
+import { rankSla, SlaBadge } from "@/components/chat/SlaBadge";
 
 const INTERVALO_LISTA_MS = 8000;
 const INTERVALO_THREAD_MS = 4000;
+const INTERVALO_SLA_MS = 15000;
+
+type FiltroSla = "" | "ok" | "warning" | "breached" | "paused" | "sem_configuracao";
+
+const OPCOES_FILTRO_SLA: { valor: FiltroSla; label: string }[] = [
+  { valor: "", label: "Todos" },
+  { valor: "ok", label: "Dentro do SLA" },
+  { valor: "warning", label: "Próximo do limite" },
+  { valor: "breached", label: "Fora do SLA" },
+  { valor: "paused", label: "Fora do expediente" },
+  { valor: "sem_configuracao", label: "Sem SLA configurado" },
+];
+
+/** `status.tipo` já é quase o valor do filtro — só "not_configured"/"sem_ciclo" (sem SLA aplicável) viram um filtro só. */
+function statusBateComFiltro(status: StatusSlaConversa | undefined, filtro: FiltroSla): boolean {
+  if (!filtro) return true;
+  if (filtro === "sem_configuracao") return !status || status.tipo === "not_configured" || status.tipo === "sem_ciclo";
+  return status?.tipo === filtro;
+}
 const CHAVE_LARGURA_LISTA = "chat-largura-lista";
 const LARGURA_MIN = 280;
 const LARGURA_MAX = 560;
@@ -92,6 +113,9 @@ export function ChatAoVivo({
   const [busca, setBusca] = useState("");
   const [filtroPrioridade, setFiltroPrioridade] = useState<Prioridade | "">("");
   const [filtroEtiquetaId, setFiltroEtiquetaId] = useState("");
+  const [filtroSla, setFiltroSla] = useState<FiltroSla>("");
+  const [ordenarPorSla, setOrdenarPorSla] = useState(false);
+  const [slaPorConversa, setSlaPorConversa] = useState<Record<string, StatusSlaConversa>>({});
 
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
   const [carregandoMensagens, setCarregandoMensagens] = useState(false);
@@ -113,17 +137,18 @@ export function ChatAoVivo({
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const contagens = useMemo(() => contarAbasChat(conversas, atendenteAtualId), [conversas, atendenteAtualId]);
-  const conversasFiltradas = useMemo(
-    () =>
-      filtrarConversasChat(conversas, {
-        aba,
-        atendenteIdAtual: atendenteAtualId,
-        prioridade: filtroPrioridade || null,
-        etiquetaId: filtroEtiquetaId || null,
-        busca,
-      }),
-    [conversas, aba, atendenteAtualId, filtroPrioridade, filtroEtiquetaId, busca]
-  );
+  const conversasFiltradas = useMemo(() => {
+    const base = filtrarConversasChat(conversas, {
+      aba,
+      atendenteIdAtual: atendenteAtualId,
+      prioridade: filtroPrioridade || null,
+      etiquetaId: filtroEtiquetaId || null,
+      busca,
+    }).filter((c) => statusBateComFiltro(slaPorConversa[c.id], filtroSla));
+
+    if (!ordenarPorSla) return base;
+    return [...base].sort((a, b) => rankSla(slaPorConversa[a.id]) - rankSla(slaPorConversa[b.id]));
+  }, [conversas, aba, atendenteAtualId, filtroPrioridade, filtroEtiquetaId, busca, filtroSla, ordenarPorSla, slaPorConversa]);
 
   const selecionada = conversas.find((c) => c.id === selecionadaId) ?? null;
 
@@ -178,6 +203,17 @@ export function ChatAoVivo({
     const id = setInterval(atualizarListaAgora, INTERVALO_LISTA_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    async function atualizarSlaAgora() {
+      const dados = await chamarApi<{ ok: boolean; lista?: { conversaId: string; status: StatusSlaConversa }[] }>("/api/chat/sla/resumo");
+      if (!dados.ok || !dados.lista) return;
+      setSlaPorConversa(Object.fromEntries(dados.lista.map((item) => [item.conversaId, item.status])));
+    }
+    atualizarSlaAgora();
+    const id = setInterval(atualizarSlaAgora, INTERVALO_SLA_MS);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -442,6 +478,28 @@ export function ChatAoVivo({
 
           <FiltroPrioridadeBotao valor={filtroPrioridade} onChange={setFiltroPrioridade} />
           <FiltroEtiquetaBotao etiquetas={etiquetas} valor={filtroEtiquetaId} onChange={setFiltroEtiquetaId} />
+          <select
+            value={filtroSla}
+            onChange={(e) => setFiltroSla(e.target.value as FiltroSla)}
+            title="Filtrar por SLA"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-600"
+          >
+            {OPCOES_FILTRO_SLA.map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setOrdenarPorSla((v) => !v)}
+            title="Ordenar por risco de SLA (mais crítico primeiro)"
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+              ordenarPorSla ? "border-red-300 bg-red-50 text-red-700" : "border-neutral-200 text-neutral-600 hover:bg-neutral-100"
+            }`}
+          >
+            ⚠ Risco
+          </button>
 
           <div className="ml-auto flex items-center gap-1">
             <BotaoIconeAba
@@ -476,6 +534,7 @@ export function ChatAoVivo({
                   </p>
                   <span className="shrink-0 text-[11px] text-neutral-400">{formatHoraCurta(c.ultimaMensagemEm)}</span>
                 </div>
+                <SlaBadge status={slaPorConversa[c.id]} compacto />
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${PRIORIDADE_CONFIG[c.prioridade].corPonto}`} />
                   <p className={`truncate text-xs ${c.naoLida ? "font-medium text-neutral-700" : "text-neutral-500"}`}>
@@ -579,6 +638,8 @@ export function ChatAoVivo({
               >
                 Finalizar Atendimento
               </button>
+
+              <SlaBadge status={slaPorConversa[selecionada.id]} />
 
               <select
                 value={selecionada.prioridade}
