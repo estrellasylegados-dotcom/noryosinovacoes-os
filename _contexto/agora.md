@@ -21,7 +21,11 @@ ficha do paciente, tracking de clique com redirect próprio. Módulo desativado 
 pausado até o Rafael colocar a URL real de avaliação da OdontoMinas. Próximo passo: aniversário
 como "produto final" e dashboard executivo unificado — **aguardando sinal do Rafael pra avançar**,
 não iniciado. Odonto segue bloqueado (sem capability do ControleODONTO); Integração pausada (cofre de
-credenciais + SSRF, fase separada). Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
+credenciais + SSRF, fase separada). **Nova frente iniciada 2026-09-18**: reconstrução do
+CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops, pedida pelo Rafael) — Equipe (RBAC), Notas
+Internas, Horário de Atendimento e SLA Operacional (fundação, ainda sem automação) concluídos,
+testados e em produção (2 deploys reais no Railway, não só commit). Kanban visual e Noryos Ops
+(painel cross-clínica) ainda não iniciados. Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
 manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
 completo em `clientes/odontominas/andamento.md`. Compliance: risco de exclusividade Mirante/Sicoob
@@ -50,13 +54,17 @@ aceito conscientemente.
   engano pelo bug de telefone sem 9º dígito — `4e7ecb38-1d63-4ad8-90f5-b6ae12208b9f`/
   `4bb228db-e7f5-4464-8b53-e1b1d43e31bc` — preservados como evidência antes/depois da correção;
   Fase 5: o fluxo `[TESTE FASE 5]` (`9593cf0f…`), a pesquisa/execução/evento de avaliação Google
-  ligados a ele) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
+  ligados a ele; SLA Operacional: a conversa `[TESTE SLA]` (`a9074a4a…`), suas mensagens, a nota
+  interna e o evento de violação ligados a ela) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
   configurado/preservado por enquanto, até depois da apresentação (2026-09-16/17/18, ver
   andamento.md e decisoes.md).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
 - Ativar Reputação/Google Reviews de verdade: colocar a URL real de avaliação da OdontoMinas em
   `/reputacao` e ligar o módulo (hoje desativado de propósito, só com a URL de teste salva) —
   decisão do Rafael, sem prazo (2026-09-18).
+- Configurar o horário real de atendimento da OdontoMinas em `/configuracoes/horario` (hoje
+  vazio de propósito) — é o que destrava o SLA Operacional de fato (hoje ativo mas inerte,
+  `not_configured`, por falta desse dado) (2026-09-18).
 - Próximo passo da frente "Noryos Odonto" (aniversário como produto final, dashboard executivo
   unificado) — infraestrutura pronta desde a Fase 3, mas Rafael pediu explicitamente pra não
   avançar sem o sinal dele (2026-09-17).
@@ -81,3 +89,6 @@ aceito conscientemente.
   `clientes/odontominas/crm/src/lib/telefone.ts`.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).
+- Reconstrução do CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops): Equipe, Notas Internas,
+  Horário de Atendimento e SLA Operacional prontos e em produção (2026-09-18) — próximo passo
+  (Kanban ou Noryos Ops) ainda não decidido, aguarda sinal do Rafael.

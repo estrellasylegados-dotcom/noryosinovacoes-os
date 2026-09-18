@@ -600,3 +600,39 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   tiraria a prova viva de que o `/api/r/review/[token]` funciona. Como o link de teste aponta pra
   uma busca genérica no Google Maps (não o perfil real da clínica), o módulo foi desativado no fim
   pra nenhum paciente real receber esse link por engano antes do Rafael colocar a URL definitiva.
+- **2026-09-18** (agente, critério próprio — sem objeção do Rafael) [odontominas]: entre as 4
+  fases do roteiro RBAC/Atendimento/Kanban/Noryos Ops, a primeira fatia implementada foi o CRUD de
+  Equipe (criar/editar/ativar-desativar/trocar senha de atendente). Por quê: zero migration (coluna
+  `ativo` já existia), resolve uma dor real de hoje (toda conta nasce por INSERT manual via SQL/
+  MCP), é pré-requisito de "convite" e "reset de senha" (que precisam da tela existir primeiro), e
+  não toca nada sensível ao paciente (sem risco de WhatsApp real).
+- **2026-09-18** (Rafael, confirmado explicitamente na fatia de SLA) [odontominas]: RBAC continua
+  só `admin`/`atendente` (papel binário) — "Dona"/"Noryos Admin"/"Gerente"/"Supervisora" não são
+  papéis reais ainda. Por quê: inventar granularidade nova seria o tipo de refatoração de escopo
+  que o Rafael pediu explicitamente pra evitar nas fatias de Horário/SLA; "Dona" e "Noryos Admin"
+  mapeiam pra `admin` por enquanto, "Gerente" cai em `atendente` (negado) até existir de verdade —
+  registrado como pendência, não fingido como resolvido.
+- **2026-09-18** (agente, critério técnico) [odontominas]: horário de atendimento é modelado como
+  1 linha por PERÍODO (`horario_atendimento_periodos`), não 1 linha por dia. Por quê: é o que
+  permite 2 intervalos no mesmo dia (ex. 08-12 e 14-18) no futuro sem migration nova, mesmo a UI de
+  hoje só escrevendo 1 período por dia — pedido explícito do Rafael de não modelar de um jeito que
+  bloqueie essa evolução.
+- **2026-09-18** (agente, critério técnico) [odontominas]: "sem configuração" tem comportamento
+  diferente em cada camada, de propósito. `horario-atendimento.ts` (`avaliarHorarioAtendimento`)
+  assume sempre "dentro do horário" quando a clínica nunca configurou nada — nunca bloqueia
+  automação futura por falta de config. Já o SLA (`avaliarStatusSlaConversa`,
+  `calcularMetricaPrimeiraRespostaHumana`) usa `not_configured`/`null` explícito nesse mesmo caso —
+  nunca finge 24x7 pra produzir métrica falsa (pedido explícito do Rafael). Achado real: a 1ª
+  versão da métrica de primeira resposta caiu no fallback errado (devolvia "0 min"), corrigido
+  ainda na mesma sessão (commit `5dbdb46`) depois de um smoke test real em produção pegar o erro.
+- **2026-09-18** (agente, critério técnico) [odontominas]: `sla_eventos` (violação de SLA) é
+  tabela nova, não reaproveita `automacao_eventos` (v23). Por quê: `automacao_eventos` é tipada pro
+  domínio Fluxo (`fluxo_id`/`execucao_id` como FK, `resultado` é enum fechado de causas de
+  não-disparo) — mexer nesse contrato só pra caber SLA arriscaria as fases que já dependem dela.
+  `sla_eventos` segue o mesmo padrão de idempotência (`unique(conversa_id, mensagem_id, tipo)` +
+  insert, `23505` = sucesso) sem tocar na tabela existente.
+- **2026-09-18** (Rafael, pedido explícito na fatia de SLA) [odontominas]: evidência de teste do
+  SLA (conversa `[TESTE SLA]` `a9074a4a-048f-4eae-9125-49f9cd8d2bbd`, mensagens, nota interna,
+  evento de violação) fica **preservada em produção**, não apagar. Mesmo critério já usado nas
+  Fases 3/4/5 do Fluxo de Conversa — serve de prova de que o ciclo de espera/idempotência/
+  transferência funcionam de verdade, não só em teste unitário.

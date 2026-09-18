@@ -1,5 +1,126 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, RBAC/Atendimento — Equipe, Notas Internas, Horário de Atendimento e SLA Operacional)
+
+**4 fatias da nova frente "RBAC/Atendimento/Kanban/Noryos Ops" (roteiro trazido pelo Rafael)
+construídas, testadas e em produção na mesma sessão.** Diferente das fases do Fluxo de Conversa,
+aqui cada fatia teve checkpoint próprio do Rafael no meio (ordem de prioridade escolhida pelo
+agente como especialista, aprovada por "já pode começar"), mas sem o ritual completo de
+`EnterPlanMode`/`ExitPlanMode` — decisão de escopo pequeno o bastante pra dispensar isso a cada
+corte, seguindo o mesmo padrão de commit-testado-documentado das fases anteriores.
+
+**1. Equipe (RBAC) — CRUD de atendentes.** Até aqui toda conta nascia por INSERT manual via SQL/MCP
+(a própria migration `v4_equipe.sql` tem senha temporária hardcoded). `src/lib/atendentes.ts` ganhou
+`criarAtendente`/`atualizarAtendente`/`trocarSenhaAtendente`/`buscarAtendentePorId`, mesmo contrato
+`{ok,error}` do resto do projeto. Guarda nova: nunca desativa/rebaixa o único admin ativo da
+clínica (senão a clínica fica trancada de fora, sem SQL manual pra se recuperar). 3 rotas API
+(`/api/equipe`, `/api/equipe/[id]`, `/api/equipe/[id]/senha`), UI em `/equipe`
+(`EquipeNovaConta.tsx`/`EquipeCardAcoes.tsx`). Sem migration (coluna `ativo` já existia). Convite
+por e-mail e reset self-service ficam de fora — dependem de escolher um provedor de e-mail, que o
+projeto não tem; "trocar senha" aqui é o admin definindo uma temporária e avisando por fora.
+Commit `01aac13`.
+
+**2. Notas Internas por conversa.** Anotação da equipe presa à conversa no Chat ao Vivo, nunca
+vista pelo paciente — nem webhook nem motor do Fluxo de Conversa leem a tabela nova. Migration
+`v25` (`notas_internas`: `clinica_id`/`conversa_id`/`atendente_id`/`texto`). `src/lib/notas-internas.ts`
+(`buscarNotasInternas`/`criarNotaInterna`), rota `/api/chat/conversas/[id]/notas`, componente
+`NotasInternas.tsx` plugado no fim do painel de conversa do `ChatAoVivo.tsx`. Autoria sempre vem da
+sessão, nunca do body — não dá pra assinar nota em nome de outro atendente. Commit `260ac10`.
+
+**3. Horário de Atendimento por clínica.** Fundação reutilizável pro SLA (não conectada em nada
+ainda nesta fatia). Migration `v26`: `clinicas.timezone` (escalar, mesmo lugar de
+`apelido_instancia`) + `horario_atendimento_periodos` — **1 linha por PERÍODO, não por dia**: é o
+que permite 2 intervalos no mesmo dia (ex. 08-12 e 14-18) sem migration nova quando a UI ganhar
+suporte a isso, mesmo a UI de hoje só escrevendo 1 período por dia. "Fechado" = zero linhas pro
+dia; "sem configuração nenhuma" = zero linhas pra clínica inteira — os dois casos são distintos na
+leitura. `src/lib/horario-atendimento.ts`: núcleo puro (`avaliarHorarioAtendimento`,
+`calcularProximoHorario`, `validarConfiguracaoHorario`, `timezoneValido`) via `Intl.DateTimeFormat`
+nativo — zero dependência nova, cobre horário de verão automaticamente. **Decisão de design**: sem
+configuração nenhuma, a camada de horário assume sempre "dentro do horário" (nunca bloqueia
+automação futura por falta de config) — diferente da camada de SLA (item 4), de propósito. UI em
+`Configurações → Horário de Atendimento`. 41 testes, incluindo um que prova a conversão de fuso de
+verdade (12:00 UTC de sábado = 09:00 local, aberto — não 12:00 local, que seria fechado). Horário
+real da OdontoMinas **não foi preenchido** — testado com o exemplo do enunciado e restaurado a
+vazio, sem confirmação do Rafael de que são essas as horas reais. Commit `d8172b0`.
+
+**4. SLA Operacional (fundação).** Primeira resposta humana + resposta durante atendimento,
+calculado só em minutos úteis — nunca diferença bruta de timestamp. **Nada conectado em automação**
+(sem WhatsApp/e-mail pra supervisora, sem transferência automática, sem Kanban, sem escalonamento)
+— só config + cálculo + status + evento, observável pela UI.
+
+Achado que motivou a única mudança em código pré-existente desta fatia: `mensagens` não tinha como
+distinguir resposta HUMANA de Fluxo/disparo/reativação (só `gerada_por_agente_id` pra IA existia).
+Coluna nova `mensagens.enviada_por_atendente_id` (nullable, aditiva) — só `enviarRespostaChat`
+(`chat.ts`) passa a preenchê-la; os outros 4 pontos de insert em `mensagens` (agentes, fluxo,
+disparos, reativação) continuam `null`, corretamente.
+
+Migration `v27`: a coluna acima + índice `(conversa_id, direcao, created_at)`; `sla_config` (1
+linha/clínica, mesmo padrão de `reputacao_config`); `sla_eventos` (`unique(conversa_id, mensagem_id,
+tipo)` — `mensagem_id` dobra de identificador de ciclo, sem tabela de ciclos nova). **Decisão
+consciente de não reaproveitar `automacao_eventos`** (v23): aquela tabela é tipada pro domínio
+Fluxo (`fluxo_id`/`execucao_id` como FK, `resultado` é enum fechado de causas de não-disparo) —
+mexer nesse contrato só pra caber SLA arriscaria as fases que já dependem dela.
+
+`src/lib/sla.ts` (novo): ciclo de espera derivado de `mensagens`, sem tabela de ciclos — início = 1ª
+`recebida` depois da última `enviada` humana (várias mensagens seguidas do paciente = 1 ciclo só);
+`conversas.status` em `STATUS_RESOLVIDOS` = sem ciclo, mesmo critério que `finalizarAtendimento`
+(`chat.ts`) já usava — reaproveita o funil existente em vez de inventar estado novo.
+`avaliarStatusSlaConversa` devolve `not_configured`/`ok`/`warning`/`breached`/`paused`/`sem_ciclo`;
+precedência: breach é fato (não se apaga fora do expediente) → paused (só se respeitar horário e
+estiver fora dele agora) → warning/ok por percentual. `registrarSlaBreachSeNovo`: evento idempotente
+(`unique` + insert, `23505`=sucesso), emissão **lazy** na leitura de status — sem cron/worker novo.
+`src/lib/horario-atendimento.ts` ganhou a função que a fatia 3 tinha deixado pendente,
+`calcularMinutosUteisAtendimento` — mesmo motor de conversão de fuso, itera dia a dia somando só a
+interseção com os períodos configurados.
+
+3 rotas API (`/api/clinica/sla` admin; `/api/chat/conversas/[id]/sla` e `/api/chat/sla/resumo`
+sessão qualquer). UI: `Configurações → SLA/Atendimento` (config + resumo do dia) e `ChatAoVivo.tsx`
+ganhou badge 🟢/🟡/🔴/⏸ na lista e no cabeçalho, filtro por status de SLA, botão "⚠ Risco" pra
+ordenar por criticidade. 24 testes novos (11 de `calcularMinutosUteisAtendimento` cobrindo os 10
+casos pedidos; 13 do núcleo de `sla.ts`).
+
+**Teste real de ponta a ponta contra o Supabase de produção** (não mock): conversa `[TESTE SLA]`
+(`a9074a4a-048f-4eae-9125-49f9cd8d2bbd`) — mensagem recebida abre o ciclo, nota interna no meio não
+encerrou, breach detectado certo (20min consumidos, limite 15), evento idempotente confirmado por
+query (1 linha, não 2, em 2 chamadas seguidas), transferência de atendente (`atribuido_a`) NÃO
+zerou o ciclo (mesmos 20min depois), resposta humana encerrou (`sem_ciclo`), nova mensagem do
+paciente reabriu como `resposta_atendimento` (não `primeira_resposta`) com o limite certo (30min).
+**Evidência preservada de propósito** (pedido explícito do Rafael) — conversa, mensagens, nota e
+evento não apagados.
+
+**Deploy real no Railway — primeira vez nesta sessão que uma fatia foi de fato deployada** (as
+3 fatias anteriores tinham ficado só commitadas/pushadas). `railway up` direto (CLI já autenticada
+e linkada ao serviço `odontominas-crm`, projeto `illustrious-perfection`) — 2 deploys: o 1º com a
+fatia inteira, `SUCCESS`, os 3 workers (`agentes-buffer`/`disparos-worker`/`fluxo-worker`) limpos.
+
+**Bug real achado no próprio smoke test em produção** (não em teste unitário): `GET
+/api/chat/sla/resumo` devolvia `primeiraRespostaMediaMinutos: 0` em vez de `null` quando o horário
+de atendimento não está configurado — `calcularMetricaPrimeiraRespostaHumana` não tinha o mesmo
+gate de `not_configured` que `avaliarStatusSlaConversa` já tinha. Exatamente o tipo de "métrica
+falsa" que a fatia inteira existe pra evitar (0min pareceria "respostas instantâneas"). Corrigido
+(commit `5dbdb46`), 2º deploy, reconfirmado no ar com o mesmo `curl` real: `null`.
+
+**SLA deixado ativo em produção, no modo recomendado (minutos úteis)** — como o horário de
+atendimento segue vazio de propósito (fatia 3), isso resulta em `not_configured` pra toda conversa
+real hoje, sem nenhum efeito colateral, até o Rafael configurar o horário de verdade e decidir.
+
+Achados de processo, registrados em `ferramentas.md`: um `next dev` de terceiro já rodava na porta
+3000 antes desta sessão começar; `npm run build` local corrompeu o `.next` compartilhado com ele
+(processo não identificado, pode ser do Rafael — não reiniciado por mim). Sandbox local com pouca
+memória (~1-1,5GB livres de 7,5GB) causou falhas intermitentes de build, contornadas com retry e,
+uma vez, `experimental.cpus: 1` temporário em `next.config.ts` (sempre revertido antes do commit).
+
+typecheck/lint/663 testes (mais de 90 novos nesta sessão)/build de produção limpos em cada uma das
+4 fatias. 5 commits no total (`01aac13`, `260ac10`, `d8172b0`, `7a96e12`, `5dbdb46`), todos
+enviados ao GitHub.
+
+**Pendências**: horário real de atendimento da OdontoMinas (destrava o SLA de fato); RBAC segue
+binário admin/atendente — "Gerente"/"Supervisora" registrados como limitação real, não fingidos
+como resolvidos; convite por e-mail e reset self-service (dependem de provedor de e-mail); limpar
+dados de teste desta frente junto com os das fases anteriores (ver `agora.md`). **Próximo passo**
+(Kanban visual ou Noryos Ops) ainda não decidido — aguarda sinal do Rafael, mesmo critério já usado
+nas fases do Fluxo de Conversa.
+
 ## Onde está (2026-09-17, Fluxo de Conversa — Fase 4 completa: classificação NPS + dashboard + fix real de telefone)
 
 **Fase 4 ("Noryos Odonto") entregue: classificação NPS (detrator/neutro/promotor) + dashboard.**
