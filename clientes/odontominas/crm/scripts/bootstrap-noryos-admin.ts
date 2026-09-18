@@ -64,6 +64,11 @@ async function main() {
     if (mesmoEmail.status !== "invited") sair(`Conta existe com status ${mesmoEmail.status}. Nada foi feito.`);
     if (!flag("reenviar")) sair("Convite pendente já existe para este e-mail. Use --reenviar para gerar e enviar um novo.", 0);
     if (dryRun) sair("[dry-run] reenviaria o convite.", 0);
+    // Se uma execução anterior caiu antes de auditar, recupera o registro (uma vez só).
+    const { count: jaAuditado } = await supabase!.from("auditoria_eventos").select("id", { count: "exact", head: true }).eq("evento", "PLATFORM_ADMIN_BOOTSTRAPPED").eq("alvo_id", mesmoEmail.id as string);
+    if (!jaAuditado) {
+      await registrarEvento({ clinicaId, atorPerfil: "cli", evento: "PLATFORM_ADMIN_BOOTSTRAPPED", alvoId: mesmoEmail.id as string, detalhes: { via: "scripts/bootstrap-noryos-admin.ts", recuperado: true, extraordinario: false, motivo: null } });
+    }
     const token = await criarConvite(mesmoEmail.id as string, null);
     if (!token) sair("Não foi possível gerar o convite.");
     const envio = await enviarEmailConvite(email, nome || "Noryos Admin", token!);
@@ -81,17 +86,18 @@ async function main() {
   if (!criada.ok || !criada.atendente) sair(`Falha ao criar a conta (${criada.error ?? "erro"}).`);
   const alvoId = criada.atendente!.id;
 
-  const token = await criarConvite(alvoId, null);
-  if (!token) sair("Conta criada, mas não foi possível gerar o convite. Rode de novo com --reenviar.");
-  const envio = await enviarEmailConvite(email, nome, token!);
-
+  // Auditoria ANTES do envio: a criação da conta é o fato sensível, não o e-mail.
   await registrarEvento({
     clinicaId,
     atorPerfil: "cli",
     evento: "PLATFORM_ADMIN_BOOTSTRAPPED",
     alvoId,
-    detalhes: { via: "scripts/bootstrap-noryos-admin.ts", extraordinario, motivo: extraordinario ? motivo : null, emailEnviado: envio.ok },
+    detalhes: { via: "scripts/bootstrap-noryos-admin.ts", extraordinario, motivo: extraordinario ? motivo : null },
   });
+
+  const token = await criarConvite(alvoId, null);
+  if (!token) sair("Conta criada, mas não foi possível gerar o convite. Rode de novo com --reenviar.");
+  const envio = await enviarEmailConvite(email, nome, token!);
 
   sair(envio.ok ? "Noryos Admin criado (invited) e convite enviado por e-mail." : "Noryos Admin criado (invited), mas o e-mail NÃO saiu. Veja os logs e rode com --reenviar.", envio.ok ? 0 : 2);
 }

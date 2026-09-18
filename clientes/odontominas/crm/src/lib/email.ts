@@ -32,10 +32,17 @@ async function enviar(destino: string, assunto: string, html: string, tipo: stri
     return { ok: false };
   }
 
-  const { error } = await resend.emails.send({ from: REMETENTE, to: destino, subject: assunto, html });
+  let error: { name?: string; statusCode?: number | null } | null;
+  try {
+    ({ error } = await resend.emails.send({ from: REMETENTE, to: destino, subject: assunto, html }));
+  } catch {
+    // Falha de rede/DNS até o provedor: mesmo tratamento de erro do provedor — o token já foi criado, só o e-mail não saiu.
+    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: "network_error", status: null }));
+    return { ok: false };
+  }
   if (error) {
     // Só nome/status do erro do provedor (nunca destino, chave ou corpo) — o suficiente pra distinguir "domínio não verificado" de "chave inválida".
-    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: error.name ?? null, status: (error as { statusCode?: number | null }).statusCode ?? null }));
+    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: error.name ?? null, status: error.statusCode ?? null }));
     return { ok: false };
   }
   return { ok: true };
