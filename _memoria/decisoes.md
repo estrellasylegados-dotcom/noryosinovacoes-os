@@ -560,3 +560,19 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   scanner funcionando, pesquisa criada, captura testada) — apagar antes tiraria a evidência viva do
   que foi validado. Todos ficam claramente identificados (`[TESTE FASE 3]` no nome,
   `uso: demonstracao_fase3` em descrição/metadata) e sem gatilho automático ativo.
+- **2026-09-17** (Rafael) [odontominas]: telefone brasileiro (celular) ganha uma **função central
+  de canonicalização** (`clientes/odontominas/crm/src/lib/telefone.ts`), não uma regra pontual —
+  achado real em produção durante a validação da Fase 4 (WhatsApp/Baileys entregando o JID de um
+  celular sem o 9º dígito, criando paciente/conversa duplicados). Regra fechada com o Rafael antes
+  de codar: segue o plano de numeração ANATEL (fixo começa 2-5 e nunca ganha 9º dígito; celular
+  começa 6-9, com ou sem o 9 já presente), nunca fuzzy match (sem últimos-N-dígitos, sem `LIKE`),
+  nunca hack pro número específico do teste, sem migration — lookup passa a buscar por qualquer
+  forma equivalente (`.in()`) antes de decidir criar, nunca reescreve telefone já gravado. Por quê:
+  é a mesma classe de bug que afetaria qualquer paciente real cujo número chegue nesse formato —
+  merecia solução de identidade, não um contorno pro teste que descobriu o problema.
+- **2026-09-17/18** (Rafael) [odontominas]: evidência do bug de telefone (paciente
+  `4e7ecb38-1d63-4ad8-90f5-b6ae12208b9f` e conversa `4bb228db-e7f5-4464-8b53-e1b1d43e31bc`, criados
+  por engano antes da correção) fica **preservada em produção ao lado da evidência pós-correção**
+  (paciente/conversa/execução corretos, mesma classe de payload). Por quê: mesma lógica já usada na
+  Fase 3 — mostrar "achou o bug → corrigiu → validou de novo" numa apresentação futura vale mais que
+  limpar o banco agora. Nada apagado sem autorização explícita.

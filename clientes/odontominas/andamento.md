@@ -1,5 +1,53 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-17, Fluxo de Conversa — Fase 4 completa: classificação NPS + dashboard + fix real de telefone)
+
+**Fase 4 ("Noryos Odonto") entregue: classificação NPS (detrator/neutro/promotor) + dashboard.**
+`src/lib/nps.ts` (novo) — `classificarNps` (0-6/7-8/9-10, escala padrão) grava
+`pesquisa_respostas.classificacao` no momento de `persistir_resposta_pesquisa`
+(`fluxo-execucoes.ts`) — coluna que a Fase 3 só tinha reservado. `calcularPainelNps`/
+`buscarPainelNps` seguem o mesmo desenho de `campanha-metricas.ts` (núcleo puro + busca Supabase
+separada, sem view/RPC). Nova aba "Pesquisas" em `/resumo` (`RelatorioNps.tsx`): pesquisas
+enviadas/respondidas/taxa de resposta/NPS Score + barra segmentada detrator/neutro/promotor,
+mesmos tokens visuais de `RelatorioMarketing.tsx`/`CampanhaFunil.tsx`. 575 testes (25
+novos)/typecheck/lint/build limpos. Commit `4f2ef24`, deploy Railway `SUCCESS`.
+
+**Bug real de produção achado, investigado e corrigido durante a validação da Fase 4**: o
+WhatsApp/Baileys entrega o JID de um celular brasileiro sem o 9º dígito em alguns casos
+(`556181925241` em vez de `5561981925241`, confirmado no payload cru de `mensagens.raw`) —
+`normalizeTelefone` (webhook) e `normalizarTelefoneEntrada` (input humano) comparavam telefone por
+string exata, então isso criava paciente e conversa **novos** por engano, e o Agente de IA
+respondia de verdade a uma conversa que não devia existir. A mensagem nunca chegava à execução do
+Fluxo que estava esperando resposta.
+
+Corrigido com função central pura nova (`src/lib/telefone.ts`): `canonicalizarTelefoneBr` (regra
+do plano de numeração ANATEL — fixo começa 2-5 e nunca ganha 9º dígito; celular começa 6-9, com ou
+sem o 9 já presente; só mexe quando DDI=55 + DDD + 8 dígitos locais nessa faixa — nunca fuzzy
+match, nunca hack pro número específico), `variantesEquivalentesTelefoneBr` (gera a forma legada
+equivalente só pra buscar, nunca aproxima telefones diferentes) e `encontrarPorTelefoneEquivalente`
+(escolhe entre candidatos já filtrados, prioriza o canônico). `evolution-webhook.ts:normalizeTelefone`
+e `chat.ts:normalizarTelefoneEntrada` passaram a delegar a essa função central; o webhook,
+`chat.ts:iniciarConversaChat` e `controle-odonto/patients.ts:encontrarCorrespondenciaPaciente`
+passaram a buscar por qualquer forma equivalente (`.in()` em vez de `.eq()`) antes de decidir
+criar — compatibilidade de transição sem migration, sem reescrever telefone já gravado. 9 arquivos,
++259/-26 linhas. Commit `c0f3de9`, deploy Railway `SUCCESS` (`d8e62025`).
+
+**Teste real de ponta a ponta, com aprovação e execução manual do Rafael pelo WhatsApp de
+verdade**: resposta "9" mandada de propósito do número de teste (`5561981925241`, o mesmo já usado
+em Disparos/Campanhas) pro número da instância (`61999256901`, confirmadamente diferente). Antes do
+fix: mesmo tipo de payload sem 9º dígito criou paciente (`4e7ecb38-1d63-4ad8-90f5-b6ae12208b9f`) e
+conversa (`4bb228db-e7f5-4464-8b53-e1b1d43e31bc`) novos, com o Agente de IA respondendo de verdade
+(2 mensagens reais mandadas). Depois do fix: a mesma classe de payload achou o paciente/conversa
+corretos (`63cd3fa3.../0ee7964f...`), zero duplicação, Agente de IA não respondeu, execução
+`9867cb23...` resolveu `waiting_input` → `capturar_resposta` (nota 9) → `classificacao='promotor'`
+→ `pesquisas.status='respondida'` → execução `completed` → `dono_conversa` voltou pra `humano`
+sozinho. **Evidência de antes e depois preservada no banco, nada apagado** (nem os artefatos do bug
+nem os da correção) — pedido explícito do Rafael, serve de prova pra apresentação.
+
+**Fase 4 completa e validada. Rafael pediu explicitamente pra não avançar pra próxima
+funcionalidade sem sinal dele.** Avaliação Google, aniversário como "produto final" e dashboard
+executivo unificado (NPS + Google + aniversário) seguem de próximo passo, ainda não iniciados.
+
 ## Onde está (2026-09-17, Fase 6 — demo pro marido, e a frente "Noryos Odonto")
 
 **Deploy real:** Ações CRM e Humano+IA foram ao ar no Railway pela 1ª vez (`railway up`, commit
