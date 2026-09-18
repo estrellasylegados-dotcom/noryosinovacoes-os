@@ -13,6 +13,7 @@ import type { Etiqueta } from "@/lib/etiquetas";
 import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM, type Prioridade } from "@/lib/prioridade";
 import { STATUS_CONFIG, STATUS_ORDEM, type StatusConversa } from "@/lib/status";
 import { formatHoraCurta, formatTelefone } from "@/lib/tempo";
+import { NotasInternas } from "@/components/chat/NotasInternas";
 
 const INTERVALO_LISTA_MS = 8000;
 const INTERVALO_THREAD_MS = 4000;
@@ -719,6 +720,8 @@ export function ChatAoVivo({
                 </button>
               </div>
             </div>
+
+            <NotasInternas conversaId={selecionada.id} />
           </>
         )}
       </section>
