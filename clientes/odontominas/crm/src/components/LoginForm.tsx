@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function FormularioLogin({ clinicaNome }: { clinicaNome: string }) {
@@ -66,6 +67,11 @@ function FormularioLogin({ clinicaNome }: { clinicaNome: string }) {
       >
         {enviando ? "Entrando..." : "Entrar"}
       </button>
+      <p className="text-center text-xs text-neutral-400">
+        <Link href="/esqueci-senha" className="hover:text-teal-700 hover:underline">
+          Esqueci minha senha
+        </Link>
+      </p>
     </form>
   );
 }
