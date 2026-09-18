@@ -3,6 +3,8 @@ import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatsAtendentes } from "@/lib/equipe";
 import { formatDataHora, formatDuracao } from "@/lib/tempo";
+import { EquipeNovaConta } from "@/components/EquipeNovaConta";
+import { EquipeCardAcoes } from "@/components/EquipeCardAcoes";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +31,12 @@ export default async function EquipePage() {
   return (
     <main className="px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6">
-          <h1 className="text-xl font-semibold text-neutral-900">Equipe</h1>
-          <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — atendimento por secretária</p>
+        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-neutral-900">Equipe</h1>
+            <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — atendimento por secretária</p>
+          </div>
+          <EquipeNovaConta />
         </header>
 
         {stats.length === 0 ? (
@@ -74,6 +79,8 @@ export default async function EquipePage() {
                     <dd className="text-neutral-600">{formatDataHora(a.ultimaAtividade)}</dd>
                   </div>
                 </dl>
+
+                <EquipeCardAcoes id={a.id} nome={a.nome} papel={a.papel} ativo={a.ativo} />
               </div>
             ))}
           </div>
