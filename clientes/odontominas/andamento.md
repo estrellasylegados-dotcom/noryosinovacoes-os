@@ -1,6 +1,8 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-18, Canais WhatsApp + Caixa Compartilhada Multiatendente — em produção)
+## Onde está (2026-09-18, CANAIS + ATENDIMENTO COMPARTILHADO — BACKEND/E2E REAL VALIDADO, UI AUTENTICADA AINDA PENDENTE)
+
+**Status: backend + E2E real validados; UI autenticada pendente. A fase NÃO está 100% concluída.**
 
 Doc completa (modelo, fluxos, RBAC, rollback): `crm/docs/CANAIS.md`.
 
@@ -14,12 +16,25 @@ Doc completa (modelo, fluxos, RBAC, rollback): `crm/docs/CANAIS.md`.
   filtros por canal/responsável/SLA, ordenação, Assumir/Transferir/Devolver à fila, conflito 409 com o
   nome de quem assumiu, indicador de controle (humano/IA/automação). Configurações → Canais
   (`/configuracoes/canais`; `/conexao` redireciona).
-- **Provado:** 780 testes; multicanal e unicidade no banco real; corrida real (20+20 rodadas, 1
-  vencedor em todas, SLA intacto). **Não provado:** fluxo real com WhatsApp + login A/B; UI num navegador.
+- **Provado (backend):** 780 testes; multicanal e unicidade no banco real; corrida real (20+20 rodadas,
+  1 vencedor em todas, SLA intacto).
+- **Provado (E2E real em produção, sem login/UI):** mensagem real "Testando 1941" do número de teste
+  `5561981925241` entrou pela instância `odontominas-teste` → canal **WhatsApp Principal** → conversa
+  criada **sem responsável**, e `last_webhook_at` do canal foi atualizado. Depois, com o código de
+  produção e as atendentes `[TESTE]` como atores (`railway run`), com envio real pelo canal: A assume;
+  B não consegue responder a conversa da A; A responde; A transfere pra B (motivo "troca de turno"
+  preservado); A perde a autorização de resposta; B responde; histórico registra ASSIGNED e
+  TRANSFERRED; `aguardando_desde` (SLA) não foi zerado; autoria de cada mensagem vinculada à atendente
+  certa. Cadeia provada: webhook → resolução de canal → conversa → atribuição → controle de ownership →
+  envio real → transferência → autorização pós-transferência → histórico → SLA preservado. Evidência:
+  `crm/scripts/e2e-canais-fluxo-real.ts` (commit `54a8b6c`).
+- **Pendente (UI autenticada):** login real das contas de teste; botão Assumir; transferência pela tela;
+  filtros; Configurações → Canais; validação visual/responsiva. **Próximo passo: fechar login/UI com as
+  contas de teste antes de iniciar o Kanban.**
 - **Preparado, não feito:** Kanban, distribuição automática, grupos/setores, presença, Noryos Ops
   (`verificarSaudeCanal` + `/api/canais/:id/diagnostico`), omnichannel, ponte CONVERSATION_* → Fluxo.
 - **Dados [TESTE] preservados** (canais Recepção/Comercial de instância fictícia, 3 atendentes sem
-  login, paciente e ~48 conversas 5500000000xxx) até depois da apresentação.
+  login, paciente e ~48 conversas 5500000000xxx) até depois da apresentação. **Preservar também** a conversa do número de teste `5561981925241` (responsável atual `[TESTE] Atendente B`, com histórico, mensagens, atribuições, transferências e a evidência do E2E real): não apagar.
 
 ## Onde está (2026-09-18, Identidade/RBAC — validação E2E: convite real ok, 2 de 6 perfis de teste ativos)
 

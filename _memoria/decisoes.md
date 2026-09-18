@@ -716,3 +716,14 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   canal pausado ou desconectado falha de forma controlada (`canal_pausado`/`canal_indisponivel`); sem
   conversa (disparo, alerta interno) usa o canal principal, e o principal não pode ser pausado. Por quê:
   o paciente não pode receber mensagem de um número que não conhece.
+- **2026-09-18** (Rafael) [odontominas]: a fase Canais + Atendimento Compartilhado **não é marcada como
+  100% concluída** — status oficial: "backend + E2E real validados; UI autenticada pendente". Só fecha
+  depois de login real das contas de teste e validação pela tela (Assumir, transferência, filtros,
+  Configurações → Canais, visual/responsivo). **Próximo passo: fechar login/UI antes de iniciar o
+  Kanban**, que não avança sozinho. Por quê: o E2E real usou o código de produção com atores `[TESTE]`
+  sem sessão nem navegador; isso prova as regras e o envio, mas não a tela.
+- **2026-09-18** (Rafael) [odontominas]: os dados do E2E real de Canais ficam **preservados, sem limpeza**:
+  a conversa do número de teste `5561981925241` (responsável atual `[TESTE] Atendente B`), seu
+  histórico (ASSIGNED/TRANSFERRED), mensagens `[TESTE Canais]`, atribuições, transferências e a
+  evidência (`crm/scripts/e2e-canais-fluxo-real.ts`, commit `54a8b6c`). Por quê: são a prova da fase e
+  ficam até depois da apresentação, junto do resto dos dados de teste.
