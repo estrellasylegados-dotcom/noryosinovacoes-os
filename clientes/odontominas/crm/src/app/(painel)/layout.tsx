@@ -43,7 +43,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             <p className="text-sm font-semibold tracking-tight text-teal-800">{clinicaAtual?.nome ?? "Clínica"}</p>
             <p className="text-xs text-neutral-400">CRM · Atendimento</p>
           </div>
-          <SidebarNav papel={sessao.papel} naoLidas={naoLidas} />
+          <SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} />
         </div>
 
         <div className="space-y-3 border-t border-neutral-100 pt-4 sm:mt-auto">
@@ -76,7 +76,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
               <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" title="Sessão ativa" />
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium text-neutral-900">{sessao.nome}</p>
-                <p className="truncate text-[11px] capitalize text-neutral-400">{sessao.papel}</p>
+                <p className="truncate text-[11px] capitalize text-neutral-400">{sessao.perfil}</p>
               </div>
             </div>
             <LogoutButton />

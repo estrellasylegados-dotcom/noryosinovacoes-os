@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { can } from "@/lib/autorizacao";
 import { buscarConfiguracaoHorario } from "@/lib/horario-atendimento";
 import { HorarioAtendimentoForm } from "@/components/HorarioAtendimentoForm";
 
 export const dynamic = "force-dynamic";
 
-/** Fundação pro SLA futuro — mexe em config que vai virar regra de negócio, mesmo gate de Reputação/Agentes/Equipe: só admin. */
+/** Fundação pro SLA (seção 49 do pedido) — `configuracoes.horario`, não mais admin fixo. */
 export default async function HorarioAtendimentoPage() {
   const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
 
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!can(sessao, "configuracoes.horario")) redirect("/");
 
   if (!clinicaId) {
     return (

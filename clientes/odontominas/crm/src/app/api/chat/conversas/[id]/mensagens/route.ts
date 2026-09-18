@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { buscarMensagensChat, enviarRespostaChat } from "@/lib/chat";
 import { getClinicaId } from "@/lib/clinica";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { requirePermission } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
@@ -21,8 +21,12 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   return NextResponse.json({ ok: true, mensagens });
 }
 
-/** Resposta manual pelo painel — envia de verdade pela Evolution API (ver src/lib/chat.ts). */
+/** Resposta manual pelo painel — envia de verdade pela Evolution API (ver src/lib/chat.ts). `conversas.assumir` (seção 51 do pedido). */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermission("conversas.assumir");
+  if ("erro" in auth) return auth.erro;
+  const { sessao } = auth;
+
   const { id } = await context.params;
 
   let body: { texto?: string };
@@ -36,12 +40,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "texto_vazio" }, { status: 400 });
   }
 
-  const [clinicaId, sessao] = await Promise.all([getClinicaId(), getSessaoAtual()]);
+  const clinicaId = await getClinicaId();
   if (!clinicaId) {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
-  const resultado = await enviarRespostaChat(clinicaId, id, body.texto, sessao?.atendenteId ?? null);
+  const resultado = await enviarRespostaChat(clinicaId, id, body.texto, sessao.atendenteId);
   if (!resultado.ok) {
     const httpStatus = resultado.error === "not_found" ? 404 : resultado.error === "texto_vazio" ? 400 : 503;
     return NextResponse.json(resultado, { status: httpStatus });

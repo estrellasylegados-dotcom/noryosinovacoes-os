@@ -1,17 +1,18 @@
 import { redirect } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { can } from "@/lib/autorizacao";
 import { buscarConfiguracaoHorario } from "@/lib/horario-atendimento";
 import { buscarResumoSlaHoje, buscarSlaConfig } from "@/lib/sla";
 import { SlaConfigForm } from "@/components/SlaConfigForm";
 
 export const dynamic = "force-dynamic";
 
-/** Configuração de SLA + resumo do dia — fundação, ainda não conectada em automação (ver andamento.md). Só admin. */
+/** Configuração de SLA + resumo do dia — fundação, ainda não conectada em automação (ver andamento.md). Ver quem enxerga o quê na seção 48 do pedido; a tela toda pede ao menos `sla.visualizar`, o formulário de configuração (`SlaConfigForm`) confere `sla.configurar` de novo no PUT (src/app/api/clinica/sla/route.ts). */
 export default async function SlaPage() {
   const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
 
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!can(sessao, "sla.visualizar")) redirect("/");
 
   if (!clinicaId) {
     return (

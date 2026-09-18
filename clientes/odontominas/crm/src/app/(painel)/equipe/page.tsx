@@ -3,18 +3,30 @@ import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatsAtendentes } from "@/lib/equipe";
 import { formatDataHora, formatDuracao } from "@/lib/tempo";
+import { can } from "@/lib/autorizacao";
+import { PERFIS, podeAtribuirPerfil } from "@/lib/permissoes";
 import { EquipeNovaConta } from "@/components/EquipeNovaConta";
 import { EquipeCardAcoes } from "@/components/EquipeCardAcoes";
 
 export const dynamic = "force-dynamic";
 
-/** Quem atendeu quanto — só admin. Mesmo gate de /resumo (redirect real, não só esconder o link). */
+const STATUS_LABEL: Record<string, string> = {
+  invited: "Convite pendente",
+  pending_approval: "Aguardando aprovação",
+  active: "Ativa",
+  blocked: "Bloqueada",
+  disabled: "Desativada",
+};
+
+/** Quem atendeu quanto — precisa de `usuarios.visualizar` (Dona/Gerente/Noryos Admin/Suporte por padrão). Redirect real, não só esconder o link (backend é autoridade). */
 export default async function EquipePage() {
   const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
 
-  if (sessao?.papel !== "admin") {
+  if (!can(sessao, "usuarios.visualizar")) {
     redirect("/");
   }
+
+  const perfisAtribuiveis = sessao ? PERFIS.filter((p) => podeAtribuirPerfil(sessao.perfil, p)) : [];
 
   if (!clinicaId) {
     return (
@@ -36,7 +48,7 @@ export default async function EquipePage() {
             <h1 className="text-xl font-semibold text-neutral-900">Equipe</h1>
             <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — atendimento por secretária</p>
           </div>
-          <EquipeNovaConta />
+          <EquipeNovaConta perfisAtribuiveis={perfisAtribuiveis} />
         </header>
 
         {stats.length === 0 ? (
@@ -50,11 +62,12 @@ export default async function EquipePage() {
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium text-neutral-900">{a.nome}</p>
-                    <p className="text-xs capitalize text-neutral-400">{a.papel}</p>
+                    <p className="text-xs capitalize text-neutral-400">{a.perfil}</p>
+                    {a.email && <p className="text-xs text-neutral-400">{a.email}</p>}
                   </div>
-                  {!a.ativo && (
+                  {a.status !== "active" && (
                     <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-500">
-                      Inativa
+                      {STATUS_LABEL[a.status] ?? a.status}
                     </span>
                   )}
                 </div>
@@ -80,7 +93,13 @@ export default async function EquipePage() {
                   </div>
                 </dl>
 
-                <EquipeCardAcoes id={a.id} nome={a.nome} papel={a.papel} ativo={a.ativo} />
+                <EquipeCardAcoes
+                  id={a.id}
+                  nome={a.nome}
+                  perfil={a.perfil}
+                  status={a.status}
+                  perfisAtribuiveis={perfisAtribuiveis}
+                />
               </div>
             ))}
           </div>

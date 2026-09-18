@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { atualizarConversaChat, type PatchConversaChat } from "@/lib/chat";
 import { getClinicaId } from "@/lib/clinica";
 import { isPrioridadeValida } from "@/lib/prioridade";
+import { requirePermission } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
@@ -12,8 +13,11 @@ type Body = {
   naoLida?: boolean;
 };
 
-/** Atualização parcial de uma conversa no Chat ao Vivo: arquivar, prioridade, atribuição, marcar lida. */
+/** Atualização parcial de uma conversa no Chat ao Vivo: arquivar, prioridade, atribuição, marcar lida — `conversas.transferir` (seção 51 do pedido) cobre a atribuição, que é a ação mais sensível daqui. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const auth = await requirePermission("conversas.transferir");
+  if ("erro" in auth) return auth.erro;
+
   const { id } = await context.params;
 
   let body: Body;

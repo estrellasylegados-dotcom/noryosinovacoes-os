@@ -3,23 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import type { Papel } from "@/lib/sessao";
+import type { Permissao } from "@/lib/permissoes";
 
-type Item = { href: string; label: string; adminOnly?: boolean; group?: string };
+type Item = { href: string; label: string; permissao?: Permissao; group?: string };
 
 const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
   { href: "/chat", label: "Chat ao Vivo" },
-  { href: "/resumo", label: "Relatórios", adminOnly: true },
-  { href: "/conexao", label: "Conexão WhatsApp", adminOnly: true },
-  { href: "/campanhas", label: "Campanhas", adminOnly: true, group: "Ferramentas" },
-  { href: "/agentes", label: "Agentes de IA", adminOnly: true, group: "Ferramentas" },
-  { href: "/disparos", label: "Disparos", adminOnly: true, group: "Ferramentas" },
-  { href: "/fluxos", label: "Fluxo de Conversa", adminOnly: true, group: "Ferramentas" },
-  { href: "/reputacao", label: "Reputação", adminOnly: true, group: "Ferramentas" },
-  { href: "/integracoes/controle-odonto", label: "ControleODONTO", adminOnly: true, group: "Ferramentas" },
-  { href: "/configuracoes/horario", label: "Horário de Atendimento", adminOnly: true, group: "Configurações" },
-  { href: "/configuracoes/sla", label: "SLA / Atendimento", adminOnly: true, group: "Configurações" },
+  { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
+  { href: "/conexao", label: "Conexão WhatsApp", permissao: "canais.visualizar" },
+  { href: "/campanhas", label: "Campanhas", permissao: "automacoes.visualizar", group: "Ferramentas" },
+  { href: "/agentes", label: "Agentes de IA", permissao: "automacoes.visualizar", group: "Ferramentas" },
+  { href: "/disparos", label: "Disparos", permissao: "automacoes.visualizar", group: "Ferramentas" },
+  { href: "/fluxos", label: "Fluxo de Conversa", permissao: "automacoes.visualizar", group: "Ferramentas" },
+  { href: "/reputacao", label: "Reputação", permissao: "configuracoes.reputacao", group: "Ferramentas" },
+  { href: "/integracoes/controle-odonto", label: "ControleODONTO", permissao: "configuracoes.integracoes", group: "Ferramentas" },
+  { href: "/equipe", label: "Equipe", permissao: "usuarios.visualizar", group: "Configurações" },
+  { href: "/configuracoes/horario", label: "Horário de Atendimento", permissao: "configuracoes.horario", group: "Configurações" },
+  { href: "/configuracoes/sla", label: "SLA / Atendimento", permissao: "sla.visualizar", group: "Configurações" },
 ];
 
 function ItemLink({ item, ativo, naoLidas }: { item: Item; ativo: boolean; naoLidas: number }) {
@@ -70,10 +71,12 @@ function IconeChevron({ aberto }: { aberto: boolean }) {
   );
 }
 
-export function SidebarNav({ papel, naoLidas = 0 }: { papel: Papel; naoLidas?: number }) {
+/** `permissoes` vem de `sessao.permissoes` (Server Component, já resolvida — ver src/lib/sessao-servidor.ts). Esconder item aqui é só UX: a rota por trás sempre reconfere com requirePermission (backend é autoridade, seção 14 do pedido). */
+export function SidebarNav({ permissoes, naoLidas = 0 }: { permissoes: readonly Permissao[]; naoLidas?: number }) {
   const pathname = usePathname();
   const [gruposFechados, setGruposFechados] = useState<Record<string, boolean>>({});
-  const visiveis = ITENS.filter((item) => !item.adminOnly || papel === "admin");
+  const temPermissao = (p?: Permissao) => !p || permissoes.includes(p);
+  const visiveis = ITENS.filter((item) => temPermissao(item.permissao));
   const soltos = visiveis.filter((item) => !item.group);
   const grupos = new Map<string, Item[]>();
   for (const item of visiveis) {

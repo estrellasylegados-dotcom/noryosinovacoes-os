@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
 import { getClinicaId } from "@/lib/clinica";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { requirePermission } from "@/lib/autorizacao";
 import { buscarConfiguracaoHorario, salvarConfiguracaoHorario, type PayloadHorario } from "@/lib/horario-atendimento";
 
 export const runtime = "nodejs";
 
-/**
- * Config de clínica (mexe em algo que futuramente vira SLA/automação) — só
- * admin, GET e PUT, mesmo gate de /api/reputacao/config. RBAC de hoje só
- * distingue admin/atendente (sem papel "Gerente" à parte ainda — ver
- * relatório da fatia); "Dona"/"Noryos Admin" mapeiam pra admin.
- */
-async function exigirAdmin() {
-  const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
-}
-
+/** Horário de atendimento (seção 49 do pedido) — `configuracoes.horario`, não mais admin fixo. */
 export async function GET() {
-  if (!(await exigirAdmin())) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("configuracoes.horario");
+  if ("erro" in auth) return auth.erro;
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -29,7 +20,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!(await exigirAdmin())) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("configuracoes.horario");
+  if ("erro" in auth) return auth.erro;
 
   let body: PayloadHorario;
   try {

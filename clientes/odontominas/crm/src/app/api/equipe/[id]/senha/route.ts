@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
 import { trocarSenhaAtendente } from "@/lib/atendentes";
 import { getClinicaId } from "@/lib/clinica";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { requirePermission } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
-/** Admin define senha nova pra outra conta — ver nota em atendentes.ts sobre não ser o reset self-service. */
-async function exigirAdmin() {
-  const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
-}
-
+/** Dona/Noryos Admin/Suporte define senha nova pra outra conta — ver nota em atendentes.ts sobre não ser o reset self-service (isso é src/lib/reset-senha.ts). */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!(await exigirAdmin())) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("usuarios.resetar_acesso");
+  if ("erro" in auth) return auth.erro;
+  const { sessao } = auth;
 
   const { id } = await context.params;
 
@@ -23,10 +20,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const clinicaId = await getClinicaId();
+  const clinicaId = sessao.clinicaId ?? (await getClinicaId());
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
 
-  const resultado = await trocarSenhaAtendente(clinicaId, id, body.novaSenha ?? "");
+  const resultado = await trocarSenhaAtendente(clinicaId, id, body.novaSenha ?? "", sessao.atendenteId);
   if (!resultado.ok) return NextResponse.json(resultado, { status: resultado.error === "not_found" ? 404 : 400 });
 
   return NextResponse.json(resultado);

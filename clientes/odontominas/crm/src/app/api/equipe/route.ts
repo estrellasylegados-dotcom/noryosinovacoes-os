@@ -1,31 +1,41 @@
 import { NextResponse } from "next/server";
-import { criarAtendente, type DadosNovoAtendente } from "@/lib/atendentes";
+import { criarAtendenteConvidado, type DadosConviteAtendente } from "@/lib/atendentes";
+import { criarConvite } from "@/lib/convites";
+import { enviarEmailConvite } from "@/lib/email";
 import { getClinicaId } from "@/lib/clinica";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { requirePermission } from "@/lib/autorizacao";
+import { podeAtribuirPerfil, type Perfil } from "@/lib/permissoes";
 
 export const runtime = "nodejs";
 
-/** Criar conta de atendente é ação de gestão de equipe — só admin. */
-async function exigirAdmin() {
-  const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
-}
-
 export async function POST(request: Request) {
-  if (!(await exigirAdmin())) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("usuarios.criar");
+  if ("erro" in auth) return auth.erro;
+  const { sessao } = auth;
 
-  let body: DadosNovoAtendente;
+  let body: DadosConviteAtendente;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const clinicaId = await getClinicaId();
-  if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
+  // Regra de elevação (seção 40/41): ninguém convida um perfil mais
+  // poderoso que o próprio escopo — checado no servidor, nunca só na UI.
+  if (!podeAtribuirPerfil(sessao.perfil, body.perfil as Perfil)) {
+    return NextResponse.json({ ok: false, error: "perfil_nao_permitido" }, { status: 403 });
+  }
 
-  const resultado = await criarAtendente(clinicaId, body);
-  if (!resultado.ok) return NextResponse.json(resultado, { status: 400 });
+  const clinicaId = sessao.clinicaId ?? (await getClinicaId());
+  const resultado = await criarAtendenteConvidado(clinicaId, body, sessao.atendenteId);
+  if (!resultado.ok || !resultado.atendente) return NextResponse.json(resultado, { status: 400 });
 
-  return NextResponse.json(resultado, { status: 201 });
+  const tokenBruto = await criarConvite(resultado.atendente.id, sessao.atendenteId);
+  let emailEnviado = false;
+  if (tokenBruto && resultado.atendente.email) {
+    const envio = await enviarEmailConvite(resultado.atendente.email, resultado.atendente.nome, tokenBruto);
+    emailEnviado = envio.ok;
+  }
+
+  return NextResponse.json({ ok: true, atendente: resultado.atendente, emailEnviado }, { status: 201 });
 }
