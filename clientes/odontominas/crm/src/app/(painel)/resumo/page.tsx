@@ -20,6 +20,8 @@ import { montarRelatorioMarketing } from "@/lib/campanha-metricas";
 import { listarAtendentes } from "@/lib/atendentes";
 import { inicioPeriodo } from "@/lib/relatorios";
 import { RelatorioMarketing } from "@/components/campanhas/RelatorioMarketing";
+import { buscarPainelNps } from "@/lib/nps";
+import { RelatorioNps } from "@/components/relatorios/RelatorioNps";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +61,7 @@ export default async function ResumoPage({
   const periodo: PeriodoRelatorio = periodoBruto && isPeriodoValido(periodoBruto) ? periodoBruto : "7d";
 
   const agora = new Date();
-  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes, clinicaAtual] = await Promise.all([
+  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes, clinicaAtual, painelNps] = await Promise.all([
     buscarResumoExecutivo(clinicaId),
     buscarRelatorioAtendimento(clinicaId, periodo),
     listarNovosPacientes(clinicaId, periodo),
@@ -68,6 +70,7 @@ export default async function ResumoPage({
     montarRelatorioMarketing(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
     listarAtendentes(clinicaId),
     buscarClinicaAtual(),
+    buscarPainelNps(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
   ]);
   const nomesAtendentes = Object.fromEntries(atendentes.map((a) => [a.id, a.nome]));
 
@@ -230,6 +233,11 @@ export default async function ResumoPage({
               valor: "marketing",
               label: "Marketing",
               conteudo: <RelatorioMarketing linhas={marketing} nomesAtendentes={nomesAtendentes} />,
+            },
+            {
+              valor: "pesquisas",
+              label: "Pesquisas",
+              conteudo: <RelatorioNps painel={painelNps} />,
             },
             {
               valor: "leads",

@@ -10,6 +10,7 @@ import { atualizarStatus } from "@/lib/conversas";
 import { isPrioridadeValida } from "@/lib/prioridade";
 import { buscarAgente } from "@/lib/agentes";
 import { buscarClinicaAtual } from "@/lib/clinica";
+import { classificarNps } from "@/lib/nps";
 
 /**
  * Camada de I/O do motor de Fluxo de Conversa (Fase 2a — ver
@@ -220,12 +221,16 @@ async function aplicarAcaoCrm(
       const comentario = acao.variavelComentario ? (contexto.variaveis[acao.variavelComentario] ?? null) : null;
       const numero = Number(valorBruto);
       const ehNumero = valorBruto.trim() !== "" && Number.isFinite(numero);
+      // Fase 4 — só 'nps' usa a escala 0-10 detrator/neutro/promotor;
+      // 'satisfacao' compartilha a mesma tabela sem essa classificação.
+      const classificacao = pesquisa.tipo === "nps" && ehNumero ? classificarNps(numero) : null;
 
       const { error: erroResposta } = await supabase.from("pesquisa_respostas").insert({
         pesquisa_id: pesquisaId,
         valor_numero: ehNumero ? numero : null,
         valor_texto: ehNumero ? null : valorBruto,
         comentario,
+        classificacao,
       });
       if (erroResposta) {
         console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: erroResposta.code ?? null }));
