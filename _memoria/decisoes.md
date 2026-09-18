@@ -528,3 +528,35 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   melhor retorno imediato pra demo/fechamento. Indicação, catálogo no WhatsApp, gamificação de
   atendente, multi-unidade, proposta digital de tratamento e marca por clínica ficam de roadmap,
   não descartadas.
+- **2026-09-17** (Rafael) [odontominas]: o motor do Fluxo de Conversa vira o motor central de
+  automação e relacionamento do Noryos OS — **decisão principal, não criar um 2º motor**. Por quê:
+  NPS, avaliação Google, aniversário, evento interno e tudo que vier depois (reativação, follow-up,
+  recuperação, retorno vencido) devem ser gatilhos/ações/persistências novas do mesmo motor, não
+  subsistemas paralelos — evita duplicar infraestrutura de execução, idempotência, log e editor
+  visual que já existe e já está validada em produção. Fase 3 (infraestrutura central: gatilho
+  temporal e interno, nó `capturar_resposta`, pesquisas genéricas) implementada e aprovada em
+  produção no mesmo dia.
+- **2026-09-17** (Rafael, achado na validação em produção) [odontominas]: gatilho temporal e
+  interno do Fluxo de Conversa (aniversário, evento interno) ignoram a guarda "recusa iniciar se
+  `dono_conversa='humano'`" — tratam a conversa como se fosse nova (`conversaEraNova=true`), mesma
+  exceção que `nova_conversa`/`primeira_mensagem` já tinham. Por quê: essa guarda existe pra
+  proteger atendimento humano **em andamento**, mas `dono_conversa='humano'` é só o estado de
+  repouso de toda conversa que nenhum bot assumiu ainda — sem a exceção, a imensa maioria dos
+  pacientes reais nunca seria alcançada por aniversário/evento interno (achado ao testar em
+  produção com paciente de teste: 1ª tentativa recusada com esse motivo). Continua respeitando a
+  guarda de agente de IA ativo sem permissão.
+- **2026-09-17** (Rafael) [odontominas]: a rota de teste controlado de eventos internos
+  (`/api/automacao/eventos/testar`) fica sempre atrás de uma flag de ambiente explícita
+  (`ENABLE_AUTOMATION_EVENT_TEST_ROUTE`, default desabilitada) além da sessão de admin — nunca
+  permanentemente ligada em produção. Por quê: é a única forma de testar `atendimento_concluido`
+  hoje (não existe origem real confiável pra esse evento no CRM ainda), mas não pode virar uma
+  rota administrativa genérica capaz de simular qualquer evento de negócio à vontade. Uso
+  pretendido: ligar temporariamente pra validar, desligar de novo logo em seguida — confirmado
+  desligada (`false`) ao fim da validação da Fase 3.
+- **2026-09-17** (Rafael) [odontominas]: os artefatos de teste da Fase 3 do Fluxo de Conversa (4
+  fluxos `[TESTE FASE 3]`, pesquisas, execuções e eventos de idempotência/scanner ligados a eles)
+  ficam **preservados em produção**, não apagar sem autorização explícita. Por quê: servem de prova
+  prática pra uma apresentação futura (fluxo criado, execução real, idempotência funcionando,
+  scanner funcionando, pesquisa criada, captura testada) — apagar antes tiraria a evidência viva do
+  que foi validado. Todos ficam claramente identificados (`[TESTE FASE 3]` no nome,
+  `uso: demonstracao_fase3` em descrição/metadata) e sem gatilho automático ativo.
