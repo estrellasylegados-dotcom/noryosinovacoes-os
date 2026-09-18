@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanal } from "@/lib/canais-envio";
+import { buscarCanalDaConversa } from "@/lib/canais";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarModelo, gerarResposta, type MensagemHistorico, type ProvedorId } from "@/lib/ia-provedores";
@@ -769,10 +770,14 @@ async function enviarBlocos(
   blocos: string[],
   agenteId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  // Canal resolvido UMA vez (o da conversa) — todos os blocos saem pelo mesmo número.
+  const canal = await buscarCanalDaConversa(clinicaId, conversaId);
+  if (!canal) return { ok: false, error: "canal_nao_encontrado" };
+
   for (let i = 0; i < blocos.length; i++) {
     if (i > 0) await esperar(1200);
 
-    const envio = await enviarMensagemWhatsapp(telefone, blocos[i]);
+    const envio = await enviarPeloCanal(canal, telefone, blocos[i]);
     if (!envio.ok) {
       console.error("[agentes] envio_failed", JSON.stringify({ conversaId, bloco: i, error: envio.error ?? null }));
       if (i === 0) return { ok: false, error: envio.error ?? "envio_falhou" };

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { getClinicaId } from "@/lib/clinica";
 import { adquirirLock, liberarLock } from "@/lib/disparos-lock";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanalPrincipal } from "@/lib/canais-envio";
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
 import { normalizarTelefoneEntrada } from "@/lib/chat";
 import { intervaloEnvioMs, type StatusDestinatario } from "@/lib/disparos";
@@ -144,7 +144,7 @@ async function ciclo(): Promise<void> {
       nome: destinatario.nome as string | null,
       telefone: destinatario.telefone as string,
     });
-    const envio = await enviarMensagemWhatsapp(telefoneValido, texto);
+    const envio = await enviarPeloCanalPrincipal(clinicaId, telefoneValido, texto);
     const agora = new Date().toISOString();
 
     if (envio.ok) {

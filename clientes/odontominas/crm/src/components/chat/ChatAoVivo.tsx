@@ -5,10 +5,12 @@ import type { Atendente } from "@/lib/atendentes";
 import {
   contarAbasChat,
   filtrarConversasChat,
+  ordenarConversasChat,
   type AbaChat,
   type ConversaChat,
   type MensagemChat,
-} from "@/lib/chat";
+  type OrdemChat,
+} from "@/lib/chat-filtros";
 import type { Etiqueta } from "@/lib/etiquetas";
 import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM, type Prioridade } from "@/lib/prioridade";
 import { STATUS_CONFIG, STATUS_ORDEM, type StatusConversa } from "@/lib/status";
@@ -44,12 +46,32 @@ const LARGURA_MAX = 560;
 const LARGURA_PADRAO = 360;
 const CHAVE_SOM_NOTIFICACAO = "chat-som-notificacao";
 
-const ABAS_PRINCIPAIS: { valor: Exclude<AbaChat, "arquivadas">; label: string; Icone: () => ReactNode }[] = [
-  { valor: "todos", label: "Todos", Icone: IconeTodos },
-  { valor: "nao_lidas", label: "Não lidas", Icone: IconeEnvelope },
-  { valor: "concluidos", label: "Concluídos", Icone: IconeCheckCirculo },
-  { valor: "atribuidos", label: "Atribuídos", Icone: IconePessoa },
+/** Filas da caixa compartilhada (cada uma com contagem ao lado). "Meus" = atribuídos a mim. */
+const OPCOES_FILA: { valor: Exclude<AbaChat, "arquivadas">; label: string }[] = [
+  { valor: "todos", label: "Todos" },
+  { valor: "novos", label: "Novos" },
+  { valor: "sem_responsavel", label: "Sem responsável" },
+  { valor: "atribuidos", label: "Meus" },
+  { valor: "aguardando_atendente", label: "Aguardando atendente" },
+  { valor: "aguardando_paciente", label: "Aguardando paciente" },
+  { valor: "concluidos", label: "Finalizados" },
+  { valor: "nao_lidas", label: "Não lidas" },
 ];
+
+const OPCOES_ORDEM: { valor: OrdemChat; label: string }[] = [
+  { valor: "recentes", label: "Mais recentes" },
+  { valor: "antigos", label: "Mais antigos" },
+  { valor: "sem_responsavel", label: "Sem responsável primeiro" },
+];
+
+export type CanalChat = { id: string; nome: string; ativo: boolean };
+
+/** Quem está no controle AGORA (Humano, IA ou Fluxo) — um indicador só, pra ninguém confundir. */
+function textoControle(c: ConversaChat): string {
+  if (c.donoConversa === "fluxo") return "Automação ativa";
+  if (c.donoConversa === "agente_ia" && c.agenteAtivoId) return "IA ativa";
+  return c.atribuidoANome ? `Controle: ${c.atribuidoANome}` : "Sem responsável";
+}
 
 const CORES_AVATAR = ["bg-teal-600", "bg-blue-600", "bg-violet-600", "bg-rose-600", "bg-amber-600", "bg-emerald-600"];
 
@@ -97,6 +119,8 @@ export function ChatAoVivo({
   atendentes,
   atendenteAtualId,
   clinicaNome,
+  canais,
+  permissoes,
 }: {
   conversasIniciais: ConversaChat[];
   etiquetasIniciais: Etiqueta[];
@@ -105,6 +129,10 @@ export function ChatAoVivo({
   atendenteAtualId: string | null;
   /** Fase 3, branding dinâmico — client component, recebe via prop do Server Component pai (chat/page.tsx). */
   clinicaNome: string;
+  /** Canais da clínica (nome amigável na lista e no cabeçalho; filtro por canal). */
+  canais: CanalChat[];
+  /** Permissões da sessão — só pra mostrar/esconder botão; o backend é quem autoriza de verdade. */
+  permissoes: string[];
 }) {
   const [conversas, setConversas] = useState(conversasIniciais);
   const [etiquetas, setEtiquetas] = useState(etiquetasIniciais);
@@ -115,6 +143,11 @@ export function ChatAoVivo({
   const [filtroEtiquetaId, setFiltroEtiquetaId] = useState("");
   const [filtroSla, setFiltroSla] = useState<FiltroSla>("");
   const [ordenarPorSla, setOrdenarPorSla] = useState(false);
+  const [filtroCanalId, setFiltroCanalId] = useState("");
+  const [filtroResponsavel, setFiltroResponsavel] = useState("");
+  const [ordem, setOrdem] = useState<OrdemChat>("recentes");
+  const [erroAtribuicao, setErroAtribuicao] = useState<string | null>(null);
+  const [mostrarTransferir, setMostrarTransferir] = useState(false);
   const [slaPorConversa, setSlaPorConversa] = useState<Record<string, StatusSlaConversa>>({});
 
   const [mensagens, setMensagens] = useState<MensagemChat[]>([]);
@@ -144,13 +177,25 @@ export function ChatAoVivo({
       prioridade: filtroPrioridade || null,
       etiquetaId: filtroEtiquetaId || null,
       busca,
+      canalId: filtroCanalId || null,
+      responsavelId: filtroResponsavel === "meus" ? atendenteAtualId : filtroResponsavel || null,
     }).filter((c) => statusBateComFiltro(slaPorConversa[c.id], filtroSla));
 
-    if (!ordenarPorSla) return base;
-    return [...base].sort((a, b) => rankSla(slaPorConversa[a.id]) - rankSla(slaPorConversa[b.id]));
-  }, [conversas, aba, atendenteAtualId, filtroPrioridade, filtroEtiquetaId, busca, filtroSla, ordenarPorSla, slaPorConversa]);
+    const ordenada = ordenarConversasChat(base, ordem);
+    if (!ordenarPorSla) return ordenada;
+    return [...ordenada].sort((a, b) => rankSla(slaPorConversa[a.id]) - rankSla(slaPorConversa[b.id]));
+  }, [conversas, aba, atendenteAtualId, filtroPrioridade, filtroEtiquetaId, busca, filtroSla, ordenarPorSla, slaPorConversa, filtroCanalId, filtroResponsavel, ordem]);
+
+  const pode = (permissao: string) => permissoes.includes(permissao);
+  const nomeCanal = (id: string | null) => canais.find((c) => c.id === id)?.nome ?? null;
+  const varioscanais = canais.length > 1;
+  const atendentesDestino = atendentes.filter((a) => a.status === "active" && a.perfil !== "noryos_admin" && a.perfil !== "noryos_suporte");
 
   const selecionada = conversas.find((c) => c.id === selecionadaId) ?? null;
+  const podeResponderSelecionada =
+    Boolean(selecionada) &&
+    permissoes.includes("conversas.assumir") &&
+    (!selecionada?.atribuidoAId || selecionada.atribuidoAId === atendenteAtualId || permissoes.includes("conversas.intervir"));
 
   // Toca só quando a lista de novo tem uma mensagem RECEBIDA mais recente que a
   // que já estava ali — nunca na carga inicial nem quando a mudança é o
@@ -318,18 +363,19 @@ export function ChatAoVivo({
     setEnviando(true);
     setErroEnvio(null);
 
-    const resultado = await chamarApi<{ ok: boolean; error?: string; mensagem?: MensagemChat }>(
+    const resultado = await chamarApi<{ ok: boolean; error?: string; mensagemErro?: string; mensagem?: MensagemChat }>(
       `/api/chat/conversas/${selecionada.id}/mensagens`,
       { method: "POST", body: JSON.stringify({ texto: textoResposta }) }
     );
 
     if (!resultado.ok) {
       setErroEnvio(
-        resultado.error === "evolution_unavailable"
-          ? "WhatsApp não está conectado agora."
-          : "Não consegui enviar, tenta de novo."
+        resultado.mensagemErro ??
+          (resultado.error === "evolution_unavailable" ? "WhatsApp não está conectado agora." : "Não consegui enviar, tenta de novo.")
       );
       setEnviando(false);
+      // Conflito de responsável / conversa mudou de mãos: recarrega pra tela refletir o estado real.
+      if (resultado.error === "ja_assumida" || resultado.error === "nao_e_responsavel") atualizarListaAgora();
       return;
     }
 
@@ -339,9 +385,47 @@ export function ChatAoVivo({
     atualizarListaAgora();
   }
 
+  async function assumirSelecionada() {
+    if (!selecionada) return;
+    setErroAtribuicao(null);
+    const r = await chamarApi<{ ok: boolean; error?: string; mensagemErro?: string }>(`/api/chat/conversas/${selecionada.id}/assumir`, { method: "POST" });
+    if (!r.ok) setErroAtribuicao(r.mensagemErro ?? "Não foi possível assumir a conversa.");
+    await atualizarListaAgora();
+  }
+
+  async function transferirSelecionada(destinoId: string) {
+    if (!selecionada) return;
+    setErroAtribuicao(null);
+    setMostrarTransferir(false);
+    const r = await chamarApi<{ ok: boolean; error?: string; mensagemErro?: string }>(`/api/chat/conversas/${selecionada.id}/transferir`, {
+      method: "POST",
+      body: JSON.stringify({ esperadoAtribuidoA: selecionada.atribuidoAId, destinoId }),
+    });
+    if (!r.ok) {
+      setErroAtribuicao(
+        r.mensagemErro ??
+          (r.error === "destino_invalido" || r.error === "destino_sem_permissao"
+            ? "Essa pessoa não pode receber a conversa."
+            : "Não foi possível transferir a conversa.")
+      );
+    }
+    await atualizarListaAgora();
+  }
+
+  async function devolverSelecionadaAFila() {
+    if (!selecionada || !selecionada.atribuidoAId) return;
+    setErroAtribuicao(null);
+    const r = await chamarApi<{ ok: boolean; error?: string }>(`/api/chat/conversas/${selecionada.id}/desatribuir`, {
+      method: "POST",
+      body: JSON.stringify({ esperadoAtribuidoA: selecionada.atribuidoAId }),
+    });
+    if (!r.ok) setErroAtribuicao("Esta conversa mudou de responsável. Atualizei a tela.");
+    await atualizarListaAgora();
+  }
+
   async function patchSelecionada(patch: Record<string, unknown>) {
     if (!selecionada) return;
-    setConversas((prev) => prev.map((c) => (c.id === selecionada.id ? { ...c, ...otimista(patch, atendentes) } : c)));
+    setConversas((prev) => prev.map((c) => (c.id === selecionada.id ? { ...c, ...patch } : c)));
     await chamarApi(`/api/chat/conversas/${selecionada.id}`, { method: "PATCH", body: JSON.stringify(patch) });
     atualizarListaAgora();
   }
@@ -461,23 +545,66 @@ export function ChatAoVivo({
           />
         </div>
 
-        <div className="flex items-center gap-1 border-b border-neutral-200 px-3 py-2">
-          {ABAS_PRINCIPAIS.map(({ valor, label, Icone }) => (
-            <BotaoIconeAba
-              key={valor}
-              label={label}
-              ativo={aba === valor}
-              contagem={contagens[valor]}
-              onClick={() => setAba(valor)}
-            >
-              <Icone />
-            </BotaoIconeAba>
-          ))}
+        <div className="flex flex-wrap items-center gap-1 border-b border-neutral-200 px-3 py-2">
+          <select
+            value={aba === "arquivadas" ? "todos" : aba}
+            onChange={(e) => setAba(e.target.value as AbaChat)}
+            title="Fila"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-700"
+          >
+            {OPCOES_FILA.map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.label} ({contagens[o.valor]})
+              </option>
+            ))}
+          </select>
 
           <div className="mx-1 h-6 w-px shrink-0 bg-neutral-200" />
 
           <FiltroPrioridadeBotao valor={filtroPrioridade} onChange={setFiltroPrioridade} />
           <FiltroEtiquetaBotao etiquetas={etiquetas} valor={filtroEtiquetaId} onChange={setFiltroEtiquetaId} />
+          {varioscanais && (
+            <select
+              value={filtroCanalId}
+              onChange={(e) => setFiltroCanalId(e.target.value)}
+              title="Filtrar por canal"
+              className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-600"
+            >
+              <option value="">Todos os canais</option>
+              {canais.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            value={filtroResponsavel}
+            onChange={(e) => setFiltroResponsavel(e.target.value)}
+            title="Filtrar por responsável"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-600"
+          >
+            <option value="">Qualquer responsável</option>
+            <option value="sem">Sem responsável</option>
+            <option value="meus">Meus</option>
+            {atendentes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nome}
+              </option>
+            ))}
+          </select>
+          <select
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value as OrdemChat)}
+            title="Ordenação"
+            className="rounded-full border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-600"
+          >
+            {OPCOES_ORDEM.map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.label}
+              </option>
+            ))}
+          </select>
           <select
             value={filtroSla}
             onChange={(e) => setFiltroSla(e.target.value as FiltroSla)}
@@ -535,6 +662,10 @@ export function ChatAoVivo({
                   <span className="shrink-0 text-[11px] text-neutral-400">{formatHoraCurta(c.ultimaMensagemEm)}</span>
                 </div>
                 <SlaBadge status={slaPorConversa[c.id]} compacto />
+                <p className="mt-0.5 truncate text-[11px] text-neutral-400">
+                  {varioscanais && c.canalNome ? `${c.canalNome} · ` : ""}
+                  {c.atribuidoANome ? `Responsável: ${c.atribuidoANome}` : "Sem responsável"}
+                </p>
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${PRIORIDADE_CONFIG[c.prioridade].corPonto}`} />
                   <p className={`truncate text-xs ${c.naoLida ? "font-medium text-neutral-700" : "text-neutral-500"}`}>
@@ -594,7 +725,11 @@ export function ChatAoVivo({
                 <p className="truncate text-sm font-semibold text-neutral-900">
                   {selecionada.pacienteNome || "Sem nome"}
                 </p>
-                <p className="text-xs text-neutral-500">{formatTelefone(selecionada.telefone)}</p>
+                <p className="text-xs text-neutral-500">
+                  {formatTelefone(selecionada.telefone)}
+                  {selecionada.canalNome ? ` · ${selecionada.canalNome}` : nomeCanal(selecionada.canalId) ? ` · ${nomeCanal(selecionada.canalId)}` : ""}
+                </p>
+                <p className="text-[11px] font-medium text-teal-700">{textoControle(selecionada)}</p>
               </div>
 
               <select
@@ -653,18 +788,24 @@ export function ChatAoVivo({
                 ))}
               </select>
 
-              <select
-                value={selecionada.atribuidoAId ?? ""}
-                onChange={(e) => patchSelecionada({ atribuidoAId: e.target.value || null })}
-                className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600"
-              >
-                <option value="">Não atribuída</option>
-                {atendentes.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nome}
-                  </option>
-                ))}
-              </select>
+              <ResponsavelControles
+                conversa={selecionada}
+                atendenteAtualId={atendenteAtualId}
+                atendentesDestino={atendentesDestino}
+                podeAssumir={pode("conversas.assumir")}
+                podeMexer={
+                  pode("conversas.transferir") &&
+                  (!selecionada.atribuidoAId ||
+                    selecionada.atribuidoAId === atendenteAtualId ||
+                    pode("conversas.visualizar_todas") ||
+                    pode("conversas.intervir"))
+                }
+                mostrarTransferir={mostrarTransferir}
+                setMostrarTransferir={setMostrarTransferir}
+                onAssumir={assumirSelecionada}
+                onTransferir={transferirSelecionada}
+                onDevolver={devolverSelecionadaAFila}
+              />
 
               <button
                 type="button"
@@ -756,7 +897,14 @@ export function ChatAoVivo({
             </div>
 
             <div className="border-t border-neutral-200 bg-white px-4 py-3">
+              {erroAtribuicao && <p className="mb-1.5 text-xs text-amber-700">{erroAtribuicao}</p>}
               {erroEnvio && <p className="mb-1.5 text-xs text-red-600">{erroEnvio}</p>}
+              {selecionada.atribuidoAId && selecionada.atribuidoAId !== atendenteAtualId && (
+                <p className="mb-1.5 text-xs text-neutral-500">
+                  {selecionada.atribuidoANome ?? "Outra pessoa"} está atendendo esta conversa.
+                  {!pode("conversas.intervir") && " Só ela (ou quem tem permissão de intervir) responde."}
+                </p>
+              )}
               <div className="flex items-end gap-2">
                 <textarea
                   value={textoResposta}
@@ -767,13 +915,20 @@ export function ChatAoVivo({
                       enviarResposta();
                     }
                   }}
-                  placeholder="Escreva uma resposta…"
+                  disabled={!podeResponderSelecionada}
+                  placeholder={
+                    !podeResponderSelecionada
+                      ? "Você não pode responder esta conversa"
+                      : selecionada.atribuidoAId
+                        ? "Escreva uma resposta…"
+                        : "Escreva uma resposta… (ao enviar, você assume esta conversa)"
+                  }
                   rows={1}
                   className="max-h-32 min-h-[42px] flex-1 resize-none rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-teal-600"
                 />
                 <button
                   type="button"
-                  disabled={enviando || !textoResposta.trim()}
+                  disabled={enviando || !textoResposta.trim() || !podeResponderSelecionada}
                   onClick={enviarResposta}
                   className="shrink-0 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -789,6 +944,7 @@ export function ChatAoVivo({
 
       {mostrarNovaConversa && (
         <NovaConversaModal
+          canais={canais}
           onFechar={() => setMostrarNovaConversa(false)}
           onCriada={(conversaId) => {
             setMostrarNovaConversa(false);
@@ -798,14 +954,6 @@ export function ChatAoVivo({
       )}
     </div>
   );
-}
-
-function otimista(patch: Record<string, unknown>, atendentes: Atendente[]) {
-  const extra: Record<string, unknown> = { ...patch };
-  if ("atribuidoAId" in patch) {
-    extra.atribuidoANome = atendentes.find((a) => a.id === patch.atribuidoAId)?.nome ?? null;
-  }
-  return extra;
 }
 
 /** Botão de ícone com contador — usado nas abas e em Arquivadas, mesma cara da RoiZap (ícone + número, não texto). */
@@ -990,41 +1138,6 @@ function FiltroEtiquetaBotao({
   );
 }
 
-function IconeTodos() {
-  return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
-      <path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 20l1.1-5.4A8.5 8.5 0 1 1 21 11.5Z" />
-    </svg>
-  );
-}
-
-function IconeEnvelope() {
-  return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
-    </svg>
-  );
-}
-
-function IconeCheckCirculo() {
-  return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.5 2.5 2.5 4.5-5" />
-    </svg>
-  );
-}
-
-function IconePessoa() {
-  return (
-    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
-    </svg>
-  );
-}
-
 function IconeArquivo() {
   return (
     <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}>
@@ -1079,7 +1192,17 @@ function IconeCheckMini() {
   );
 }
 
-function NovaConversaModal({ onFechar, onCriada }: { onFechar: () => void; onCriada: (conversaId: string) => void }) {
+function NovaConversaModal({
+  onFechar,
+  onCriada,
+  canais,
+}: {
+  onFechar: () => void;
+  onCriada: (conversaId: string) => void;
+  canais: CanalChat[];
+}) {
+  const canaisAtivos = canais.filter((c) => c.ativo);
+  const [canalId, setCanalId] = useState("");
   const [telefone, setTelefone] = useState("");
   const [nome, setNome] = useState("");
   const [texto, setTexto] = useState("");
@@ -1091,18 +1214,19 @@ function NovaConversaModal({ onFechar, onCriada }: { onFechar: () => void; onCri
     setEnviando(true);
     setErro(null);
 
-    const resultado = await chamarApi<{ ok: boolean; error?: string; conversaId?: string }>("/api/chat/conversas", {
+    const resultado = await chamarApi<{ ok: boolean; error?: string; mensagemErro?: string; conversaId?: string }>("/api/chat/conversas", {
       method: "POST",
-      body: JSON.stringify({ telefone, nome: nome || undefined, texto }),
+      body: JSON.stringify({ telefone, nome: nome || undefined, texto, canalId: canalId || undefined }),
     });
 
     if (!resultado.ok || !resultado.conversaId) {
       setErro(
-        resultado.error === "telefone_invalido"
-          ? "Telefone inválido — confira o DDD."
-          : resultado.error === "evolution_unavailable"
-            ? "WhatsApp não está conectado agora."
-            : "Não consegui enviar, tenta de novo."
+        resultado.mensagemErro ??
+          (resultado.error === "telefone_invalido"
+            ? "Telefone inválido — confira o DDD."
+            : resultado.error === "evolution_unavailable"
+              ? "WhatsApp não está conectado agora."
+              : "Não consegui enviar, tenta de novo.")
       );
       setEnviando(false);
       return;
@@ -1115,6 +1239,24 @@ function NovaConversaModal({ onFechar, onCriada }: { onFechar: () => void; onCri
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
         <h2 className="mb-3 text-base font-semibold text-neutral-900">Nova conversa</h2>
+
+        {canaisAtivos.length > 1 && (
+          <label className="mb-2 block text-xs font-medium text-neutral-500">
+            Enviar pelo canal
+            <select
+              value={canalId}
+              onChange={(e) => setCanalId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-teal-600"
+            >
+              <option value="">Canal principal</option>
+              {canaisAtivos.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label className="mb-2 block text-xs font-medium text-neutral-500">
           Telefone
@@ -1163,6 +1305,77 @@ function NovaConversaModal({ onFechar, onCriada }: { onFechar: () => void; onCri
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Responsável + Assumir + Transferir + Devolver à fila. O backend é quem autoriza; aqui só evita mostrar botão que não serve. */
+function ResponsavelControles({
+  conversa,
+  atendenteAtualId,
+  atendentesDestino,
+  podeAssumir,
+  podeMexer,
+  mostrarTransferir,
+  setMostrarTransferir,
+  onAssumir,
+  onTransferir,
+  onDevolver,
+}: {
+  conversa: ConversaChat;
+  atendenteAtualId: string | null;
+  atendentesDestino: Atendente[];
+  podeAssumir: boolean;
+  podeMexer: boolean;
+  mostrarTransferir: boolean;
+  setMostrarTransferir: (v: boolean) => void;
+  onAssumir: () => void;
+  onTransferir: (destinoId: string) => void;
+  onDevolver: () => void;
+}) {
+  const semResponsavel = !conversa.atribuidoAId;
+  const souEu = conversa.atribuidoAId === atendenteAtualId;
+  const destinos = atendentesDestino.filter((a) => a.id !== conversa.atribuidoAId);
+
+  return (
+    <div className="relative flex flex-wrap items-center gap-1">
+      <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
+        {semResponsavel ? "Sem responsável" : souEu ? "Atendida por você" : `Atendida por ${conversa.atribuidoANome ?? "outra pessoa"}`}
+      </span>
+      {semResponsavel && podeAssumir && (
+        <button type="button" onClick={onAssumir} className="rounded-full bg-teal-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-teal-800">
+          Assumir
+        </button>
+      )}
+      {podeMexer && (
+        <button
+          type="button"
+          onClick={() => setMostrarTransferir(!mostrarTransferir)}
+          className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+        >
+          Transferir
+        </button>
+      )}
+      {podeMexer && !semResponsavel && (
+        <button
+          type="button"
+          onClick={onDevolver}
+          title="Devolver a conversa para a fila (sem responsável)"
+          className="rounded-full border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+        >
+          Devolver à fila
+        </button>
+      )}
+      {mostrarTransferir && (
+        <div className="absolute right-0 top-8 z-10 w-56 rounded-lg border border-neutral-200 bg-white p-2 shadow-lg">
+          {destinos.length === 0 && <p className="px-2 py-1.5 text-xs text-neutral-400">Ninguém disponível.</p>}
+          {destinos.map((a) => (
+            <button key={a.id} type="button" onClick={() => onTransferir(a.id)} className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-neutral-50">
+              {a.nome}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

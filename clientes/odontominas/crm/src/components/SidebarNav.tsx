@@ -11,7 +11,7 @@ const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
   { href: "/chat", label: "Chat ao Vivo" },
   { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
-  { href: "/conexao", label: "Conexão WhatsApp", permissao: "canais.visualizar" },
+  { href: "/configuracoes/canais", label: "Canais", permissao: "canais.visualizar" },
   { href: "/campanhas", label: "Campanhas", permissao: "automacoes.visualizar", group: "Ferramentas" },
   { href: "/agentes", label: "Agentes de IA", permissao: "automacoes.visualizar", group: "Ferramentas" },
   { href: "/disparos", label: "Disparos", permissao: "automacoes.visualizar", group: "Ferramentas" },

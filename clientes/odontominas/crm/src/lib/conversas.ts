@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { buscarCanalPrincipal } from "@/lib/canais";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarAgente } from "@/lib/agentes";
 import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
@@ -175,10 +176,16 @@ export async function obterOuCriarConversaDoPaciente(clinicaId: string, paciente
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
+  // Automação sem conversa de origem (evento interno, scanner temporal): usa o
+  // canal PRINCIPAL da clínica — nunca um canal escolhido ao acaso.
+  const canal = await buscarCanalPrincipal(clinicaId);
+  if (!canal) return null;
+
   const { data: existente } = await supabase
     .from("conversas")
     .select("id")
     .eq("clinica_id", clinicaId)
+    .eq("canal_id", canal.id)
     .eq("paciente_id", pacienteId)
     .maybeSingle();
   if (existente) return existente.id as string;
@@ -194,6 +201,7 @@ export async function obterOuCriarConversaDoPaciente(clinicaId: string, paciente
       clinica_id: clinicaId,
       paciente_id: pacienteId,
       telefone,
+      canal_id: canal.id,
       status: "respondido",
       primeira_mensagem_em: agora,
       ultima_mensagem_em: agora,
@@ -207,7 +215,7 @@ export async function obterOuCriarConversaDoPaciente(clinicaId: string, paciente
   if (error || !nova) {
     // 23505 (unique clinica_id+telefone): outra automação/webhook criou entre o SELECT e este INSERT — busca de novo, não é erro real.
     if (error?.code === "23505") {
-      const { data: corrida } = await supabase.from("conversas").select("id").eq("clinica_id", clinicaId).eq("telefone", telefone).maybeSingle();
+      const { data: corrida } = await supabase.from("conversas").select("id").eq("clinica_id", clinicaId).eq("canal_id", canal.id).eq("telefone", telefone).maybeSingle();
       return (corrida?.id as string | null) ?? null;
     }
     console.error("[conversas] obter_ou_criar_failed", JSON.stringify({ pacienteId, code: error?.code ?? null }));

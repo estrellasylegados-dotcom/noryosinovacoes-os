@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSessao } from "@/lib/autorizacao";
+import { atorDaSessao, requireSessao, statusHttpErroConversa } from "@/lib/autorizacao";
 import { buscarMensagensChat, enviarRespostaChat } from "@/lib/chat";
 import { getClinicaId } from "@/lib/clinica";
 import { requirePermission } from "@/lib/autorizacao";
@@ -48,10 +48,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
-  const resultado = await enviarRespostaChat(clinicaId, id, body.texto, sessao.atendenteId);
+  const resultado = await enviarRespostaChat(clinicaId, id, body.texto, atorDaSessao(sessao));
   if (!resultado.ok) {
-    const httpStatus = resultado.error === "not_found" ? 404 : resultado.error === "texto_vazio" ? 400 : 503;
-    return NextResponse.json(resultado, { status: httpStatus });
+    return NextResponse.json(resultado, { status: statusHttpErroConversa(resultado.error) });
   }
 
   return NextResponse.json(resultado);

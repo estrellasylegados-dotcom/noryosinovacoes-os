@@ -132,3 +132,31 @@ describe("validarConcessaoPermissoes", () => {
     expect(validarConcessaoPermissoes("noryos_admin", na, "dona", ["sla.configurar"])).toEqual({ ok: true });
   });
 });
+
+describe("canais e caixa compartilhada — permissões padrão por perfil", () => {
+  it("só a Dona configura, conecta e desconecta canais", () => {
+    for (const p of ["canais.configurar", "canais.conectar", "canais.desconectar"] as const) {
+      expect(PERFIS_PADRAO.dona.has(p)).toBe(true);
+      for (const outro of ["gerente", "supervisora", "atendente", "noryos_suporte"] as const) expect(PERFIS_PADRAO[outro].has(p)).toBe(false);
+    }
+  });
+
+  it("Gerente e Supervisora enxergam os canais; Atendente não tem tela de canais", () => {
+    expect(PERFIS_PADRAO.gerente.has("canais.visualizar")).toBe(true);
+    expect(PERFIS_PADRAO.supervisora.has("canais.visualizar")).toBe(true);
+    expect(PERFIS_PADRAO.atendente.has("canais.visualizar")).toBe(false);
+  });
+
+  it("Noryos Suporte diagnostica canal, mas não responde paciente", () => {
+    const suporte = PERFIS_PADRAO.noryos_suporte;
+    expect(suporte.has("canais.visualizar")).toBe(true);
+    expect(suporte.has("suporte.acesso_tecnico")).toBe(true);
+    for (const p of ["conversas.assumir", "conversas.intervir", "conversas.transferir"] as const) expect(suporte.has(p)).toBe(false);
+  });
+
+  it("Atendente assume e transfere, mas só supervisão/gerência intervém em conversa de outra pessoa", () => {
+    expect(PERFIS_PADRAO.atendente.has("conversas.assumir")).toBe(true);
+    expect(PERFIS_PADRAO.atendente.has("conversas.intervir")).toBe(false);
+    for (const p of ["gerente", "supervisora"] as const) expect(PERFIS_PADRAO[p].has("conversas.intervir")).toBe(true);
+  });
+});

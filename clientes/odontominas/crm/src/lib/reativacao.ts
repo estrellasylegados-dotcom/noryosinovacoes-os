@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarNaConversa } from "@/lib/canais-envio";
 import { extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
 import { buscarClinicaAtual } from "@/lib/clinica";
@@ -108,7 +108,7 @@ export async function executarReativacao(clinicaId: string): Promise<ResultadoRe
 
   for (const candidato of candidatos) {
     const texto = montarMensagemReativacao(candidato.pacienteNome, clinicaNome);
-    const envio = await enviarMensagemWhatsapp(candidato.telefone, texto);
+    const envio = await enviarNaConversa(clinicaId, candidato.id, candidato.telefone, texto);
 
     if (envio.ok) {
       const agora = new Date().toISOString();

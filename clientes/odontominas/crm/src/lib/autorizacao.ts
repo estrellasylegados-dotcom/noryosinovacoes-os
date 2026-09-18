@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual, type SessaoAtual } from "@/lib/sessao-servidor";
 import type { Permissao } from "@/lib/permissoes";
+import type { AtorConversa } from "@/lib/atribuicao";
 
 /**
  * Compatibilidade explícita, não descuido: dezenas de telas/rotas (Agentes,
@@ -24,6 +25,39 @@ export function isAdminEquivalente(sessao: SessaoAtual | null): sessao is Sessao
  */
 export function can(sessao: SessaoAtual | null, permissao: Permissao): boolean {
   return sessao?.permissoes.has(permissao) ?? false;
+}
+
+/** Sessão → quem age numa conversa (caixa compartilhada, src/lib/atribuicao.ts). */
+export function atorDaSessao(sessao: SessaoAtual): AtorConversa {
+  return { atendenteId: sessao.atendenteId, perfil: sessao.perfil, permissoes: sessao.permissoes };
+}
+
+/** Status HTTP de um erro de atribuição/envio — 409 = conflito controlado (a UI mostra quem assumiu). */
+export function statusHttpErroConversa(error: string | undefined): number {
+  switch (error) {
+    case "unauthorized":
+      return 401;
+    case "forbidden":
+    case "nao_e_responsavel":
+    case "conversa_finalizada":
+      return 403;
+    case "not_found":
+      return 404;
+    case "ja_assumida":
+    case "conflito":
+    case "canal_pausado":
+    case "canal_indisponivel":
+    case "canal_nao_encontrado":
+    case "provider_nao_suportado":
+      return 409;
+    case "destino_invalido":
+    case "destino_sem_permissao":
+    case "texto_vazio":
+    case "telefone_invalido":
+      return 400;
+    default:
+      return 503;
+  }
 }
 
 export type ResultadoAutorizacao = { sessao: SessaoAtual } | { erro: NextResponse };

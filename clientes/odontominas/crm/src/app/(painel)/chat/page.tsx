@@ -4,6 +4,8 @@ import { listarEtiquetas } from "@/lib/etiquetas";
 import { listarAtendentes } from "@/lib/atendentes";
 import { listarAgentes } from "@/lib/agentes";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { atorDaSessao } from "@/lib/autorizacao";
+import { listarCanais } from "@/lib/canais";
 import { ChatAoVivo } from "@/components/chat/ChatAoVivo";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +31,13 @@ export default async function ChatAoVivoPage() {
     );
   }
 
-  const [conversas, etiquetas, atendentes, agentes, clinicaAtual] = await Promise.all([
-    listarConversasChat(clinicaId),
+  const [conversas, etiquetas, atendentes, agentes, clinicaAtual, canais] = await Promise.all([
+    listarConversasChat(clinicaId, sessao ? atorDaSessao(sessao) : null),
     listarEtiquetas(clinicaId),
     listarAtendentes(clinicaId),
     listarAgentes(clinicaId),
     buscarClinicaAtual(),
+    listarCanais(clinicaId),
   ]);
 
   // Só oferece "Retomar IA" quando a etiqueta que a conversa já tem de fato liga a algum agente ativo.
@@ -50,6 +53,8 @@ export default async function ChatAoVivoPage() {
       atendentes={atendentes}
       atendenteAtualId={sessao?.atendenteId ?? null}
       clinicaNome={clinicaAtual?.nome ?? "Clínica"}
+      canais={canais.map((c) => ({ id: c.id, nome: c.nome, ativo: c.ativo }))}
+      permissoes={sessao ? Array.from(sessao.permissoes) : []}
     />
   );
 }

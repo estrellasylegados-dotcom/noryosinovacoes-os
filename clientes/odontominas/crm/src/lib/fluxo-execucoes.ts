@@ -1,6 +1,8 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { assumirControle, liberarControle } from "@/lib/dono-conversa";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanal, enviarPeloCanalPrincipal } from "@/lib/canais-envio";
+import { buscarCanalDaConversa, type Canal } from "@/lib/canais";
+import { atribuirPorAutomacao } from "@/lib/atribuicao";
 import { detectarPedidoOptOut } from "@/lib/opt-out";
 import { encontrarNoInicio, validarFormaDefinicao, type FluxoDefinicao } from "@/lib/fluxo-tipos";
 import { processarNo, type AcaoCrm, type ContadoresNo, type ContextoPaciente, type EntradaProcessamento, type EstadoExecucao } from "@/lib/fluxo-motor";
@@ -38,10 +40,10 @@ const TENTATIVAS_ENVIO = 3;
 const CODIGOS_RETRY_ENVIO = new Set(["http_429", "http_500", "http_502", "http_503", "http_504", "request_error"]);
 
 /** Manda uma mensagem com retry curto em falha transiente da Evolution (429/5xx/timeout) — nunca em 4xx de auth. */
-async function enviarComRetry(telefone: string, texto: string): Promise<{ ok: boolean; error?: string; mensagemId?: string | null }> {
+async function enviarComRetry(canal: Canal, telefone: string, texto: string): Promise<{ ok: boolean; error?: string; mensagemId?: string | null }> {
   let ultimoErro: string | undefined;
   for (let tentativa = 1; tentativa <= TENTATIVAS_ENVIO; tentativa++) {
-    const resultado = await enviarMensagemWhatsapp(telefone, texto);
+    const resultado = await enviarPeloCanal(canal, telefone, texto);
     if (resultado.ok) return resultado;
     ultimoErro = resultado.error;
     if (!resultado.error || !CODIGOS_RETRY_ENVIO.has(resultado.error) || tentativa === TENTATIVAS_ENVIO) break;
@@ -114,12 +116,17 @@ async function aplicarAcaoCrm(
       return { donoTransferido: false };
     }
     case "atribuir_atendente": {
-      const { error } = await supabase
-        .from("conversas")
-        .update({ atribuido_a: acao.atendenteId, updated_at: new Date().toISOString() })
-        .eq("id", conversaId)
-        .eq("clinica_id", clinicaId);
-      if (error) console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, code: error.code ?? null }));
+      // Mesma RPC atômica da caixa compartilhada (com histórico) — nunca UPDATE solto.
+      if (acao.atendenteId === null) {
+        await supabase
+          .from("conversas")
+          .update({ atribuido_a: null, atribuido_em: null, updated_at: new Date().toISOString() })
+          .eq("id", conversaId)
+          .eq("clinica_id", clinicaId);
+        return { donoTransferido: false };
+      }
+      const atribuicao = await atribuirPorAutomacao(clinicaId, conversaId, acao.atendenteId);
+      if (!atribuicao.ok) console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId }));
       return { donoTransferido: false };
     }
     case "criar_alerta_interno": {
@@ -128,7 +135,7 @@ async function aplicarAcaoCrm(
         .map((n) => n.trim())
         .filter(Boolean);
       for (const numero of numeros) {
-        const envio = await enviarMensagemWhatsapp(numero, acao.mensagem);
+        const envio = await enviarPeloCanalPrincipal(clinicaId, numero, acao.mensagem);
         if (!envio.ok) {
           console.error("[fluxo-execucoes] acao_crm_falhou", JSON.stringify({ acao: acao.tipo, conversaId, numero, error: envio.error ?? null }));
         }
@@ -477,13 +484,20 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
     }
   }
 
+  // Canal da conversa resolvido UMA vez — o Fluxo responde pelo mesmo número por onde o paciente falou.
+  const canalEnvio = resultado.mensagensParaEnviar.length > 0 ? await buscarCanalDaConversa(clinicaId, contexto.conversaId) : null;
+
   for (const texto of resultado.mensagensParaEnviar) {
     // Detecção de opt-out também vale pra resposta do PACIENTE que chega
     // dentro de um menu (entrada.tipo === 'resposta_texto') — mesmo
     // guard-rail do webhook, nunca reimplementado.
     if (entrada.tipo === "resposta_texto" && detectarPedidoOptOut(entrada.texto)) break;
 
-    const envio = await enviarComRetry(contexto.paciente.telefone, texto);
+    if (!canalEnvio) {
+      console.error("[fluxo-execucoes] envio_falhou", JSON.stringify({ execucaoId, error: "canal_nao_encontrado" }));
+      break;
+    }
+    const envio = await enviarComRetry(canalEnvio, contexto.paciente.telefone, texto);
     if (!envio.ok) {
       console.error("[fluxo-execucoes] envio_falhou", JSON.stringify({ execucaoId, error: envio.error ?? null }));
       continue; // 1 bloco falhando não derruba os outros nem o avanço do fluxo — mesmo critério de agentes.ts:enviarBlocos

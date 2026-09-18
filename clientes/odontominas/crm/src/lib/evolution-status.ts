@@ -1,12 +1,11 @@
 /**
  * Status de conexão do WhatsApp (Evolution API) e QR Code pra reconectar —
  * mostrado na barra lateral (bolinha) e na página /conexao (só admin).
- * Mesma instância/env vars de evolution-send.ts. Nunca deixa uma falha de
+ * Cada função recebe a instância do CANAL (src/lib/canais.ts) — nunca uma instância global. Nunca deixa uma falha de
  * rede travar a página: timeout curto, erro sempre vira um campo `erro`
  * amigável, nunca uma exceção não tratada subindo pro Server Component.
  */
 
-const INSTANCE = process.env.EVOLUTION_INSTANCE || "odontominas-teste";
 const TIMEOUT_MS = 4000;
 
 function headersEvolution(apiKey: string): HeadersInit {
@@ -33,15 +32,15 @@ export type StatusConexao = {
   erro?: string;
 };
 
-export async function buscarStatusConexao(): Promise<StatusConexao> {
+export async function buscarStatusConexao(instancia: string | null | undefined): Promise<StatusConexao> {
   const vazio: StatusConexao = { conectado: null, numero: null, nome: null, foto: null, integracao: null, criadaEm: null };
 
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
-  if (!apiUrl || !apiKey) return { ...vazio, erro: "nao_configurado" };
+  if (!apiUrl || !apiKey || !instancia) return { ...vazio, erro: "nao_configurado" };
 
   try {
-    const res = await fetch(`${apiUrl}/instance/connectionState/${INSTANCE}`, {
+    const res = await fetch(`${apiUrl}/instance/connectionState/${instancia}`, {
       headers: headersEvolution(apiKey),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -49,7 +48,7 @@ export async function buscarStatusConexao(): Promise<StatusConexao> {
 
     const corpo = (await res.json().catch(() => null)) as { instance?: { state?: string } } | null;
     const conectado = corpo?.instance?.state === "open";
-    const detalhes = await buscarDetalhesInstancia(apiUrl, apiKey);
+    const detalhes = await buscarDetalhesInstancia(instancia, apiUrl, apiKey);
 
     return { ...vazio, ...detalhes, conectado, numero: conectado ? detalhes.numero : null };
   } catch (e) {
@@ -62,9 +61,9 @@ type DetalhesInstancia = { numero: string | null; nome: string | null; foto: str
 const DETALHES_VAZIOS: DetalhesInstancia = { numero: null, nome: null, foto: null, integracao: null, criadaEm: null };
 
 /** Best-effort: o formato de resposta varia por versão da Evolution API — tenta os campos mais comuns e desiste em silêncio se não achar. */
-async function buscarDetalhesInstancia(apiUrl: string, apiKey: string): Promise<DetalhesInstancia> {
+async function buscarDetalhesInstancia(instancia: string, apiUrl: string, apiKey: string): Promise<DetalhesInstancia> {
   try {
-    const res = await fetch(`${apiUrl}/instance/fetchInstances?instanceName=${INSTANCE}`, {
+    const res = await fetch(`${apiUrl}/instance/fetchInstances?instanceName=${instancia}`, {
       headers: headersEvolution(apiKey),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -102,13 +101,13 @@ export type QrResultado = {
   erro?: string;
 };
 
-export async function buscarQrCode(): Promise<QrResultado> {
+export async function buscarQrCode(instancia: string): Promise<QrResultado> {
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
   if (!apiUrl || !apiKey) return { conectado: false, qrDataUrl: null, erro: "nao_configurado" };
 
   try {
-    const res = await fetch(`${apiUrl}/instance/connect/${INSTANCE}`, {
+    const res = await fetch(`${apiUrl}/instance/connect/${instancia}`, {
       headers: headersEvolution(apiKey),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -134,13 +133,13 @@ export async function buscarQrCode(): Promise<QrResultado> {
  * reconectar): a confirmação fica no botão que chama isto (src/components/RodapeInstancia.tsx),
  * não aqui — esta função só executa.
  */
-export async function desconectarInstancia(): Promise<{ ok: boolean; error?: string }> {
+export async function desconectarInstancia(instancia: string): Promise<{ ok: boolean; error?: string }> {
   const apiUrl = process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
   if (!apiUrl || !apiKey) return { ok: false, error: "nao_configurado" };
 
   try {
-    const res = await fetch(`${apiUrl}/instance/logout/${INSTANCE}`, {
+    const res = await fetch(`${apiUrl}/instance/logout/${instancia}`, {
       method: "DELETE",
       headers: headersEvolution(apiKey),
       signal: AbortSignal.timeout(TIMEOUT_MS),

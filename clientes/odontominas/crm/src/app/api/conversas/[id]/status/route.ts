@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireSessao } from "@/lib/autorizacao";
+import { can, requireSessao } from "@/lib/autorizacao";
+import { getSupabaseServerClient } from "@/lib/supabase";
+import { registrarEventoConversa } from "@/lib/atribuicao";
 import { getClinicaId } from "@/lib/clinica";
 import { atualizarStatus } from "@/lib/conversas";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
@@ -33,10 +35,29 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
+  // Reabrir uma conversa FINALIZADA (status volta a novo/aguardando) exige conversas.reabrir.
+  const reabre = body.status === "novo" || body.status === "aguardando";
+  const supabase = getSupabaseServerClient();
+  let estavaFinalizada = false;
+  if (reabre && supabase) {
+    const { data: atual } = await supabase.from("conversas").select("finalizada_em, status").eq("id", id).eq("clinica_id", clinicaId).maybeSingle();
+    estavaFinalizada = Boolean(atual?.finalizada_em) || atual?.status === "agendado" || atual?.status === "perdido";
+    if (estavaFinalizada && !can(authSessao.sessao, "conversas.reabrir")) {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+    }
+  }
+
   const resultado = await atualizarStatus(clinicaId, id, body.status, sessao?.atendenteId ?? null);
   if (!resultado.ok) {
     const httpStatus = resultado.error === "not_found" ? 404 : 503;
     return NextResponse.json(resultado, { status: httpStatus });
+  }
+
+  if (reabre && supabase && estavaFinalizada) {
+    await supabase.from("conversas").update({ finalizada_em: null }).eq("id", id).eq("clinica_id", clinicaId);
+    await registrarEventoConversa(clinicaId, id, "CONVERSATION_REOPENED", sessao?.atendenteId ?? null);
+  } else if (reabre && supabase) {
+    await supabase.from("conversas").update({ finalizada_em: null }).eq("id", id).eq("clinica_id", clinicaId);
   }
 
   return NextResponse.json({ ok: true });

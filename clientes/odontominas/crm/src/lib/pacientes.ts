@@ -62,6 +62,9 @@ export async function buscarFichaPaciente(clinicaId: string, pacienteId: string)
     .select("id, status, aguardando_desde, ultima_mensagem_em")
     .eq("paciente_id", pacienteId)
     .eq("clinica_id", clinicaId)
+    // Paciente em 2+ canais tem 2+ conversas: a ficha mostra a mais recente.
+    .order("ultima_mensagem_em", { ascending: false, nullsFirst: false })
+    .limit(1)
     .maybeSingle();
 
   const conversa = conversaRow

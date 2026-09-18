@@ -112,6 +112,7 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "suporte.acesso_tecnico",
     "suporte.resetar_usuario",
     "suporte.sessao_temporaria",
+    "canais.visualizar",
     "platform.suporte"
   ),
 
@@ -174,6 +175,7 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "kanban.mover",
     "sla.visualizar",
     "sla.visualizar_equipe",
+    "canais.visualizar",
     "relatorios.visualizar",
     "relatorios.exportar"
   ),
@@ -189,6 +191,7 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "pacientes.visualizar",
     "kanban.visualizar",
     "sla.visualizar_equipe",
+    "canais.visualizar",
     "relatorios.visualizar"
   ),
 

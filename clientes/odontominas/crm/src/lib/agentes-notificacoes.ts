@@ -1,4 +1,4 @@
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanalPrincipal } from "@/lib/canais-envio";
 import { formatTelefone } from "@/lib/tempo";
 import type { AgenteIA } from "@/lib/agentes";
 
@@ -110,7 +110,7 @@ export async function notificarEquipe(
   });
 
   for (const numero of numeros) {
-    const envio = await enviarMensagemWhatsapp(numero, texto);
+    const envio = await enviarPeloCanalPrincipal(agente.clinicaId, numero, texto);
     if (!envio.ok) {
       console.error("[agentes-notificacoes] envio_failed", JSON.stringify({ motivo, numero, error: envio.error ?? null }));
     }

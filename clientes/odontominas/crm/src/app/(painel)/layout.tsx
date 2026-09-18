@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
 import { buscarStatusConexao } from "@/lib/evolution-status";
-import { buscarApelidoInstancia, buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
+import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
+import { buscarCanalPrincipal } from "@/lib/canais";
 import { contarNaoLidas } from "@/lib/chat";
 import { buscarNotificacoes } from "@/lib/notificacoes";
 import { formatTelefone } from "@/lib/tempo";
@@ -22,17 +23,20 @@ import { Notificacoes } from "@/components/Notificacoes";
  * header de quem chamou).
  */
 export default async function PainelLayout({ children }: { children: ReactNode }) {
-  const [sessao, statusConexao] = await Promise.all([getSessaoAtual(), buscarStatusConexao()]);
+  const sessao = await getSessaoAtual();
 
   if (!sessao) redirect("/login");
 
   const clinicaId = await getClinicaId();
-  const [naoLidas, notificacoes, apelidoInstancia, clinicaAtual] = await Promise.all([
+  // A bolinha do menu lateral mostra o canal PRINCIPAL da clínica (status ao vivo).
+  const canalPrincipal = clinicaId ? await buscarCanalPrincipal(clinicaId) : null;
+  const [statusConexao, naoLidas, notificacoes, clinicaAtual] = await Promise.all([
+    buscarStatusConexao(canalPrincipal?.providerInstanceId),
     clinicaId ? contarNaoLidas(clinicaId) : Promise.resolve(0),
     clinicaId ? buscarNotificacoes(clinicaId) : Promise.resolve([]),
-    clinicaId ? buscarApelidoInstancia(clinicaId) : Promise.resolve(null),
     buscarClinicaAtual(),
   ]);
+  const apelidoInstancia = canalPrincipal?.nome ?? null;
 
   return (
     <div className="min-h-screen bg-neutral-50 sm:flex">

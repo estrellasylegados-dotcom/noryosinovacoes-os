@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSessao } from "@/lib/autorizacao";
+import { atorDaSessao, requireSessao, statusHttpErroConversa } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { iniciarConversaChat, listarConversasChat } from "@/lib/chat";
 
@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
-  const conversas = await listarConversasChat(clinicaId);
+  const conversas = await listarConversasChat(clinicaId, atorDaSessao(authSessao.sessao));
   return NextResponse.json({ ok: true, conversas });
 }
 
@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const authSessao = await requireSessao();
   if ("erro" in authSessao) return authSessao.erro;
-  let body: { telefone?: string; texto?: string; nome?: string };
+  let body: { telefone?: string; texto?: string; nome?: string; canalId?: string };
   try {
     body = await request.json();
   } catch {
@@ -38,10 +38,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
 
-  const resultado = await iniciarConversaChat(clinicaId, body.telefone, body.texto, body.nome ?? null);
+  const resultado = await iniciarConversaChat(clinicaId, body.telefone, body.texto, body.nome ?? null, atorDaSessao(authSessao.sessao), body.canalId ?? null);
   if (!resultado.ok) {
-    const httpStatus = resultado.error === "telefone_invalido" || resultado.error === "texto_vazio" ? 400 : 503;
-    return NextResponse.json(resultado, { status: httpStatus });
+    return NextResponse.json(resultado, { status: statusHttpErroConversa(resultado.error) });
   }
 
   return NextResponse.json(resultado);

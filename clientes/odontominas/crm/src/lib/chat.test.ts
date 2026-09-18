@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { contarAbasChat, filtrarConversasChat, normalizarTelefoneEntrada, type ConversaChat } from "@/lib/chat";
+import {
+  contarAbasChat,
+  derivarStatusOperacional,
+  filtrarConversasChat,
+  normalizarTelefoneEntrada,
+  ordenarConversasChat,
+  type ConversaChat,
+} from "@/lib/chat";
 
 function conversa(parcial: Partial<ConversaChat> & { id: string }): ConversaChat {
-  return {
+  const base: ConversaChat = {
     telefone: "5561999990000",
     pacienteId: null,
     pacienteNome: null,
@@ -13,6 +20,12 @@ function conversa(parcial: Partial<ConversaChat> & { id: string }): ConversaChat
     arquivada: false,
     atribuidoAId: null,
     atribuidoANome: null,
+    atribuidoEm: null,
+    canalId: null,
+    canalNome: null,
+    finalizadaEm: null,
+    statusOperacional: "nova",
+    donoConversa: "humano",
     ultimaMensagemEm: null,
     ultimaMensagemPreview: null,
     ultimaMensagemDirecao: null,
@@ -20,6 +33,8 @@ function conversa(parcial: Partial<ConversaChat> & { id: string }): ConversaChat
     agenteAtivoId: null,
     ...parcial,
   };
+  // statusOperacional é derivado — a fixture só o recalcula se o teste não o passou explicitamente.
+  return parcial.statusOperacional ? base : { ...base, statusOperacional: derivarStatusOperacional(base.status, base.finalizadaEm) };
 }
 
 describe("normalizarTelefoneEntrada", () => {
@@ -73,8 +88,12 @@ describe("contarAbasChat", () => {
   it("conta cada aba ignorando arquivadas, exceto a própria contagem de arquivadas", () => {
     expect(contarAbasChat(conversas, "ana")).toEqual({
       todos: 3,
+      novos: 1,
+      sem_responsavel: 1, // a nº 1 (a nº 4 está finalizada e a nº 2 tem dona)
+      aguardando_paciente: 1, // respondido sem finalização
+      aguardando_atendente: 1,
       nao_lidas: 2,
-      concluidos: 2, // respondido + agendado (perdido está arquivada, não conta em "visíveis")
+      concluidos: 1, // só o agendado (perdido está arquivada, não conta em "visíveis")
       atribuidos: 1,
       arquivadas: 1,
     });
@@ -115,9 +134,11 @@ describe("filtrarConversasChat", () => {
     expect(r.map((c) => c.id)).toEqual(["1"]);
   });
 
-  it("aba 'concluidos' reaproveita STATUS_RESOLVIDOS do funil", () => {
-    const r = filtrarConversasChat(conversas, { aba: "concluidos", atendenteIdAtual: null });
-    expect(r.map((c) => c.id)).toEqual(["2"]);
+  it("aba 'concluidos' = finalizada (finalizada_em, agendado ou perdido); respondido sem finalização é 'aguardando paciente'", () => {
+    const comFinalizada = [...conversas, conversa({ id: "5", status: "respondido", finalizadaEm: "2026-09-19T10:00:00Z" })];
+    const r = filtrarConversasChat(comFinalizada, { aba: "concluidos", atendenteIdAtual: null });
+    expect(r.map((c) => c.id)).toEqual(["5"]);
+    expect(filtrarConversasChat(conversas, { aba: "aguardando_paciente", atendenteIdAtual: null }).map((c) => c.id)).toEqual(["2"]);
   });
 
   it("aba 'atribuidos' só mostra o que é do atendente logado", () => {
@@ -149,5 +170,66 @@ describe("filtrarConversasChat", () => {
   it("busca por telefone (dígitos)", () => {
     const r = filtrarConversasChat(conversas, { aba: "todos", atendenteIdAtual: null, busca: "990001" });
     expect(r.map((c) => c.id)).toEqual(["1"]);
+  });
+});
+
+describe("derivarStatusOperacional", () => {
+  it("mapeia o funil pro estado operacional sem criar enum novo", () => {
+    expect(derivarStatusOperacional("novo", null)).toBe("nova");
+    expect(derivarStatusOperacional("aguardando", null)).toBe("aguardando_atendente");
+    expect(derivarStatusOperacional("respondido", null)).toBe("aguardando_paciente");
+    expect(derivarStatusOperacional("agendado", null)).toBe("finalizada");
+    expect(derivarStatusOperacional("perdido", null)).toBe("finalizada");
+  });
+
+  it("finalizada_em vence o status: respondido + finalizada = finalizada", () => {
+    expect(derivarStatusOperacional("respondido", "2026-09-19T10:00:00Z")).toBe("finalizada");
+    expect(derivarStatusOperacional("novo", "2026-09-19T10:00:00Z")).toBe("finalizada");
+  });
+});
+
+describe("caixa compartilhada — filtros por canal e responsável", () => {
+  const conversas: ConversaChat[] = [
+    conversa({ id: "a", canalId: "recepcao", atribuidoAId: "juliana", status: "aguardando" }),
+    conversa({ id: "b", canalId: "recepcao", atribuidoAId: null, status: "novo" }),
+    conversa({ id: "c", canalId: "comercial", atribuidoAId: "juliana", status: "respondido" }),
+    conversa({ id: "d", canalId: "comercial", atribuidoAId: null, status: "novo" }),
+  ];
+
+  it("filtra por canal", () => {
+    expect(filtrarConversasChat(conversas, { aba: "todos", atendenteIdAtual: null, canalId: "comercial" }).map((c) => c.id)).toEqual(["c", "d"]);
+  });
+
+  it("filtra por responsável e por 'sem responsável'", () => {
+    expect(filtrarConversasChat(conversas, { aba: "todos", atendenteIdAtual: null, responsavelId: "juliana" }).map((c) => c.id)).toEqual(["a", "c"]);
+    expect(filtrarConversasChat(conversas, { aba: "todos", atendenteIdAtual: null, responsavelId: "sem" }).map((c) => c.id)).toEqual(["b", "d"]);
+  });
+
+  it("combina canal + responsável + fila", () => {
+    const r = filtrarConversasChat(conversas, { aba: "aguardando_atendente", atendenteIdAtual: null, canalId: "recepcao", responsavelId: "juliana" });
+    expect(r.map((c) => c.id)).toEqual(["a"]);
+  });
+
+  it("fila 'sem responsável' ignora conversa finalizada", () => {
+    const comFinalizada = [...conversas, conversa({ id: "e", atribuidoAId: null, status: "perdido" })];
+    expect(filtrarConversasChat(comFinalizada, { aba: "sem_responsavel", atendenteIdAtual: null }).map((c) => c.id)).toEqual(["b", "d"]);
+  });
+});
+
+describe("ordenarConversasChat", () => {
+  const conversas: ConversaChat[] = [
+    conversa({ id: "1", ultimaMensagemEm: "2026-09-19T10:00:00Z", atribuidoAId: "x" }),
+    conversa({ id: "2", ultimaMensagemEm: "2026-09-19T12:00:00Z", atribuidoAId: null }),
+    conversa({ id: "3", ultimaMensagemEm: "2026-09-19T11:00:00Z", atribuidoAId: null }),
+  ];
+
+  it("mais recentes / mais antigos", () => {
+    expect(ordenarConversasChat(conversas, "recentes").map((c) => c.id)).toEqual(["2", "3", "1"]);
+    expect(ordenarConversasChat(conversas, "antigos").map((c) => c.id)).toEqual(["1", "3", "2"]);
+  });
+
+  it("sem responsável primeiro (dentro do grupo, mais recente antes) e não muta a entrada", () => {
+    expect(ordenarConversasChat(conversas, "sem_responsavel").map((c) => c.id)).toEqual(["2", "3", "1"]);
+    expect(conversas.map((c) => c.id)).toEqual(["1", "2", "3"]);
   });
 });

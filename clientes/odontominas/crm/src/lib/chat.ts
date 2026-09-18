@@ -1,11 +1,15 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { registrarEvento } from "@/lib/auditoria";
 import { atualizarStatus, extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanal, mensagemErroEnvio } from "@/lib/canais-envio";
+import { buscarCanalDaConversa, buscarCanalPorId, buscarCanalPrincipal } from "@/lib/canais";
+import { assumirConversa, decidirEnvioHumano, registrarEventoConversa, type AtorConversa } from "@/lib/atribuicao";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { pausarAgenteManual, pausarAgenteSeConfigurado } from "@/lib/agentes";
 import { transferirExecucaoAtivaParaHumano } from "@/lib/fluxo-execucoes";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/status";
+import { derivarStatusOperacional, type ConversaChat, type MensagemChat } from "@/lib/chat-filtros";
 import { canonicalizarTelefoneBr, encontrarPorTelefoneEquivalente, variantesEquivalentesTelefoneBr } from "@/lib/telefone";
 
 /**
@@ -20,33 +24,6 @@ import { canonicalizarTelefoneBr, encontrarPorTelefoneEquivalente, variantesEqui
  * "Concluído" no chat reaproveita STATUS_RESOLVIDOS do funil (não é um
  * campo novo) — evita dois conceitos de "resolvido" divergindo com o tempo.
  */
-
-export type ConversaChat = {
-  id: string;
-  telefone: string;
-  pacienteId: string | null;
-  pacienteNome: string | null;
-  status: StatusConversa;
-  prioridade: Prioridade;
-  naoLida: boolean;
-  mensagensNaoLidas: number;
-  arquivada: boolean;
-  atribuidoAId: string | null;
-  atribuidoANome: string | null;
-  ultimaMensagemEm: string | null;
-  ultimaMensagemPreview: string | null;
-  ultimaMensagemDirecao: "recebida" | "enviada" | null;
-  etiquetas: { id: string; nome: string; cor: string }[];
-  agenteAtivoId: string | null;
-};
-
-export type MensagemChat = {
-  id: string;
-  direcao: "recebida" | "enviada";
-  tipo: string;
-  conteudo: string | null;
-  quando: string;
-};
 
 function previewConteudo(tipo: string, conteudo: string | null): string {
   if (conteudo) return conteudo;
@@ -63,16 +40,27 @@ function previewConteudo(tipo: string, conteudo: string | null): string {
   return rotulos[tipo] ?? "Mensagem";
 }
 
-export async function listarConversasChat(clinicaId: string): Promise<ConversaChat[]> {
+/**
+ * Visibilidade (RBAC): `conversas.visualizar_todas` vê tudo; só
+ * `visualizar_proprias` vê as PRÓPRIAS mais a fila sem responsável (senão a
+ * atendente nunca enxergaria o que assumir); sem nenhuma das duas, nada.
+ */
+export async function listarConversasChat(clinicaId: string, ator?: AtorConversa | null): Promise<ConversaChat[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return [];
 
-  const { data: conversas, error } = await supabase
+  if (ator && !ator.permissoes.has("conversas.visualizar_todas") && !ator.permissoes.has("conversas.visualizar_proprias")) return [];
+
+  let consulta = supabase
     .from("conversas")
     .select(
-      "id, telefone, status, prioridade, nao_lida, mensagens_nao_lidas, arquivada, atribuido_a, ultima_mensagem_em, paciente_id, agente_ativo_id, pacientes(nome), atendentes(nome)"
+      "id, telefone, status, prioridade, nao_lida, mensagens_nao_lidas, arquivada, atribuido_a, atribuido_em, canal_id, finalizada_em, dono_conversa, ultima_mensagem_em, paciente_id, agente_ativo_id, pacientes(nome), atendentes(nome), canais(nome)"
     )
     .eq("clinica_id", clinicaId);
+  if (ator && !ator.permissoes.has("conversas.visualizar_todas")) {
+    consulta = consulta.or(`atribuido_a.is.null,atribuido_a.eq.${ator.atendenteId}`);
+  }
+  const { data: conversas, error } = await consulta;
 
   if (error || !conversas) {
     console.error("[chat] listar_failed", JSON.stringify({ code: (error as { code?: string })?.code ?? null }));
@@ -83,12 +71,8 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
   if (ids.length === 0) return [];
 
   const [{ data: mensagens }, { data: etiquetasLinks }] = await Promise.all([
-    supabase
-      .from("mensagens")
-      .select("conversa_id, direcao, tipo, conteudo, created_at")
-      .eq("clinica_id", clinicaId)
-      .in("conversa_id", ids)
-      .order("created_at", { ascending: false }),
+    // RPC (DISTINCT ON): 1 linha por conversa, em vez de baixar o histórico inteiro da clínica.
+    supabase.rpc("conversas_ultima_mensagem", { p_clinica: clinicaId }),
     supabase
       .from("conversa_etiquetas")
       .select("conversa_id, etiquetas(id, nome, cor)")
@@ -96,7 +80,7 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
   ]);
 
   const ultimaPorConversa = new Map<string, { direcao: "recebida" | "enviada"; tipo: string; conteudo: string | null }>();
-  for (const m of mensagens ?? []) {
+  for (const m of (mensagens ?? []) as Record<string, unknown>[]) {
     const conversaId = m.conversa_id as string;
     if (!ultimaPorConversa.has(conversaId)) {
       ultimaPorConversa.set(conversaId, {
@@ -136,6 +120,15 @@ export async function listarConversasChat(clinicaId: string): Promise<ConversaCh
       arquivada: c.arquivada as boolean,
       atribuidoAId: (c.atribuido_a as string | null | undefined) ?? null,
       atribuidoANome: extrairNomeEmbutido(c.atendentes as NomeEmbutido),
+      atribuidoEm: (c.atribuido_em as string | null | undefined) ?? null,
+      canalId: (c.canal_id as string | null | undefined) ?? null,
+      canalNome: extrairNomeEmbutido(c.canais as NomeEmbutido),
+      finalizadaEm: (c.finalizada_em as string | null | undefined) ?? null,
+      statusOperacional: derivarStatusOperacional(
+        isStatusValido(statusBruto) ? statusBruto : "novo",
+        (c.finalizada_em as string | null | undefined) ?? null
+      ),
+      donoConversa: ((c.dono_conversa as string | null) ?? "humano") as ConversaChat["donoConversa"],
       ultimaMensagemEm: c.ultima_mensagem_em as string | null,
       ultimaMensagemPreview: ultima ? previewConteudo(ultima.tipo, ultima.conteudo) : null,
       ultimaMensagemDirecao: ultima?.direcao ?? null,
@@ -178,12 +171,29 @@ export async function buscarMensagensChat(clinicaId: string, conversaId: string)
   }));
 }
 
+export type ResultadoEnvioChat = {
+  ok: boolean;
+  error?: string;
+  /** Mensagem operacional em português, pronta pra UI (canal pausado/desconectado, conflito de responsável…). */
+  mensagemErro?: string;
+  porNome?: string | null;
+  mensagem?: MensagemChat;
+};
+
+/**
+ * `ator` = quem responde. Enforcement no BACKEND (não só o botão): responsável
+ * envia; conversa sem responsável é assumida na mesma operação atômica (quem
+ * perde a corrida recebe conflito); conversa de outra pessoa só com
+ * `conversas.intervir` (auditado); conversa finalizada só com `conversas.reabrir`.
+ * `ator = null` é reservado a chamadas internas de sistema.
+ */
 export async function enviarRespostaChat(
   clinicaId: string,
   conversaId: string,
   textoBruto: string,
-  atendenteId: string | null
-): Promise<{ ok: boolean; error?: string; mensagem?: MensagemChat }> {
+  ator: AtorConversa | null
+): Promise<ResultadoEnvioChat> {
+  const atendenteId = ator?.atendenteId ?? null;
   const texto = textoBruto.trim();
   if (!texto) return { ok: false, error: "texto_vazio" };
 
@@ -192,14 +202,49 @@ export async function enviarRespostaChat(
 
   const { data: conversa, error: erroConversa } = await supabase
     .from("conversas")
-    .select("id, telefone, status, agente_ativo_id, dono_conversa")
+    .select("id, telefone, status, agente_ativo_id, dono_conversa, atribuido_a, finalizada_em, canal_id")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
   if (erroConversa || !conversa) return { ok: false, error: "not_found" };
 
-  const envio = await enviarMensagemWhatsapp(conversa.telefone as string, texto);
-  if (!envio.ok) return { ok: false, error: envio.error ?? "envio_falhou" };
+  const atribuidoAtual = (conversa.atribuido_a as string | null) ?? null;
+  let interveio = false;
+
+  if (ator) {
+    if (conversa.finalizada_em && !ator.permissoes.has("conversas.reabrir")) {
+      return { ok: false, error: "conversa_finalizada", mensagemErro: "Esta conversa foi finalizada. Só quem tem permissão de reabrir pode responder." };
+    }
+
+    const decisao = decidirEnvioHumano(ator, atribuidoAtual);
+    if (decisao === "negado") {
+      return { ok: false, error: "nao_e_responsavel", mensagemErro: "Esta conversa está com outra pessoa. Peça a ela para transferir, ou peça a alguém com permissão de intervir." };
+    }
+    if (decisao === "intervir") interveio = true;
+    if (decisao === "assumir_e_enviar") {
+      const assumida = await assumirConversa(clinicaId, conversaId, ator);
+      if (!assumida.ok) {
+        return {
+          ok: false,
+          error: assumida.error,
+          porNome: assumida.porNome ?? null,
+          mensagemErro: assumida.error === "ja_assumida" ? `Esta conversa acabou de ser assumida por ${assumida.porNome ?? "outra pessoa"}.` : undefined,
+        };
+      }
+    }
+  }
+
+  // Conversa → canal → instância: nunca instância global, nunca outro número.
+  const canal = await buscarCanalDaConversa(clinicaId, conversaId);
+  if (!canal) return { ok: false, error: "canal_nao_encontrado", mensagemErro: mensagemErroEnvio("canal_nao_encontrado") };
+
+  const envio = await enviarPeloCanal(canal, conversa.telefone as string, texto);
+  if (!envio.ok) return { ok: false, error: envio.error ?? "envio_falhou", mensagemErro: mensagemErroEnvio(envio.error) };
+
+  if (interveio) {
+    await registrarEventoConversa(clinicaId, conversaId, "CONVERSATION_INTERVENED", atendenteId, { canalId: canal.id, deAtendenteId: atribuidoAtual });
+    await registrarEvento({ clinicaId, atorId: atendenteId, atorPerfil: ator?.perfil ?? null, evento: "CONVERSATION_INTERVENED", alvoId: conversaId, detalhes: { responsavel: atribuidoAtual } });
+  }
 
   // Atendente respondeu na mão: se um agente de IA estiver escutando essa
   // conversa e configurado pra pausar nesse caso, entra em espera — nunca
@@ -226,8 +271,10 @@ export async function enviarRespostaChat(
       status: decisao.statusNovo,
       nao_lida: false,
       mensagens_nao_lidas: 0,
+      finalizada_em: null,
     })
     .eq("id", conversaId);
+  if (conversa.finalizada_em) await registrarEventoConversa(clinicaId, conversaId, "CONVERSATION_REOPENED", atendenteId, { canalId: canal.id });
 
   if (decisao.evento) {
     // motivo "manual" (não o motivo automático de decidirTransicaoWebhook) de propósito:
@@ -290,7 +337,6 @@ export async function enviarRespostaChat(
 export type PatchConversaChat = {
   arquivada?: boolean;
   prioridade?: Prioridade;
-  atribuidoAId?: string | null;
   naoLida?: boolean;
 };
 
@@ -310,7 +356,6 @@ export async function atualizarConversaChat(
     // só reabre por mensagem nova de verdade (webhook incrementa de novo).
     if (!patch.naoLida) payload.mensagens_nao_lidas = 0;
   }
-  if (patch.atribuidoAId !== undefined) payload.atribuido_a = patch.atribuidoAId;
   if (patch.prioridade !== undefined) {
     if (!isPrioridadeValida(patch.prioridade)) return { ok: false, error: "prioridade_invalida" };
     payload.prioridade = patch.prioridade;
@@ -348,8 +393,10 @@ export async function iniciarConversaChat(
   clinicaId: string,
   telefoneBruto: string,
   textoBruto: string,
-  nomeOpcional: string | null
-): Promise<{ ok: boolean; error?: string; conversaId?: string }> {
+  nomeOpcional: string | null,
+  ator: AtorConversa | null = null,
+  canalIdSolicitado: string | null = null
+): Promise<ResultadoEnvioChat & { conversaId?: string }> {
   const telefone = normalizarTelefoneEntrada(telefoneBruto);
   if (!telefone) return { ok: false, error: "telefone_invalido" };
 
@@ -382,10 +429,15 @@ export async function iniciarConversaChat(
     pacienteId = novoPaciente.id as string;
   }
 
+  // Canal: o pedido só vale se pertencer à clínica (validado aqui, nunca confiado); sem pedido, o principal.
+  const canal = canalIdSolicitado ? await buscarCanalPorId(clinicaId, canalIdSolicitado) : await buscarCanalPrincipal(clinicaId);
+  if (!canal) return { ok: false, error: "canal_nao_encontrado", mensagemErro: mensagemErroEnvio("canal_nao_encontrado") };
+
   const { data: conversasEncontradas } = await supabase
     .from("conversas")
     .select("id, telefone")
     .eq("clinica_id", clinicaId)
+    .eq("canal_id", canal.id)
     .in("telefone", variantesTelefone);
 
   let conversaId = encontrarPorTelefoneEquivalente(conversasEncontradas ?? [], telefone)?.id as string | undefined;
@@ -398,11 +450,15 @@ export async function iniciarConversaChat(
         clinica_id: clinicaId,
         paciente_id: pacienteId,
         telefone,
+        canal_id: canal.id,
+        instancia_evolution: canal.providerInstanceId,
         status: "respondido",
         primeira_mensagem_em: agora,
         ultima_mensagem_em: agora,
         aguardando_desde: agora,
         nao_lida: false,
+        // Quem abre a conversa pelo painel é a responsável (não cai na fila de ninguém).
+        ...(ator ? { atribuido_a: ator.atendenteId, atribuido_em: agora } : {}),
       })
       .select("id")
       .single();
@@ -412,8 +468,8 @@ export async function iniciarConversaChat(
 
   // Reaproveita o motor de envio da conversa já existente — mesmo comportamento
   // do webhook/funil, sem duplicar a lógica de transição aqui.
-  const resultado = await enviarRespostaChat(clinicaId, conversaId, texto, null);
-  if (!resultado.ok) return { ok: false, error: resultado.error, conversaId };
+  const resultado = await enviarRespostaChat(clinicaId, conversaId, texto, ator);
+  if (!resultado.ok) return { ...resultado, conversaId };
 
   return { ok: true, conversaId };
 }
@@ -442,58 +498,6 @@ export async function contarNaoLidas(clinicaId: string): Promise<number> {
   return count ?? 0;
 }
 
-export type AbaChat = "todos" | "nao_lidas" | "concluidos" | "atribuidos" | "arquivadas";
-
-export function contarAbasChat(conversas: ConversaChat[], atendenteIdAtual: string | null) {
-  const visiveis = conversas.filter((c) => !c.arquivada);
-  return {
-    todos: visiveis.length,
-    nao_lidas: visiveis.filter((c) => c.naoLida).length,
-    concluidos: visiveis.filter((c) => STATUS_RESOLVIDOS.includes(c.status)).length,
-    atribuidos: atendenteIdAtual ? visiveis.filter((c) => c.atribuidoAId === atendenteIdAtual).length : 0,
-    arquivadas: conversas.filter((c) => c.arquivada).length,
-  };
-}
-
-export function filtrarConversasChat(
-  conversas: ConversaChat[],
-  opts: {
-    aba: AbaChat;
-    atendenteIdAtual: string | null;
-    prioridade?: Prioridade | null;
-    etiquetaId?: string | null;
-    busca?: string;
-  }
-): ConversaChat[] {
-  let resultado = conversas;
-
-  if (opts.aba === "arquivadas") {
-    resultado = resultado.filter((c) => c.arquivada);
-  } else {
-    resultado = resultado.filter((c) => !c.arquivada);
-    if (opts.aba === "nao_lidas") resultado = resultado.filter((c) => c.naoLida);
-    else if (opts.aba === "concluidos") resultado = resultado.filter((c) => STATUS_RESOLVIDOS.includes(c.status));
-    else if (opts.aba === "atribuidos") {
-      resultado = resultado.filter((c) => c.atribuidoAId !== null && c.atribuidoAId === opts.atendenteIdAtual);
-    }
-  }
-
-  if (opts.prioridade) resultado = resultado.filter((c) => c.prioridade === opts.prioridade);
-  if (opts.etiquetaId) resultado = resultado.filter((c) => c.etiquetas.some((e) => e.id === opts.etiquetaId));
-
-  const busca = opts.busca?.trim().toLowerCase();
-  if (busca && busca.length >= 3) {
-    const buscaDigitos = busca.replace(/\D/g, "");
-    resultado = resultado.filter((c) => {
-      const bateNome = c.pacienteNome?.toLowerCase().includes(busca) ?? false;
-      const bateTelefone = buscaDigitos.length > 0 && c.telefone.includes(buscaDigitos);
-      return bateNome || bateTelefone;
-    });
-  }
-
-  return resultado;
-}
-
 /**
  * "Finalizar Atendimento" no Chat ao Vivo (a pedido do Rafael): um clique só
  * pra encerrar — leva a conversa pra um status resolvido (sem regredir um
@@ -510,7 +514,7 @@ export async function finalizarAtendimento(
 
   const { data: conversa } = await supabase
     .from("conversas")
-    .select("status")
+    .select("status, canal_id")
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
@@ -523,5 +527,13 @@ export async function finalizarAtendimento(
 
   await pausarAgenteManual(clinicaId, conversaId);
 
+  // "Finalizada" operacional (separa de "respondido = aguardando paciente"); o
+  // webhook limpa quando o paciente escrever de novo.
+  await supabase.from("conversas").update({ finalizada_em: new Date().toISOString() }).eq("id", conversaId).eq("clinica_id", clinicaId);
+  await registrarEventoConversa(clinicaId, conversaId, "CONVERSATION_CLOSED", atendenteId, { canalId: (conversa.canal_id as string | null) ?? null });
+
   return { ok: true };
 }
+
+// Compat: quem já importava tipos/filtros de "@/lib/chat" continua funcionando.
+export * from "@/lib/chat-filtros";

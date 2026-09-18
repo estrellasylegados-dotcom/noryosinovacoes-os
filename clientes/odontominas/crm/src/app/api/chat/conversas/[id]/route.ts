@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { atualizarConversaChat, type PatchConversaChat } from "@/lib/chat";
 import { getClinicaId } from "@/lib/clinica";
 import { isPrioridadeValida } from "@/lib/prioridade";
-import { requirePermission } from "@/lib/autorizacao";
+import { can, requireSessao } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
@@ -13,10 +13,17 @@ type Body = {
   naoLida?: boolean;
 };
 
-/** Atualização parcial de uma conversa no Chat ao Vivo: arquivar, prioridade, atribuição, marcar lida — `conversas.transferir` (seção 51 do pedido) cobre a atribuição, que é a ação mais sensível daqui. */
+/**
+ * Atualização parcial de uma conversa no Chat ao Vivo: arquivar, prioridade,
+ * marcar lida. Responsável NÃO passa mais por aqui (era last-write-wins, sem
+ * histórico): use as ações explícitas /assumir, /transferir e /desatribuir.
+ */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission("conversas.transferir");
+  const auth = await requireSessao();
   if ("erro" in auth) return auth.erro;
+  if (!can(auth.sessao, "conversas.visualizar_proprias") && !can(auth.sessao, "conversas.visualizar_todas")) {
+    return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  }
 
   const { id } = await context.params;
 
@@ -25,6 +32,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+  }
+
+  if (body.atribuidoAId !== undefined) {
+    return NextResponse.json({ ok: false, error: "use_acoes_assumir_transferir" }, { status: 400 });
   }
 
   if (body.prioridade !== undefined && !isPrioridadeValida(body.prioridade)) {
@@ -39,13 +50,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const patch: PatchConversaChat = {
     ...(body.arquivada !== undefined ? { arquivada: body.arquivada } : {}),
     ...(body.naoLida !== undefined ? { naoLida: body.naoLida } : {}),
-    ...(body.atribuidoAId !== undefined ? { atribuidoAId: body.atribuidoAId } : {}),
     ...(body.prioridade !== undefined ? { prioridade: body.prioridade } : {}),
   };
 
   const resultado = await atualizarConversaChat(clinicaId, id, patch);
   if (!resultado.ok) {
-    return NextResponse.json(resultado, { status: resultado.error === "atendente_invalido" ? 400 : 503 });
+    return NextResponse.json(resultado, { status: 503 });
   }
 
   return NextResponse.json({ ok: true });

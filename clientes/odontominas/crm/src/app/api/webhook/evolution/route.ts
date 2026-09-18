@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { getClinicaId } from "@/lib/clinica";
+import { buscarCanalPorInstancia, PROVIDER_EVOLUTION, registrarAtividadeCanal, tokensAceitosWebhook } from "@/lib/canais";
 import { extractMensagem, isGroupOrBroadcast, normalizeTelefone } from "@/lib/evolution-webhook";
 import { encontrarPorTelefoneEquivalente, variantesEquivalentesTelefoneBr } from "@/lib/telefone";
 import { extrairAtribuicaoWebhook } from "@/lib/agentes-pixel";
@@ -9,7 +9,7 @@ import { isStatusValido } from "@/lib/status";
 import { deveResponder } from "@/lib/agentes";
 import { processarMensagemRecebida } from "@/lib/agentes-buffer";
 import { detectarPedidoOptOut, aplicarOptOut, MENSAGEM_CONFIRMACAO_OPT_OUT } from "@/lib/opt-out";
-import { enviarMensagemWhatsapp } from "@/lib/evolution-send";
+import { enviarPeloCanal } from "@/lib/canais-envio";
 import {
   cancelarExecucoesAtivasDoPaciente,
   resolverRespostaWaitingInput,
@@ -18,14 +18,20 @@ import {
 
 /**
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
- * Evolution API e grava em `conversas`/`mensagens`. Conversa/paciente são
- * achados-ou-criados por (clinica_id, telefone) — uma conversa por paciente,
- * reaberta em vez de duplicada quando ele escreve de novo depois de
- * resolvida. Regra de transição de status em src/lib/funil.ts.
+ * Evolution API e grava em `conversas`/`mensagens`.
+ *
+ * Roteamento (Fase Canais, 2026-09-19): `body.instance` → canal → clínica.
+ * O canal é a autoridade — clínica e canal nunca vêm do cliente. Paciente é
+ * único por (clinica_id, telefone); a CONVERSA é por (clinica_id, canal_id,
+ * telefone): o mesmo paciente em dois canais tem duas conversas, sem fusão.
+ * Conversa reaberta em vez de duplicada quando o paciente escreve de novo
+ * depois de resolvida. Regra de transição de status em src/lib/funil.ts.
+ * Instância desconhecida: 200 `skipped` + log (4xx só faria a Evolution
+ * repetir), sem criar NADA — nunca uma conversa na clínica errada.
  *
  * Autenticação: a Evolution API ecoa a própria apikey da instância no corpo
- * do payload (`body.apikey`) — comparamos com EVOLUTION_API_KEY em vez de
- * depender de header custom, que a Evolution não garante enviar.
+ * do payload (`body.apikey`) — comparamos com o token global, o da instância
+ * legada e o `credencial_ref` do canal (src/lib/canais.ts).
  */
 
 export const runtime = "nodejs";
@@ -67,11 +73,18 @@ export async function POST(request: Request) {
   // A Evolution API ecoa o TOKEN DA INSTÂNCIA no campo apikey do payload
   // (não a chave global usada pra chamar a API dela) — validado empiricamente
   // batendo os dois valores contra o payload real.
-  const validKeys = [process.env.EVOLUTION_API_KEY, process.env.EVOLUTION_INSTANCE_TOKEN].filter(Boolean);
-  if (validKeys.length === 0 || !validKeys.includes(body.apikey)) {
+  const canal = body.instance ? await buscarCanalPorInstancia(PROVIDER_EVOLUTION, body.instance) : null;
+  const validKeys = tokensAceitosWebhook(canal);
+  if (validKeys.length === 0 || !body.apikey || !validKeys.includes(body.apikey)) {
     console.error("[webhook/evolution] unauthorized", JSON.stringify({ instance: body.instance ?? null }));
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
+
+  if (!canal) {
+    console.error("[webhook/evolution] unknown_instance", JSON.stringify({ instance: body.instance ?? null }));
+    return NextResponse.json({ ok: true, skipped: "unknown_instance" });
+  }
+  console.log("[webhook/evolution] channel_resolved", JSON.stringify({ canalId: canal.id, instance: body.instance }));
 
   const event = (body.event || "").toLowerCase();
   if (event !== "messages.upsert") {
@@ -94,14 +107,12 @@ export async function POST(request: Request) {
   }
 
   const supabase = getSupabaseServerClient();
-  const clinicaId = await getClinicaId();
-  if (!supabase || !clinicaId) {
-    console.error(
-      "[webhook/evolution] backend_unavailable",
-      JSON.stringify({ supabase: Boolean(supabase), clinicaId: Boolean(clinicaId) })
-    );
+  const clinicaId = canal.clinicaId;
+  if (!supabase) {
+    console.error("[webhook/evolution] backend_unavailable", JSON.stringify({ supabase: false }));
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
   }
+  void registrarAtividadeCanal(canal, { tipo: data.key?.fromMe === true ? "webhook_out" : "webhook_in" });
 
   const fromMe = data.key?.fromMe === true;
   const direcao = fromMe ? "enviada" : "recebida";
@@ -153,6 +164,7 @@ export async function POST(request: Request) {
     .from("conversas")
     .select("id, status, mensagens_nao_lidas, telefone")
     .eq("clinica_id", clinicaId)
+    .eq("canal_id", canal.id)
     .in("telefone", variantesTelefone);
 
   const conversaExistente = encontrarPorTelefoneEquivalente(conversasEncontradas ?? [], telefone);
@@ -175,6 +187,7 @@ export async function POST(request: Request) {
         clinica_id: clinicaId,
         paciente_id: pacienteId,
         telefone,
+        canal_id: canal.id,
         instancia_evolution: body.instance ?? null,
         remote_jid: remoteJid,
         status,
@@ -210,6 +223,8 @@ export async function POST(request: Request) {
         // ou responde por lá (src/lib/chat.ts).
         nao_lida: !fromMe,
         mensagens_nao_lidas: fromMe ? 0 : contadorAtual + 1,
+        // Paciente escreveu = atendimento reaberto (limpa a finalização manual).
+        ...(fromMe ? {} : { finalizada_em: null }),
         // reabriu = mensagem nova numa conversa já resolvida: reinicia o
         // relógio de "tempo até 1ª resposta" a partir desta mensagem, não
         // do contato original (que pode ter sido dias/semanas atrás).
@@ -269,7 +284,7 @@ export async function POST(request: Request) {
       // de opt-out.ts de propósito: evitaria import circular (fluxo-execucoes
       // já importa detectarPedidoOptOut de lá).
       await cancelarExecucoesAtivasDoPaciente(clinicaId, pacienteId);
-      const envio = await enviarMensagemWhatsapp(telefone, MENSAGEM_CONFIRMACAO_OPT_OUT);
+      const envio = await enviarPeloCanal(canal, telefone, MENSAGEM_CONFIRMACAO_OPT_OUT);
       if (envio.ok) {
         const { error: confirmacaoError } = await supabase.from("mensagens").insert({
           clinica_id: clinicaId,
@@ -300,7 +315,9 @@ export async function POST(request: Request) {
   // agente_ativo_id/agente_pausado_ate, que não mudam em nada. Pra quem nunca
   // usa Fluxo de Conversa, `dono_conversa` fica no valor de backfill
   // ('agente_ia' ou 'humano') e o caminho abaixo roda IDÊNTICO ao de sempre.
-  if (direcao === "recebida" && conteudo && !optOutDetectado) {
+  // Canal pausado: a mensagem do paciente já foi espelhada (nada se perde),
+  // mas nenhuma automação tenta responder por um canal que não envia.
+  if (direcao === "recebida" && conteudo && !optOutDetectado && canal.ativo) {
     try {
       const { data: conversaEstado } = await supabase
         .from("conversas")
