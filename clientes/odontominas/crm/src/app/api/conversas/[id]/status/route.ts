@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { atualizarStatus } from "@/lib/conversas";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
@@ -12,6 +13,8 @@ import { isStatusValido } from "@/lib/status";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const { id } = await context.params;
 
   let body: { status?: string };

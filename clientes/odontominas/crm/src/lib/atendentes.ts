@@ -186,7 +186,7 @@ export function validarDadosConvite(dados: DadosConviteAtendente): string | null
 export async function criarAtendenteConvidado(
   clinicaId: string | null,
   dados: DadosConviteAtendente,
-  criadoPorId: string
+  criadoPorId: string | null
 ): Promise<{ ok: boolean; atendente?: Atendente; error?: string }> {
   const erro = validarDadosConvite(dados);
   if (erro) return { ok: false, error: erro };

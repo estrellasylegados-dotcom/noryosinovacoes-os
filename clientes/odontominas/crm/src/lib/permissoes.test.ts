@@ -85,3 +85,19 @@ describe("podeAtribuirPerfil — regra de elevação (seção 40/41 do pedido)",
     expect(podeAtribuirPerfil("noryos_admin", "noryos_suporte")).toBe(true);
   });
 });
+
+describe("podeRedefinirCredencial", () => {
+  it("Suporte redefine perfis operacionais, nunca a Dona nem plataforma", async () => {
+    const { podeRedefinirCredencial } = await import("@/lib/permissoes");
+    for (const alvo of ["gerente", "supervisora", "atendente"] as const) expect(podeRedefinirCredencial("noryos_suporte", alvo)).toBe(true);
+    for (const alvo of ["dona", "noryos_admin", "noryos_suporte"] as const) expect(podeRedefinirCredencial("noryos_suporte", alvo)).toBe(false);
+  });
+  it("Dona não redefine outra Dona nem plataforma; Noryos Admin redefine todos; operacionais nenhum", async () => {
+    const { podeRedefinirCredencial } = await import("@/lib/permissoes");
+    expect(podeRedefinirCredencial("dona", "gerente")).toBe(true);
+    expect(podeRedefinirCredencial("dona", "dona")).toBe(false);
+    expect(podeRedefinirCredencial("dona", "noryos_admin")).toBe(false);
+    expect(podeRedefinirCredencial("noryos_admin", "dona")).toBe(true);
+    for (const ator of ["gerente", "supervisora", "atendente"] as const) expect(podeRedefinirCredencial(ator, "atendente")).toBe(false);
+  });
+});

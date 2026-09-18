@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { buscarMensagensChat, enviarRespostaChat } from "@/lib/chat";
 import { getClinicaId } from "@/lib/clinica";
 import { requirePermission } from "@/lib/autorizacao";
@@ -6,6 +7,8 @@ import { requirePermission } from "@/lib/autorizacao";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const { id } = await context.params;
 
   const clinicaId = await getClinicaId();

@@ -34,7 +34,8 @@ async function enviar(destino: string, assunto: string, html: string, tipo: stri
 
   const { error } = await resend.emails.send({ from: REMETENTE, to: destino, subject: assunto, html });
   if (error) {
-    console.error("[email] envio_falhou", JSON.stringify({ tipo }));
+    // Só nome/status do erro do provedor (nunca destino, chave ou corpo) — o suficiente pra distinguir "domínio não verificado" de "chave inválida".
+    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: error.name ?? null, status: (error as { statusCode?: number | null }).statusCode ?? null }));
     return { ok: false };
   }
   return { ok: true };

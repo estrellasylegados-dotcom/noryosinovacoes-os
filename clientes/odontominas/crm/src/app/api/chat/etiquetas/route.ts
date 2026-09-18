@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { criarEtiqueta, listarEtiquetas } from "@/lib/etiquetas";
 import { getClinicaId } from "@/lib/clinica";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const clinicaId = await getClinicaId();
   if (!clinicaId) {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -15,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   let body: { nome?: string };
   try {
     body = await request.json();

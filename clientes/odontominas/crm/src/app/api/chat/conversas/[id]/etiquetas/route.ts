@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { adicionarEtiquetaConversa, removerEtiquetaConversa } from "@/lib/etiquetas";
 import { getClinicaId } from "@/lib/clinica";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const { id } = await context.params;
 
   let body: { etiquetaId?: string };
@@ -32,6 +35,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const { id } = await context.params;
   const etiquetaId = new URL(request.url).searchParams.get("etiquetaId");
 

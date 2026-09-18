@@ -16,7 +16,7 @@ function hashToken(tokenBruto: string): string {
 }
 
 /** Devolve o token em texto puro só pra quem chamou montar o e-mail (src/lib/email.ts) — nunca persiste. */
-export async function criarConvite(atendenteId: string, criadoPorId: string): Promise<string | null> {
+export async function criarConvite(atendenteId: string, criadoPorId: string | null): Promise<string | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
@@ -56,14 +56,28 @@ export async function aceitarConvite(tokenBruto: string, novaSenha: string): Pro
 
   const atendenteId = convite.atendente_id as string;
 
-  const { error: updateError } = await supabase
+  // Claim atômico do token ANTES de tocar na conta: só um aceite ganha (uso
+  // único de verdade, sem janela entre o select e o update).
+  const { data: reivindicado } = await supabase
+    .from("convites")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", convite.id as string)
+    .is("used_at", null)
+    .select("id");
+  if (!reivindicado || reivindicado.length === 0) return { ok: false, error: "token_ja_usado" };
+
+  // Só conta ainda `invited` aceita convite: se foi bloqueada/desativada
+  // depois do convite, o link antigo não pode desfazer a decisão da Dona.
+  const { data: ativada, error: updateError } = await supabase
     .from("atendentes")
     .update({ senha_hash: hashSenha(novaSenha), status: "active", ativo: true })
-    .eq("id", atendenteId);
+    .eq("id", atendenteId)
+    .eq("status", "invited")
+    .select("id");
   if (updateError) return { ok: false, error: "persist_failed" };
+  if (!ativada || ativada.length === 0) return { ok: false, error: "token_invalido" };
 
-  // Uso único + invalida qualquer outro convite pendente da mesma conta
-  // (ex.: reenvio de convite antes do 1º expirar) numa só query.
+  // Invalida qualquer outro convite pendente da mesma conta (ex.: reenvio antes do 1º expirar).
   await supabase.from("convites").update({ used_at: new Date().toISOString() }).eq("atendente_id", atendenteId).is("used_at", null);
 
   const atendente = await buscarAtendenteCompletoPorId(atendenteId);

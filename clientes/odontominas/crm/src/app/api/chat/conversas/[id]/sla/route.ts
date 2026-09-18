@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { avaliarStatusSlaConversa, registrarSlaBreachSeNovo } from "@/lib/sla";
 
@@ -6,6 +7,8 @@ export const runtime = "nodejs";
 
 /** Aberto a qualquer sessão logada (mesmo critério de .../mensagens) — ver leitura de status, não é config. */
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const { id } = await context.params;
 
   const clinicaId = await getClinicaId();

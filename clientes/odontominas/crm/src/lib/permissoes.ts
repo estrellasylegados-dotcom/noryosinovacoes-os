@@ -234,3 +234,23 @@ const PERFIS_QUE_PODE_ATRIBUIR: Record<Perfil, ReadonlyArray<Perfil>> = {
 export function podeAtribuirPerfil(atorPerfil: Perfil, perfilAlvo: Perfil): boolean {
   return PERFIS_QUE_PODE_ATRIBUIR[atorPerfil].includes(perfilAlvo);
 }
+
+/**
+ * Quem pode redefinir a credencial (senha) de quem. Separado de
+ * `podeAtribuirPerfil` de propósito: Suporte não atribui perfil a ninguém,
+ * mas precisa resetar acesso de perfis operacionais — nunca o da Dona nem
+ * de outra identidade de plataforma (senão "redefinir senha" vira tomada
+ * de conta). Ninguém redefine a própria senha por esta via.
+ */
+const PERFIS_CUJA_CREDENCIAL_PODE_REDEFINIR: Record<Perfil, ReadonlyArray<Perfil>> = {
+  noryos_admin: PERFIS,
+  noryos_suporte: ["gerente", "supervisora", "atendente"],
+  dona: ["gerente", "supervisora", "atendente"],
+  gerente: [],
+  supervisora: [],
+  atendente: [],
+};
+
+export function podeRedefinirCredencial(atorPerfil: Perfil, perfilAlvo: Perfil): boolean {
+  return PERFIS_CUJA_CREDENCIAL_PODE_REDEFINIR[atorPerfil].includes(perfilAlvo);
+}

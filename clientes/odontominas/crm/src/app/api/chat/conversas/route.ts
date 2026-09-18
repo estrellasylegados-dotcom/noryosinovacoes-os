@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSessao } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { iniciarConversaChat, listarConversasChat } from "@/lib/chat";
 
@@ -6,6 +7,8 @@ export const runtime = "nodejs";
 
 /** Lista completa (sem paginação — mesmo padrão de src/lib/conversas.ts, escala de 1 clínica). O filtro/aba é aplicado no cliente. */
 export async function GET() {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   const clinicaId = await getClinicaId();
   if (!clinicaId) {
     return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -17,6 +20,8 @@ export async function GET() {
 
 /** "Nova conversa": acha-ou-cria paciente/conversa por telefone e manda a 1ª mensagem de verdade. */
 export async function POST(request: Request) {
+  const authSessao = await requireSessao();
+  if ("erro" in authSessao) return authSessao.erro;
   let body: { telefone?: string; texto?: string; nome?: string };
   try {
     body = await request.json();
