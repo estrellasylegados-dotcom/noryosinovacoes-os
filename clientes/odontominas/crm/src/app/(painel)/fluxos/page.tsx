@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarFluxos, isStatusFluxoValido, type StatusFluxo } from "@/lib/fluxo-versoes";
 import { formatDataHora } from "@/lib/tempo";
@@ -25,7 +26,7 @@ const ABAS: { valor: StatusFluxo | "todos"; label: string }[] = [
 
 export default async function FluxosPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

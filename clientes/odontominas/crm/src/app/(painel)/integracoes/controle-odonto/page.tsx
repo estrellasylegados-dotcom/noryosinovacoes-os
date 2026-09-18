@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { getControleOdontoConfig } from "@/lib/controle-odonto/config";
 import { getControleOdontoCapabilities } from "@/lib/controle-odonto/capabilities";
@@ -20,7 +21,7 @@ const LABEL_SAUDE: Record<string, { texto: string; cor: string; bolinha: string 
 /** Painel de status de uma integração externa é sensível (endpoint, latência, contagem de dado clínico) — só admin. */
 export default async function ControleOdontoPage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
 
 export const runtime = "nodejs";
@@ -13,7 +14,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const body = (await request.json().catch(() => null)) as
     | { texto?: string; nome?: string | null; telefone?: string | null }

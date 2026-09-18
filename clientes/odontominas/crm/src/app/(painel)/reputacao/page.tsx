@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { buscarConfigReputacao } from "@/lib/reputacao-config";
 import {
   buscarPainelReputacao,
@@ -31,7 +32,7 @@ export default async function ReputacaoPage({
     searchParams,
   ]);
 
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   if (!clinicaId) {
     return (

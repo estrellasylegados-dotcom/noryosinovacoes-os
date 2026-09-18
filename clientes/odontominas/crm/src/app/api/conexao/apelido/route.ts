@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { getClinicaId, salvarApelidoInstancia } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
 /** Apelido interno da instância — mesma sensibilidade de mexer na conexão, só admin. */
 export async function PATCH(request: Request) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 

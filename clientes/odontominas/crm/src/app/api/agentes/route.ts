@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { criarAgente, listarAgentes, type DadosAgente } from "@/lib/agentes";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
 /** Agentes de IA são sensíveis (chave de API, texto que sai sem revisão pro paciente) — só admin. */
 async function exigirAdmin() {
   const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
+  return isAdminEquivalente(sessao);
 }
 
 export async function GET() {

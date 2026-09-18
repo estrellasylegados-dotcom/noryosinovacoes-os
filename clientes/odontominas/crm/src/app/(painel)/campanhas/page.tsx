@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarCampanhas, LABEL_STATUS_CAMPANHA, labelObjetivo, labelTipoCampanha, labelCanal, isStatusCampanhaValido, type StatusCampanha } from "@/lib/campanhas";
 import { calcularPainelGeral } from "@/lib/campanha-metricas";
@@ -44,7 +45,7 @@ export default async function CampanhasPage({
   searchParams: Promise<{ status?: string; periodo?: string }>;
 }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

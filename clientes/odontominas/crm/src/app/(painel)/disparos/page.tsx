@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarDisparos, type StatusDisparo } from "@/lib/disparos";
 import { formatDataHora } from "@/lib/tempo";
@@ -18,7 +19,7 @@ const LABEL_STATUS: Record<StatusDisparo, { texto: string; cor: string }> = {
 /** Criar/rodar disparo de WhatsApp em massa mexe no número da clínica — só admin. */
 export default async function DisparosPage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

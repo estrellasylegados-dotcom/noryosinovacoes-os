@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { desconectarInstancia } from "@/lib/evolution-status";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
 /** Derruba a sessão do WhatsApp conectado — só admin, mesma sensibilidade das outras ações de conexão. */
 export async function POST() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 

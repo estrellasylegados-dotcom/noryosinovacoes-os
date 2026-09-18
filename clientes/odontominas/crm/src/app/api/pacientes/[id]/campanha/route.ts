@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { vincularCampanhaPaciente } from "@/lib/pacientes";
 
@@ -8,7 +9,7 @@ export const runtime = "nodejs";
 /** Vínculo manual paciente↔campanha (item 14) — admin só, mesmo gate de "Ferramentas". */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });

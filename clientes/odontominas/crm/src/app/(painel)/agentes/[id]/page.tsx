@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { buscarAgente, buscarEstatisticasAgente } from "@/lib/agentes";
 import { listarEtiquetas } from "@/lib/etiquetas";
@@ -14,7 +15,7 @@ export default async function EditarAgentePage({ params }: { params: Promise<{ i
   const { id } = await params;
 
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

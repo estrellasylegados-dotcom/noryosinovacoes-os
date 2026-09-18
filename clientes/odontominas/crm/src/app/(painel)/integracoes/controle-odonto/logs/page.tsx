@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarLogs } from "@/lib/controle-odonto/sync-log";
 import { formatDataHora } from "@/lib/tempo";
@@ -14,7 +15,7 @@ export default async function ControleOdontoLogsPage({
   searchParams: Promise<{ status?: string; direction?: string; resource?: string }>;
 }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

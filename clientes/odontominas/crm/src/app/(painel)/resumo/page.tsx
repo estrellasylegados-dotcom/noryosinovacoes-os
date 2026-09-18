@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { buscarResumoExecutivo } from "@/lib/resumo";
 import { buscarStatsAtendentes } from "@/lib/equipe";
 import { contarNaoLidas } from "@/lib/chat";
@@ -44,7 +45,7 @@ export default async function ResumoPage({
     searchParams,
   ]);
 
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 
@@ -200,7 +201,7 @@ export default async function ResumoPage({
                         <div className="mb-3 flex items-start justify-between gap-2">
                           <div>
                             <p className="font-medium text-neutral-900">{a.nome}</p>
-                            <p className="text-xs capitalize text-neutral-400">{a.papel}</p>
+                            <p className="text-xs capitalize text-neutral-400">{a.perfil}</p>
                           </div>
                           {!a.ativo && (
                             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-500">

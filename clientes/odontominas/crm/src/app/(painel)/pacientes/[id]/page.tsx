@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarFichaPaciente } from "@/lib/pacientes";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { listarCampanhas } from "@/lib/campanhas";
 import { LIMITE_ESPERA_MS, STATUS_CONFIG, labelStatus } from "@/lib/status";
 import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
@@ -29,7 +30,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
   const ficha = await buscarFichaPaciente(clinicaId, id);
   if (!ficha) notFound();
 
-  const campanhas = sessao?.papel === "admin" ? await listarCampanhas(clinicaId) : [];
+  const campanhas = isAdminEquivalente(sessao) ? await listarCampanhas(clinicaId) : [];
 
   const conversa = ficha.conversa;
   const emAberto = conversa?.status === "novo" || conversa?.status === "aguardando";
@@ -69,7 +70,7 @@ export default async function FichaPacientePage({ params }: { params: Promise<{ 
         <div className="mb-6 space-y-2">
           <PacienteDataNascimento pacienteId={ficha.id} dataNascimentoAtual={ficha.dataNascimento} />
           <PacienteSolicitarAvaliacao pacienteId={ficha.id} />
-          {sessao?.papel === "admin" && (
+          {isAdminEquivalente(sessao) && (
             <PacienteCampanhaOrigem
               pacienteId={ficha.id}
               campanhaAtualId={ficha.campanhaId}

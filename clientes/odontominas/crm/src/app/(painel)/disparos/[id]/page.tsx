@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarDisparoComRelatorio, type StatusDisparo, type StatusDestinatario } from "@/lib/disparos";
 import { buscarCampanha } from "@/lib/campanhas";
@@ -29,7 +30,7 @@ const LABEL_STATUS_DESTINATARIO: Record<StatusDestinatario, { texto: string; cor
 
 export default async function DisparoPage({ params }: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

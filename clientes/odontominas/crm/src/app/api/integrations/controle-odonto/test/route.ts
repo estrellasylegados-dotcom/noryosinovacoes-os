@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { getControleOdontoConfig } from "@/lib/controle-odonto/config";
 import { getControleOdontoCapabilities } from "@/lib/controle-odonto/capabilities";
@@ -10,7 +11,7 @@ export const runtime = "nodejs";
 
 async function exigirAdmin() {
   const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
+  return isAdminEquivalente(sessao);
 }
 
 /**

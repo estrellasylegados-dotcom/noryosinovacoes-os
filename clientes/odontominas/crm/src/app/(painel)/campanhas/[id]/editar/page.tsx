@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarCampanha } from "@/lib/campanhas";
 import { listarAudiencias } from "@/lib/audiencias";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function EditarCampanhaPage({ params }: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

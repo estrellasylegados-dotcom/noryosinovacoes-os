@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarAudiencias } from "@/lib/audiencias";
 import { listarMensagensSalvas } from "@/lib/mensagens-salvas";
@@ -15,7 +16,7 @@ export default async function NovoDisparoPage({
   searchParams: Promise<{ campanhaId?: string }>;
 }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

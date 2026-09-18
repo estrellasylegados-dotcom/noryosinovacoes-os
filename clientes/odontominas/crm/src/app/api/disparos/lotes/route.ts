@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { criarDisparo, listarDisparos, type DadosNovoDisparo } from "@/lib/disparos";
 
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 
 async function sessaoAdmin() {
   const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin" ? sessao : null;
+  return isAdminEquivalente(sessao) ? sessao : null;
 }
 
 export async function GET() {

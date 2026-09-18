@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { atualizarAgente, buscarAgente, excluirAgente, type DadosAgente } from "@/lib/agentes";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
 async function exigirAdmin() {
   const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
+  return isAdminEquivalente(sessao);
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {

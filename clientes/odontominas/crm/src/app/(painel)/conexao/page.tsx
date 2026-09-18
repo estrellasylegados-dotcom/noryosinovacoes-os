@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { buscarQrCode, buscarStatusConexao } from "@/lib/evolution-status";
 import { buscarApelidoInstancia, getClinicaId } from "@/lib/clinica";
 import { formatDataHora, formatTelefone } from "@/lib/tempo";
@@ -21,7 +22,7 @@ function iniciais(nome: string | null): string {
 /** Reconectar o WhatsApp é sensível (troca o aparelho por trás do número da clínica) — só admin. */
 export default async function ConexaoPage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

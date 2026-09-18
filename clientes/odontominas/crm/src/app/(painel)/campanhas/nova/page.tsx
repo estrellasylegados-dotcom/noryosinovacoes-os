@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { listarAudiencias } from "@/lib/audiencias";
 import { listarEtiquetas } from "@/lib/etiquetas";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NovaCampanhaPage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") redirect("/");
+  if (!isAdminEquivalente(sessao)) redirect("/");
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) {

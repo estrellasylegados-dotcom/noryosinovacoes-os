@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { runAppointmentsSync } from "@/lib/controle-odonto/sync";
 
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 
 async function exigirAdmin() {
   const sessao = await getSessaoAtual();
-  return sessao?.papel === "admin";
+  return isAdminEquivalente(sessao);
 }
 
 /** Botão "Sincronizar agora" do painel — mesma rotina do cron (src/app/api/cron/controle-odonto-sync), serializada por lock. */

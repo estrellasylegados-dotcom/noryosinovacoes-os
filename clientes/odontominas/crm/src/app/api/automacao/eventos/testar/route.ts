@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { emitirEventoAutomacao } from "@/lib/fluxo-eventos-internos";
 
@@ -31,7 +32,7 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   if (process.env.ENABLE_AUTOMATION_EVENT_TEST_ROUTE !== "true") {
     return NextResponse.json({ ok: false, error: "rota_indisponivel" }, { status: 403 });

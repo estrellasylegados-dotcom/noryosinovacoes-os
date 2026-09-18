@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { listarEtiquetas } from "@/lib/etiquetas";
 import { modelosDisponiveis } from "@/lib/ia-provedores";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NovoAgentePage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

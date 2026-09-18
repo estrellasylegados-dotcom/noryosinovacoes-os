@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { contarMensagensPorAgente, listarAgentes } from "@/lib/agentes";
 import { listarEtiquetas } from "@/lib/etiquetas";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 /** Cria/edita agente = mexe em chave de API e texto que sai pro paciente sem revisão — só admin. */
 export default async function AgentesPage() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") {
+  if (!isAdminEquivalente(sessao)) {
     redirect("/");
   }
 

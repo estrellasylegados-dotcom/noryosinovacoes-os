@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarConfigReputacao, salvarConfigReputacao, type SalvarConfigReputacaoInput } from "@/lib/reputacao-config";
 
@@ -8,7 +9,7 @@ export const runtime = "nodejs";
 /** Ver e editar a config de Reputação — só admin edita (link oficial da clínica), mesmo gate de "Ferramentas". */
 export async function GET() {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -19,7 +20,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });

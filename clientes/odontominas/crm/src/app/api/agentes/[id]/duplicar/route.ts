@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { duplicarAgente } from "@/lib/agentes";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
+import { isAdminEquivalente } from "@/lib/autorizacao";
 
 export const runtime = "nodejs";
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const sessao = await getSessaoAtual();
-  if (sessao?.papel !== "admin") return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   const { id } = await context.params;
   const clinicaId = await getClinicaId();
