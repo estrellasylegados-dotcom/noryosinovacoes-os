@@ -3,7 +3,7 @@ import { buscarStatusConexao } from "@/lib/evolution-status";
 
 /**
  * Canal de atendimento da clínica (Fase Canais + Caixa Compartilhada,
- * 2026-09-19). NÚMERO ≠ ATENDENTE: o número (canal) pertence à clínica, a
+ * 2026-09-18). NÚMERO ≠ ATENDENTE: o número (canal) pertence à clínica, a
  * atendente acessa o canal pelo Noryos. `tipo`/`provider` são texto livre de
  * propósito — hoje só existe whatsapp/evolution, mas nada aqui impede
  * instagram/webchat depois (basta um provider novo em `canais-envio.ts`).

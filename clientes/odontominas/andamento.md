@@ -1,5 +1,26 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, Canais WhatsApp + Caixa Compartilhada Multiatendente — em produção)
+
+Doc completa (modelo, fluxos, RBAC, rollback): `crm/docs/CANAIS.md`.
+
+- **O que existe:** tabela `canais` (nome amigável, telefone, status de conexão, ativo/pausado,
+  principal, `credencial_ref` só como nome de env), `conversas.canal_id`/`atribuido_em`/`finalizada_em`,
+  `conversa_eventos` (ASSIGNED/TRANSFERRED/UNASSIGNED/CLOSED/REOPENED/INTERVENED). Webhook resolve
+  canal e clínica pela instância; envio conversa→canal→instância (`canais-envio.ts`), sem fallback;
+  Disparos/alertas internos usam o canal principal. Migrations v30, v32, v31 (nessa ordem, a v31 só
+  depois do deploy). Deploy `d9345f64`.
+- **Chat ao Vivo:** filas (novos, sem responsável, meus, aguardando atendente/paciente, finalizados),
+  filtros por canal/responsável/SLA, ordenação, Assumir/Transferir/Devolver à fila, conflito 409 com o
+  nome de quem assumiu, indicador de controle (humano/IA/automação). Configurações → Canais
+  (`/configuracoes/canais`; `/conexao` redireciona).
+- **Provado:** 780 testes; multicanal e unicidade no banco real; corrida real (20+20 rodadas, 1
+  vencedor em todas, SLA intacto). **Não provado:** fluxo real com WhatsApp + login A/B; UI num navegador.
+- **Preparado, não feito:** Kanban, distribuição automática, grupos/setores, presença, Noryos Ops
+  (`verificarSaudeCanal` + `/api/canais/:id/diagnostico`), omnichannel, ponte CONVERSATION_* → Fluxo.
+- **Dados [TESTE] preservados** (canais Recepção/Comercial de instância fictícia, 3 atendentes sem
+  login, paciente e ~48 conversas 5500000000xxx) até depois da apresentação.
+
 ## Onde está (2026-09-18, Identidade/RBAC — validação E2E: convite real ok, 2 de 6 perfis de teste ativos)
 
 **Validação E2E da fundação de Identidade/RBAC em produção, em andamento.** Matriz dos 6 perfis e

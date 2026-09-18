@@ -20,7 +20,7 @@ import {
  * Fase 2 do CRM (espelhamento): recebe o evento `messages.upsert` da
  * Evolution API e grava em `conversas`/`mensagens`.
  *
- * Roteamento (Fase Canais, 2026-09-19): `body.instance` → canal → clínica.
+ * Roteamento (Fase Canais, 2026-09-18): `body.instance` → canal → clínica.
  * O canal é a autoridade — clínica e canal nunca vêm do cliente. Paciente é
  * único por (clinica_id, telefone); a CONVERSA é por (clinica_id, canal_id,
  * telefone): o mesmo paciente em dois canais tem duas conversas, sem fusão.

@@ -1,6 +1,6 @@
 -- ============================================================================
 -- CRM OdontoMinas — V30: canais de atendimento + caixa compartilhada
--- Data: 2026-09-19
+-- Data: 2026-09-18
 --
 -- Fase "Canais WhatsApp + Caixa Compartilhada Multiatendente". 100% ADITIVA:
 -- o código antigo continua funcionando com esta migration aplicada (o trigger

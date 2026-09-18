@@ -1,6 +1,6 @@
 -- ============================================================================
 -- CRM OdontoMinas — V31: unicidade de conversa por canal (fecha a fase de canais)
--- Data: 2026-09-19
+-- Data: 2026-09-18
 --
 -- SÓ aplicar depois da v30, do deploy do código novo e da verificação:
 --   select count(*) from public.conversas where canal_id is null;   -- deve ser 0

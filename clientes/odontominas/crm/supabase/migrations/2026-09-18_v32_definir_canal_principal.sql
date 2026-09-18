@@ -1,6 +1,6 @@
 -- ============================================================================
 -- CRM OdontoMinas — V32: trocar o canal principal de forma atômica
--- Data: 2026-09-19
+-- Data: 2026-09-18
 --
 -- `canais_principal_unq` (1 principal por clínica) impede fazer "marca o novo,
 -- desmarca o velho" em dois UPDATEs soltos; esta função faz os dois na mesma

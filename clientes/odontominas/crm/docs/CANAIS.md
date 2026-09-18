@@ -1,6 +1,6 @@
 # Canais de atendimento + caixa compartilhada
 
-Fase de 2026-09-19. Migrations `v30` (aditiva), `v31` (fecha a unicidade) e `v32` (troca de principal atômica).
+Fase de 2026-09-18. Migrations `v30` (aditiva), `v31` (fecha a unicidade) e `v32` (troca de principal atômica).
 
 ## Princípio
 

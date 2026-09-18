@@ -693,3 +693,26 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   domínio do Railway (`APP_URL`). Por quê: é o único domínio verificado na conta Resend, e sem ele o
   remetente de teste só entrega ao dono da conta; domínio próprio do CRM, SPF/DKIM e branding de e-mail
   ficam pra quando ele existir. Nesta fase o teste E2E não espera por isso.
+- **2026-09-18** (Rafael, recomendação de Claude) [odontominas]: **canal = número da clínica**, não da
+  atendente. Conversa única por `(clinica_id, canal_id, telefone)`; paciente único por
+  `(clinica_id, telefone)`; o mesmo paciente em 2 canais tem 2 conversas, sem fusão automática.
+  Arquitetura pensada também pra revenda: clínica/deploy novo cria o canal principal pelo
+  `EVOLUTION_INSTANCE`, `tipo`/`provider` são texto livre (instagram/webchat sem migration). Por quê: o
+  paciente pode falar com Recepção e Comercial sem misturar histórico, e um segundo número não pode exigir
+  reconstrução.
+- **2026-09-18** (Rafael, recomendação de Claude) [odontominas]: **assumir, transferir e devolver à fila
+  são funções Postgres atômicas** (UPDATE condicional + evento na mesma transação), e o PATCH genérico da
+  conversa não aceita mais responsável. Transferência carrega o "responsável esperado" e conflita (409)
+  se mudou. Por quê: last-write-wins silencioso era possível; agora está provado impossível com corrida
+  real no banco (20+20 rodadas, 1 vencedor em todas). Mock não prova atomicidade.
+- **2026-09-18** (Rafael, recomendação de Claude) [odontominas]: **regras de resposta na caixa
+  compartilhada, no backend**: o responsável responde; conversa sem responsável é assumida por quem
+  responde (mesma operação atômica); conversa de outra pessoa só com `conversas.intervir` (auditado);
+  finalizada só com `conversas.reabrir`; quem só tem `visualizar_proprias` vê as suas mais a fila sem
+  responsável. Humano assumir pausa a IA e não mexe em Fluxo `waiting_input` (a resposta continua indo
+  pro Fluxo). Status operacional é derivado do funil + `finalizada_em`, sem enum novo. Por quê:
+  atendente comum respondia qualquer conversa; sem ver a fila ela nunca acharia o que assumir.
+- **2026-09-18** (Rafael, recomendação de Claude) [odontominas]: **envio nunca faz fallback de canal**:
+  canal pausado ou desconectado falha de forma controlada (`canal_pausado`/`canal_indisponivel`); sem
+  conversa (disparo, alerta interno) usa o canal principal, e o principal não pode ser pausado. Por quê:
+  o paciente não pode receber mensagem de um número que não conhece.
