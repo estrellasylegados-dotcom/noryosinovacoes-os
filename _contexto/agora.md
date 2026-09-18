@@ -34,8 +34,11 @@ shim de compatibilidade (`isAdminEquivalente`) — **dívida técnica registrada
 permanente**. Deploy real no Railway (`SUCCESS`) e smoke test em produção ok; migração das 3 contas
 reais feita (`admin`→`dona`, atendentes→`atendente`), nenhuma virou `noryos_admin` sozinha. Detalhe
 completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. Kanban visual e Noryos Ops
-(painel cross-clínica) seguem não iniciados — Rafael pediu validar primeiro e-mail real (convite +
-reset) e os 6 perfis antes de avançar pra módulo grande novo. Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
+(painel cross-clínica) seguem não iniciados. **Validação E2E de Identidade/RBAC (2026-09-18, 2ª
+sessão): convite por e-mail real validado** — Noryos Admin e Noryos Suporte de teste ativos, login
+confirmado pelo Rafael; 5 achados de autorização corrigidos e em produção. Faltam reset de senha
+real e as 4 contas de clínica (Dona/Gerente/Supervisora/Atendente, aguardando e-mails reais).
+Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
 manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
 completo em `clientes/odontominas/andamento.md`. Compliance: risco de exclusividade Mirante/Sicoob
@@ -80,14 +83,16 @@ aceito conscientemente.
   avançar sem o sinal dele (2026-09-17).
 - Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
   fechar (2026-09-14).
-- Identidade/RBAC (2026-09-18): configurar `RESEND_API_KEY` e `APP_URL` em produção (Railway) —
-  sem isso convite e reset de senha criam o token mas o e-mail não sai de verdade; testar os dois
-  fluxos com e-mail real depois de configurar; criar contas `[TESTE]` dos 6 perfis (Dona, Gerente,
-  Supervisora, Atendente, Noryos Admin, Noryos Suporte) e validar E2E de cada uma; construir a tela
-  visual de permissões por checkboxes (hoje só a API existe, `PATCH /api/equipe/[id]/permissoes`);
-  implementar "Sessões Ativas" por dispositivo (hoje só dá pra encerrar tudo de uma vez); migrar as
-  ~60 telas que ainda usam o shim `isAdminEquivalente` pra permissão granular; revisar o modelo de
-  `membership` quando existir de verdade uma 2ª clínica com usuário compartilhado.
+- Identidade/RBAC, o que falta da validação E2E (2026-09-18): testar o reset de senha por e-mail
+  real (`/esqueci-senha`); criar as contas `[TESTE]` Dona, Gerente, Supervisora e Atendente quando
+  o Rafael tiver os e-mails reais da clínica (não usar e-mail fictício); rodar
+  `crm/scripts/e2e-rbac-sessao.mjs` por perfil no terminal dele (senha oculta) e trazer a saída;
+  rotacionar a chave do Resend (apareceu no chat). Melhorias conhecidas, sem urgência: ver
+  `andamento.md` (auditoria, rate limit, menu×página, permissões `visualizar_*`).
+- Identidade/RBAC, dívidas já registradas: tela visual de permissões por checkboxes (hoje só a API,
+  `PATCH /api/equipe/[id]/permissoes`); "Sessões Ativas" por dispositivo; migrar as ~60 telas do
+  shim `isAdminEquivalente` pra permissão granular; revisar `membership` quando existir 2ª clínica
+  com usuário compartilhado.
 
 ## Quente agora
 
@@ -110,6 +115,6 @@ aceito conscientemente.
 - Reconstrução do CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops): Equipe, Notas Internas,
   Horário de Atendimento e SLA Operacional prontos e em produção (2026-09-18). **Identidade/Login/
   RBAC — fundação concluída no mesmo dia** (6 perfis, sessão revogável, convites/reset por e-mail,
-  RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Próximo passo
-  recomendado: validar e-mail real (convite + reset) e os 6 perfis ponta a ponta antes de avançar
-  pra Kanban ou Noryos Ops — aguarda sinal do Rafael.
+  RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Validação E2E
+  em andamento: convite por e-mail real ok e Noryos Admin/Suporte de teste ativos; falta reset real
+  e os 4 perfis da clínica antes de avançar pra Kanban ou Noryos Ops — aguarda sinal do Rafael.

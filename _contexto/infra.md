@@ -10,7 +10,7 @@
 | Site institucional | Hostinger Web Apps (Node.js) + CDN Hostinger | noryosinovacoes.com.br | Rafael; deploy automático a partir da branch `main` no GitHub | Next.js 15.5.24 fixado (restrição de glibc do build da Hostinger) |
 | Código-fonte | GitHub | `estrellasylegados-dotcom/noryosinovacoes` | Rafael; MCP conectado | site vive em `projetos/Noryos-Inovacoes/site/` dentro desse repo (projeto anterior, a ser linkado) |
 | Banco de dados | Supabase | projeto de produção (ref no `.env`) | Rafael; MCP conectado (somente-leitura) | dados do Diagnóstico Digital: leads, scoring, rate limit |
-| Email transacional | Resend | domínio noryosinovacoes.com.br verificado | Rafael | notificação interna do Diagnóstico Digital |
+| Email transacional | Resend | domínio noryosinovacoes.com.br verificado | Rafael | notificação interna do Diagnóstico Digital; também usado pelo CRM OdontoMinas (convite e reset de senha), remetente `Noryos <no-reply@noryosinovacoes.com.br>`, com os links apontando pro domínio do Railway (`APP_URL`) — 2026-09-18 |
 | Anti-bot | Cloudflare Turnstile | — | Rafael | obrigatório no `POST /api/diagnostico` |
 | CRM comercial | Twenty CRM (Cloud Pro, trial 30 dias) | `noryos.twenty.com` (workspace ainda não criado) | Rafael | Fase 1 aprovada, runbook pronto |
 | Site OdontoMinas (cliente-piloto) | Cloudflare Pages | https://odontominas.pages.dev/ | Rafael; deploy automático a cada push na `main` do repo `noryosinovacoes-os` (root `clientes/odontominas/site`) | Domínio próprio ainda não existe — subdomínio gratuito por enquanto |

@@ -671,3 +671,25 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   `clinica_id` preenchido (nenhuma é conta de plataforma) e são placeholders de demo (nenhuma é a
   Ariadna ainda) — decisão de negócio (quem é a 1ª conta `noryos_admin` de verdade) fica pro Rafael
   decidir depois, não assumida no vácuo.
+- **2026-09-18** (Rafael) [odontominas]: na validação E2E de Identidade/RBAC, achado que envolve
+  autorização, escalada de privilégio, acesso indevido, vazamento ou alteração destrutiva é corrigido
+  ANTES de testar em produção; achado de UX, mensagem ou inconsistência não destrutiva é testado
+  primeiro e corrigido em deploy separado. Por quê: não explorar nem provar falha de segurança em
+  produção só pra mostrar que existe. Aplicado aos achados 1, 3, 4, 5 e 6 (commits `1e2daa9`,
+  `c123000`).
+- **2026-09-18** (Rafael) [odontominas]: achado 2 mantido — Atendente mudar/finalizar status de
+  conversa pela rota `/api/conversas/[id]/status` é decisão de produto válida (o funil do dia a dia,
+  ver decisão de 2026-09-15), não vulnerabilidade, e não muda nesta rodada mesmo o catálogo não dando
+  `conversas.finalizar` ao Atendente. Por quê: tirar isso do Atendente mudaria um fluxo já entregue
+  sem necessidade; a inconsistência entre catálogo e rota fica registrada, não corrigida.
+- **2026-09-18** (Rafael, recomendação de Claude) [odontominas]: o primeiro Noryos Admin nasce só por
+  script CLI administrativo (`crm/scripts/bootstrap-noryos-admin.ts`), via convite oficial, idempotente,
+  auditado (`PLATFORM_ADMIN_BOOTSTRAPPED`), sem endpoint público, sem senha em SQL/migration/chat, e
+  recusa se já existir qualquer Noryos Admin (só passa com `--extraordinario --motivo`, gravado na
+  auditoria). Por quê: só Noryos Admin cria Noryos Admin, então o primeiro tinha bloqueio circular; o
+  script não é bypass do RBAC (só cria conta `invited`, a senha é definida pela própria pessoa).
+- **2026-09-18** (Rafael) [odontominas]: e-mail transacional do CRM sai de
+  `Noryos <no-reply@noryosinovacoes.com.br>` só como remetente ("De:"), com o CRM continuando no
+  domínio do Railway (`APP_URL`). Por quê: é o único domínio verificado na conta Resend, e sem ele o
+  remetente de teste só entrega ao dono da conta; domínio próprio do CRM, SPF/DKIM e branding de e-mail
+  ficam pra quando ele existir. Nesta fase o teste E2E não espera por isso.

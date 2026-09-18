@@ -21,3 +21,7 @@ uma resposta rápida e genérica.
 
 Por enquanto Rafael trabalha sozinho, num computador só (origem `dono`). A esposa pode entrar na
 empresa no futuro — nesse caso, o computador dela ganha uma origem própria (ver seção 6 do `AGENTS.md`).
+
+Segredos (chave de API, senha, token, cookie) nunca no chat: o Rafael configura direto no Railway ou
+digita no próprio terminal; o agente só confirma que a variável existe, sem imprimir o valor, e nunca
+forja sessão/cookie pra testar (2026-09-18).

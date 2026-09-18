@@ -1,5 +1,52 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, Identidade/RBAC — validação E2E: convite real ok, 2 de 6 perfis de teste ativos)
+
+**Validação E2E da fundação de Identidade/RBAC em produção, em andamento.** Matriz dos 6 perfis e
+roteiro de rotas 401/403 em `crm/docs/RBAC-VALIDACAO-E2E.md`. Roteiro autenticado por perfil em
+`crm/scripts/e2e-rbac-sessao.mjs` (senha digitada oculta no terminal do Rafael, só imprime
+PASSOU/FALHOU e status — ainda **não rodado**, a saída não foi trazida).
+
+**Corrigido antes do E2E** (autorização/escalada/acesso indevido, regra decidida pelo Rafael; commits
+`1e2daa9`, `c123000`, em produção): sessão validada no servidor em 13 handlers de chat/etiquetas/
+notificações/status (antes só o middleware conferia a assinatura, então bloqueio/reset de senha não
+derrubava o acesso nessas rotas); redefinir senha respeita hierarquia (`podeRedefinirCredencial`:
+Suporte só Gerente/Supervisora/Atendente, nunca a Dona; ninguém a própria conta); convite faz claim
+atômico do token e só ativa conta ainda `invited` (link antigo não desbloqueia conta bloqueada);
+permissões por pessoa só concedidas pelo ator a perfil que administra, só o que ele tem, e
+`platform.*`/`suporte.*` só em perfil de plataforma (`validarConcessaoPermissoes`); alterar nome/
+status/perfil de alguém exige poder administrar o perfil atual do alvo. **Achado 2 mantido** (Atendente
+muda/finaliza status pela rota `/status`): decisão de produto, não falha.
+
+**Bootstrap do 1º Noryos Admin** por CLI (`crm/scripts/bootstrap-noryos-admin.ts`, `--dry-run`,
+`--diagnostico` somente leitura, `--reenviar`): convite oficial, idempotente, recusa se já existir
+Noryos Admin, auditoria `PLATFORM_ADMIN_BOOTSTRAPPED`, nunca imprime token/chave. Causa raiz do
+e-mail que não saía: `RESEND_API_KEY` colada malformada no Railway (42 caracteres, sem `re_`, com
+quebra de linha); `new Resend(key)` lançava TypeError fora do try do `email.ts` (corrigido em
+`4db5cf4`, que também traz `sanitizarMensagemErro`). Chave regravada e válida; `RESEND_FROM` =
+`Noryos <no-reply@noryosinovacoes.com.br>` (domínio já verificado no Resend); `APP_URL` segue o
+domínio do Railway. Deploys `ac8ed009` e `ff4e4830` (SUCCESS, 3 workers ok).
+
+**Contas de teste em produção (preservar até a apresentação):** `[TESTE] Noryos Admin` (usuário
+`rafaviriato`, rafaviriato@hotmail.com, `active`) e Noryos Suporte (usuário `rafaelviriatto`,
+rafaelviriatto@gmail.com, `active`, renomeado `noryossuporte`), ambas com `clinica_id` da clínica
+(o login só busca conta dessa clínica; conta com `clinica_id` nulo não loga). Convites usados,
+auditoria confere sem segredo. Rafael confirmou o login real dos dois. Gates: typecheck/lint/683
+testes/build limpos. Commits pushados até `e9cafdc`.
+
+**Falta:** reset de senha por e-mail real; contas `[TESTE]` Dona/Gerente/Supervisora/Atendente
+(aguardam e-mails reais da clínica, não usar fictícios); rodar o E2E autenticado por perfil; provar a
+escalada com Dona/Suporte logados (com só o Noryos Admin não dá pra provocar 403 de escalada);
+rotacionar a chave do Resend (apareceu no chat).
+
+**Melhorias conhecidas, sem urgência:** `auditoria_eventos.ator_perfil` fica vazio na maioria dos
+eventos; editar só o nome grava `ROLE_CHANGED`; não há evento de login, sessão revogada ou convite
+reenviado; rate limit em memória (zera a cada deploy) e chave de IP pelo `x-forwarded-for`
+(forjável); menu mostra "Relatórios" a Gerente/Supervisora mas a página (shim) redireciona;
+Supervisora sem `sla.visualizar` (só `sla.visualizar_equipe`); `conversas.visualizar_*` e
+`sla.visualizar_equipe` não são aplicados em lugar nenhum; o alerta do formulário de Equipe diz
+"Resend ainda não configurado", texto desatualizado.
+
 ## Onde está (2026-09-18, Identidade/Login/RBAC — fundação concluída)
 
 **IDENTIDADE / LOGIN / RBAC — FUNDAÇÃO CONCLUÍDA.** Mesmo dia da fatia 1-4 abaixo (Equipe/Notas/
