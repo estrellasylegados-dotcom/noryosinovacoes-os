@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { sanitizarMensagemErro } from "@/lib/sanitizar-erro";
 
 /**
  * Envio de e-mail transacional (convite/reset de senha — seções 25-28, 71
@@ -26,23 +27,23 @@ function getClient(): Resend | null {
 const REMETENTE = process.env.RESEND_FROM || "Noryos <onboarding@resend.dev>";
 
 async function enviar(destino: string, assunto: string, html: string, tipo: string): Promise<{ ok: boolean }> {
-  const resend = getClient();
-  if (!resend) {
-    console.warn("[email] resend_nao_configurado", JSON.stringify({ tipo }));
-    return { ok: false };
-  }
-
-  let error: { name?: string; statusCode?: number | null } | null;
+  let error: { name?: string; statusCode?: number | null; message?: string } | null;
   try {
+    // getClient() também lança quando a chave é malformada (o construtor do SDK monta o cabeçalho Authorization) — por isso fica dentro do try.
+    const resend = getClient();
+    if (!resend) {
+      console.warn("[email] resend_nao_configurado", JSON.stringify({ tipo }));
+      return { ok: false };
+    }
     ({ error } = await resend.emails.send({ from: REMETENTE, to: destino, subject: assunto, html }));
-  } catch {
+  } catch (e) {
     // Falha de rede/DNS até o provedor: mesmo tratamento de erro do provedor — o token já foi criado, só o e-mail não saiu.
-    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: "network_error", status: null }));
+    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: e instanceof Error ? e.name : "network_error", status: null, mensagem: sanitizarMensagemErro(e) }));
     return { ok: false };
   }
   if (error) {
     // Só nome/status do erro do provedor (nunca destino, chave ou corpo) — o suficiente pra distinguir "domínio não verificado" de "chave inválida".
-    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: error.name ?? null, status: error.statusCode ?? null }));
+    console.error("[email] envio_falhou", JSON.stringify({ tipo, erro: error.name ?? null, status: error.statusCode ?? null, mensagem: sanitizarMensagemErro(error.message) }));
     return { ok: false };
   }
   return { ok: true };
