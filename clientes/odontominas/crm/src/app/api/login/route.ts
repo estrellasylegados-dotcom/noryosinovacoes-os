@@ -39,16 +39,19 @@ export async function POST(request: Request) {
   // Roda verificarSenha mesmo quando o usuário não existe (contra o hash
   // fixo), senão "usuário não existe" responde mais rápido que "senha
   // errada" e um atacante descobre por tempo quais usuários são reais.
+  // Mesmo raciocínio pra status: uma conta invited/blocked/disabled sem
+  // senha_hash cai no dummy hash e sempre falha, sem mensagem diferente.
   const senhaValida = verificarSenha(senha, atendente?.senhaHash ?? HASH_DUMMY_TIMING);
+  const contaLiberada = atendente?.status === "active";
 
-  if (!atendente || !senhaValida) {
+  if (!atendente || !senhaValida || !contaLiberada) {
     registrarFalha(ip);
     return NextResponse.json({ ok: false, error: "credenciais_invalidas" }, { status: 401 });
   }
 
   limparTentativas(ip);
-  const token = await criarTokenSessao(atendente.id, atendente.nome, atendente.papel);
-  const resposta = NextResponse.json({ ok: true, papel: atendente.papel, nome: atendente.nome });
+  const token = await criarTokenSessao(atendente.id, atendente.sessaoVersao);
+  const resposta = NextResponse.json({ ok: true, perfil: atendente.perfil, nome: atendente.nome });
   resposta.cookies.set(NOME_COOKIE_SESSAO, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

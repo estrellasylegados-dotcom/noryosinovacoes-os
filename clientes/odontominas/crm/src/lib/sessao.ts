@@ -1,19 +1,27 @@
 /**
- * Sessão do painel (ver andamento.md): 1 conta por atendente (tabela
- * `atendentes`, migração 2026-09-15_v4_equipe), sem Supabase Auth — cookie
- * assinado carrega quem logou (id + nome + papel), não só o papel genérico
- * de antes. É o que permite atribuir "quem atendeu" no funil (src/lib/conversas.ts)
- * e agregar por secretária na Equipe (src/lib/equipe.ts).
+ * Camada Edge-safe da sessão (ver andamento.md e docs/RBAC.md, fase
+ * Identidade/RBAC 2026-09-18). O cookie carrega só o mínimo assinado —
+ * atendenteId, versão de sessão e validade — nunca perfil/permissões:
+ * quem decide o que a pessoa pode fazer é sempre uma leitura fresca no
+ * banco (src/lib/sessao-servidor.ts), nunca um valor cacheado no token.
+ * Isso é o que permite bloqueio e mudança de permissão surtirem efeito
+ * imediato (seção 56/69/70 do pedido), sem esperar o token expirar.
  *
- * Usa Web Crypto (crypto.subtle) em vez do módulo `node:crypto` de propósito:
- * este arquivo é importado pelo middleware, que roda em runtime Edge.
+ * `sessaoVersao` é o mecanismo de revogação: bloquear/desativar/resetar
+ * senha/"encerrar sessões" incrementa `atendentes.sessao_versao` — todo
+ * token emitido antes disso passa a divergir e é rejeitado (ver
+ * getSessaoAtual). Não guarda sessão por dispositivo (isso exigiria uma
+ * tabela de sessões por token, não implementada nesta fase); dá pra
+ * "encerrar tudo" de uma vez, não "encerrar só o Chrome/Android".
+ *
+ * Usa Web Crypto (crypto.subtle) em vez do módulo `node:crypto` de
+ * propósito: este arquivo é importado pelo middleware, que roda em runtime
+ * Edge.
  */
 
-export type Papel = "admin" | "atendente";
-
-export type SessaoAtual = { atendenteId: string; nome: string; papel: Papel };
-
 export const NOME_COOKIE_SESSAO = "crm_sessao";
+
+export type TokenSessao = { atendenteId: string; sessaoVersao: number; expiraEm: number };
 
 const ALGORITMO = { name: "HMAC", hash: "SHA-256" };
 const DURACAO_SESSAO_MS = 12 * 60 * 60 * 1000;
@@ -45,20 +53,16 @@ function deBase64Url(s: string): Uint8Array<ArrayBuffer> {
   return arr;
 }
 
-function isPapelValido(v: string): v is Papel {
-  return v === "admin" || v === "atendente";
-}
-
-export async function criarTokenSessao(atendenteId: string, nome: string, papel: Papel): Promise<string> {
+export async function criarTokenSessao(atendenteId: string, sessaoVersao: number): Promise<string> {
   const expiraEm = Date.now() + DURACAO_SESSAO_MS;
-  const nomeCodificado = paraBase64Url(new TextEncoder().encode(nome));
-  const payload = `${papel}:${atendenteId}:${nomeCodificado}:${expiraEm}`;
+  const payload = `${atendenteId}:${sessaoVersao}:${expiraEm}`;
   const chave = await getChave();
   const assinatura = await crypto.subtle.sign(ALGORITMO, chave, new TextEncoder().encode(payload));
   return `${payload}.${paraBase64Url(assinatura)}`;
 }
 
-export async function lerSessao(token: string | undefined | null): Promise<SessaoAtual | null> {
+/** Só valida assinatura/formato/validade — não confirma que a conta ainda existe/está ativa (isso é getSessaoAtual, que lê o banco). */
+export async function lerTokenSessao(token: string | undefined | null): Promise<TokenSessao | null> {
   if (!token) return null;
 
   const ultimoPonto = token.lastIndexOf(".");
@@ -68,9 +72,9 @@ export async function lerSessao(token: string | undefined | null): Promise<Sessa
   const assinaturaBase64 = token.slice(ultimoPonto + 1);
 
   const partes = payload.split(":");
-  if (partes.length !== 4) return null;
-  const [papel, atendenteId, nomeCodificado, expiraEmStr] = partes;
-  if (!isPapelValido(papel) || !atendenteId) return null;
+  if (partes.length !== 3) return null;
+  const [atendenteId, sessaoVersaoStr, expiraEmStr] = partes;
+  if (!atendenteId) return null;
 
   try {
     const chave = await getChave();
@@ -86,14 +90,9 @@ export async function lerSessao(token: string | undefined | null): Promise<Sessa
   }
 
   const expiraEm = Number(expiraEmStr);
+  const sessaoVersao = Number(sessaoVersaoStr);
   if (!Number.isFinite(expiraEm) || Date.now() > expiraEm) return null;
+  if (!Number.isFinite(sessaoVersao)) return null;
 
-  let nome: string;
-  try {
-    nome = new TextDecoder().decode(deBase64Url(nomeCodificado));
-  } catch {
-    return null;
-  }
-
-  return { atendenteId, nome, papel };
+  return { atendenteId, sessaoVersao, expiraEm };
 }

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { lerSessao, NOME_COOKIE_SESSAO } from "@/lib/sessao";
+import { lerTokenSessao, NOME_COOKIE_SESSAO } from "@/lib/sessao";
 
 /**
  * Gate de acesso a todo o painel (ver src/lib/sessao.ts). O webhook da
@@ -22,6 +22,15 @@ const ROTAS_PUBLICAS = [
   // por WhatsApp sem estar logado no painel; a própria rota valida o token
   // (ver src/app/api/r/review/[token]/route.ts).
   "/api/r/review",
+  // Identidade/RBAC (2026-09-18) — convite e recuperação de senha são
+  // usados por quem ainda não tem sessão nenhuma; cada rota valida o
+  // próprio token de uso único (ver src/lib/convites.ts e reset-senha.ts).
+  "/convite",
+  "/api/convite",
+  "/redefinir-senha",
+  "/esqueci-senha",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
 ];
 
 function isRotaPublica(pathname: string): boolean {
@@ -35,8 +44,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Gate grosso e rápido (Edge, sem DB): só confirma assinatura/validade do
+  // token. A autoridade real — perfil, status, permissões, revogação por
+  // versão — é sempre reconferida em src/lib/sessao-servidor.ts (Node) por
+  // quem de fato usa a sessão pra decidir algo.
   const token = request.cookies.get(NOME_COOKIE_SESSAO)?.value;
-  const sessao = await lerSessao(token);
+  const sessao = await lerTokenSessao(token);
 
   if (!sessao) {
     if (pathname.startsWith("/api/")) {

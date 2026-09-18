@@ -139,7 +139,7 @@ describe("buscarStatsAtendentes", () => {
 
   it("atendente sem nenhuma atividade aparece zerado", async () => {
     fake.setDb({
-      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", ativo: true }],
+      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", perfil: "atendente", status: "active", ativo: true }],
       conversas: [],
       eventos_funil: [],
     });
@@ -157,7 +157,7 @@ describe("buscarStatsAtendentes", () => {
 
   it("conta conversas distintas atendidas e tempo médio só das que ela respondeu de fato", async () => {
     fake.setDb({
-      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", ativo: true }],
+      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", perfil: "atendente", status: "active", ativo: true }],
       conversas: [
         {
           id: "c1",
@@ -207,7 +207,7 @@ describe("buscarStatsAtendentes", () => {
 
   it("transição automática (sem atendente_id) não conta pra ninguém", async () => {
     fake.setDb({
-      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", ativo: true }],
+      atendentes: [{ id: "a1", clinica_id: CLINICA, nome: "Ana", usuario: "ana", papel: "atendente", perfil: "atendente", status: "active", ativo: true }],
       conversas: [
         {
           id: "c1",

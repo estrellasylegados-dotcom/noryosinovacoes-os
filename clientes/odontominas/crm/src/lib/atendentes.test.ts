@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizarUsuario, validarDadosNovoAtendente } from "@/lib/atendentes";
+import { normalizarEmail, normalizarUsuario, validarDadosConvite } from "@/lib/atendentes";
 
 describe("normalizarUsuario", () => {
   it("tira espaço nas pontas e vira minúsculo (mesma regra do login)", () => {
@@ -7,42 +7,42 @@ describe("normalizarUsuario", () => {
   });
 });
 
-describe("validarDadosNovoAtendente", () => {
-  const validos = { nome: "Recepção 1", usuario: "recepcao1", senha: "senha-forte-123", papel: "atendente" };
+describe("normalizarEmail", () => {
+  it("tira espaço nas pontas e vira minúsculo", () => {
+    expect(normalizarEmail("  Ana.Silva@Exemplo.COM  ")).toBe("ana.silva@exemplo.com");
+  });
+});
+
+describe("validarDadosConvite", () => {
+  const validos = { nome: "Ana Silva", email: "ana@exemplo.com", perfil: "atendente" };
 
   it("aceita dados válidos", () => {
-    expect(validarDadosNovoAtendente(validos)).toBeNull();
+    expect(validarDadosConvite(validos)).toBeNull();
   });
 
   it("exige nome", () => {
-    expect(validarDadosNovoAtendente({ ...validos, nome: "  " })).toBe("nome_obrigatorio");
+    expect(validarDadosConvite({ ...validos, nome: "  " })).toBe("nome_obrigatorio");
   });
 
-  it("exige usuário", () => {
-    expect(validarDadosNovoAtendente({ ...validos, usuario: "  " })).toBe("usuario_obrigatorio");
+  it("rejeita e-mail sem @", () => {
+    expect(validarDadosConvite({ ...validos, email: "ana-exemplo.com" })).toBe("email_invalido");
   });
 
-  it("rejeita usuário com caractere fora de letra/número/./-/_", () => {
-    expect(validarDadosNovoAtendente({ ...validos, usuario: "recepção 1" })).toBe("usuario_invalido");
+  it("rejeita e-mail sem domínio", () => {
+    expect(validarDadosConvite({ ...validos, email: "ana@" })).toBe("email_invalido");
   });
 
-  it("aceita usuário com ponto, hífen e underline", () => {
-    expect(validarDadosNovoAtendente({ ...validos, usuario: "ana.paula-2_silva" })).toBeNull();
+  it("aceita qualquer um dos 6 perfis", () => {
+    for (const perfil of ["noryos_admin", "noryos_suporte", "dona", "gerente", "supervisora", "atendente"]) {
+      expect(validarDadosConvite({ ...validos, perfil })).toBeNull();
+    }
   });
 
-  it("rejeita senha curta", () => {
-    expect(validarDadosNovoAtendente({ ...validos, senha: "1234567" })).toBe("senha_muito_curta");
+  it("rejeita perfil desconhecido", () => {
+    expect(validarDadosConvite({ ...validos, perfil: "gerente-geral" })).toBe("perfil_invalido");
   });
 
-  it("aceita senha com exatamente 8 caracteres", () => {
-    expect(validarDadosNovoAtendente({ ...validos, senha: "12345678" })).toBeNull();
-  });
-
-  it("rejeita papel desconhecido", () => {
-    expect(validarDadosNovoAtendente({ ...validos, papel: "gerente" })).toBe("papel_invalido");
-  });
-
-  it("valida na ordem nome -> usuário -> senha -> papel", () => {
-    expect(validarDadosNovoAtendente({ nome: "", usuario: "", senha: "", papel: "" })).toBe("nome_obrigatorio");
+  it("valida na ordem nome -> email -> perfil", () => {
+    expect(validarDadosConvite({ nome: "", email: "", perfil: "" })).toBe("nome_obrigatorio");
   });
 });
