@@ -1614,3 +1614,71 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
   conversa_com_humano), `161cb73` (allowlist middleware), `f26340b` (updated_at transferência pra
   humano). Deploy final: Railway, deployment `b36cb174-06c0-47b9-9d73-063fa380be02`, status
   `SUCCESS`. Flag `ENABLE_AUTOMATION_EVENT_TEST_ROUTE=false` confirmada desde o fim da validação.
+- 2026-09-18: **Fase 5 do Fluxo de Conversa — Reputação/Google Reviews implementada e validada em
+  produção**, a pedido explícito do Rafael. Ele trouxe um prompt de especificação bem detalhado;
+  antes de codar, revisei contra o código real (não assumido) e voltei com 2 correções que mudaram
+  o desenho: `pesquisas.tipo='avaliacao_google'` e o nó `criar_pesquisa` já existiam desde a v22
+  (Fase 3) — menos trabalho novo do que o prompt supunha — e a mensagem enviada **não** ganhou tela
+  de template própria: ela é o texto do nó "mensagem" do Fluxo que o admin desenha, mesmo padrão do
+  NPS. Uma tela de Configurações com campo de mensagem próprio duplicaria a fonte de verdade.
+  - **Implementado**: `reputacao_config` (1 linha por clínica — ativo, URL do Google, tracking de
+    clique, delay pra automação futura, guardado sem efeito ainda) + 3 colunas em `pesquisas`
+    (`tracking_token`, `tracking_token_expira_em`, `clicado_em`) + `status` ganhou
+    `clicada`/`falhou` (migration `v24`). Novo tipo de gatilho interno
+    `solicitacao_avaliacao_google` em `fluxo-gatilhos.ts` (a Fluxo builder UI só deixava escolher
+    os 3 gatilhos de mensagem — abri a opção no seletor). Ação manual ("⭐ Solicitar avaliação
+    Google" na ficha do paciente) só emite o evento interno via `emitirEventoAutomacao` — quem
+    manda a mensagem é o Fluxo publicado e ativo com esse gatilho, exatamente como NPS já funciona;
+    template pronto ("Solicitação de Avaliação Google") em Fluxos → Novo, pra não obrigar montar do
+    zero. `criar_pesquisa` (`fluxo-execucoes.ts`) passou a gerar o token e gravar a URL rastreável
+    (ou a direta do Google, se tracking desligado) na variável do nó, em vez do `pesquisa_id` cru
+    que nps/satisfacao continuam recebendo.
+  - Tracking: token opaco de 256 bits, válido 90 dias, endpoint público `GET /api/r/review/[token]`
+    (`middleware.ts` ganhou essa rota na allowlist) sempre redireciona pra URL lida do banco no
+    momento do clique — nunca de query string, sem open redirect possível. Dashboard em
+    `/reputacao` (enviadas/clicadas/taxa de clique — exclui falha do denominador/falhas + listagem
+    com filtro de período/status), nunca mostra "avaliações recebidas" (sem integração real não dá
+    pra provar publicação, mesmo princípio de "Google Reviews não é NPS" já decidido na Fase 3).
+  - **Bug achado rodando `next build` (não só os testes)**: o token usava `node:crypto`, mas esse
+    arquivo é importado por `fluxo-execucoes.ts`, que `chat.ts` também importa — e `chat.ts` é
+    alcançado a partir de `ChatAoVivo.tsx` (Client Component), então um import `node:` nesse
+    caminho quebra o bundle do webpack pro cliente (`UnhandledSchemeError`). Corrigido trocando pra
+    Web Crypto (`crypto.getRandomValues`/`randomUUID`), que funciona nos dois lados.
+  - **Achado na implementação, não na validação**: o serviço `odontominas-crm` no Railway nunca
+    esteve conectado ao GitHub — `git push` sozinho não deploya nada (confirma o que
+    `ferramentas.md` já registrava; só reforçado por ter ido direto pro `git push` primeiro e visto
+    que não disparou build nenhum — o deploy de verdade foi `railway up`).
+  - Validado: 610 testes (16 novos)/typecheck/lint/`next build` limpos.
+  - **Teste real de ponta a ponta em produção, sem depender do Rafael** (pedido explícito dele, ver
+    `_memoria/decisoes.md`): deploy via `railway up`; script rodando as MESMAS funções que a UI
+    usa (nunca SQL cru simulando a UI) ativou o módulo, criou/publicou o Fluxo `[TESTE FASE 5]` a
+    partir do template, e disparou a ação manual pro mesmo paciente de teste da Fase 3/4
+    ("Rafael (teste Disparos)", `5561981925241`). Mensagem chegou de verdade no WhatsApp dele com o
+    link rastreável (texto gravado em `mensagens`, conferido). Cliquei o link de verdade (HTTP real
+    contra produção, não localhost): `302` pro Google Maps (URL de teste, não a real da clínica —
+    ver pendência abaixo). Banco confirmou `status='clicada'`/`clicado_em` gravado, painel bateu 1
+    enviada/1 clicada/taxa 100%.
+  - **Falso alarme investigado e descartado**: uma leitura do painel deu zero solicitações por um
+    instante durante o teste — era corrida no PRÓPRIO SCRIPT de teste (consultou antes do worker
+    assíncrono terminar de processar o nó de mensagem, não synchronous como o nó `criar_pesquisa`),
+    não bug no código. Isolei a mesma chamada (`buscarPainelReputacao`) em outro script alguns
+    segundos depois e bateu certo (`total:1, enviadas:1, clicadas:1, taxaClique:1`).
+  - Ao final do teste, **desliguei o módulo (`reputacao_config.ativo=false`) e pausei o Fluxo
+    `[TESTE FASE 5]`** — nada dispara sozinho, nenhum paciente real pode receber o link de teste,
+    até o Rafael colocar a URL real de avaliação da OdontoMinas e ativar pela tela `/reputacao`.
+  - Commitado (`74a3fe0`) e enviado ao GitHub (`main`). Deploy em produção confirmado (`railway up`,
+    deployment `e8637c10-b7b6-473c-8a48-463afa52d13d`, status `SUCCESS`).
+  - **Pendência real**: colocar a URL real de avaliação Google da OdontoMinas e ativar o módulo
+    quando o Rafael decidir; decidir quando apagar o Fluxo/pesquisa `[TESTE FASE 5]` (mesmo critério
+    das evidências da Fase 3/4 — só com autorização explícita).
+
+  ### EVIDÊNCIAS DA FASE 5
+
+  Preservadas em produção até autorização explícita do Rafael pra apagar. Módulo desativado e Fluxo
+  pausado — nada dispara sozinho.
+
+  | teste | fluxo_id | execução | pesquisa_id | paciente de teste | resultado |
+  |---|---|---|---|---|---|
+  | Ação manual → WhatsApp real → clique real → redirect real | `9593cf0f-ae92-4c27-8c6e-04dd7ada3581` (pausado) | `237384f7-0373-47e0-9c4c-45524aa4fc60` (completed) | `fa85af7d-1c49-4a11-b13e-437db80751db` (status `clicada`) | Rafael (teste Disparos) | mensagem enviada por WhatsApp real, link clicado de verdade (302 confirmado contra produção), painel bateu 1/1/100% |
+
+  Evento em `automacao_eventos`: `fa5a4a96-0a88-45d8-b836-9e3c2c4c1138` (`solicitacao_avaliacao_google` → `execucao_iniciada`).

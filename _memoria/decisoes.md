@@ -576,3 +576,27 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   (paciente/conversa/execução corretos, mesma classe de payload). Por quê: mesma lógica já usada na
   Fase 3 — mostrar "achou o bug → corrigiu → validou de novo" numa apresentação futura vale mais que
   limpar o banco agora. Nada apagado sem autorização explícita.
+- **2026-09-18** (Rafael) [odontominas]: Reputação/Google Reviews (Fase 5 do Fluxo de Conversa) não
+  ganha tela de template de mensagem própria em Configurações — a mensagem enviada é sempre o texto
+  do nó "mensagem" do Fluxo que o admin desenha no editor, mesmo caminho já usado pelo NPS. Por
+  quê: o prompt de especificação original pedia um campo de "mensagem padrão" na tela de
+  Configurações; cruzando com o código real (Fase 3 já resolveu composição de mensagem pelo nó do
+  Fluxo, com variáveis resolvidas por `resolverVariaveisFluxo`), um 2º lugar pra editar o mesmo
+  texto criaria 2 fontes de verdade sem necessidade — contra o próprio princípio de reuso que o
+  Rafael pediu no prompt. A tela `/reputacao` guarda só o que é de fato nível-clínica: URL do
+  Google, tracking de clique, delay futuro, status do módulo.
+- **2026-09-18** (Rafael) [odontominas]: token de tracking de clique da Reputação/Google Reviews
+  usa Web Crypto (`crypto.getRandomValues`/`randomUUID`), não `node:crypto`. Por quê: achado
+  rodando `next build` (não só os testes) — `reputacao-tracking.ts` é importado por
+  `fluxo-execucoes.ts`, que `chat.ts` também importa, e `chat.ts` é alcançado a partir de um Client
+  Component (`ChatAoVivo.tsx`); um import `node:` nesse caminho quebra o bundle do webpack pro
+  cliente. Web Crypto funciona nos dois lados sem esse risco — vale como critério pra qualquer
+  código novo alcançável a partir desse mesmo caminho (`fluxo-execucoes.ts`/`chat.ts`).
+- **2026-09-18** (Rafael) [odontominas]: evidência do teste real da Fase 5 (Fluxo
+  `[TESTE FASE 5]`, pesquisa, execução, evento) fica **preservada em produção**, Fluxo pausado e
+  módulo de Reputação desativado (`ativo=false`) — mesmo critério já usado nas Fases 3 e 4. Por
+  quê: o teste rodou de ponta a ponta contra WhatsApp real a pedido explícito do Rafael ("faça o
+  teste, sem depender de mim"), inclusive um redirect HTTP real contra produção — apagar agora
+  tiraria a prova viva de que o `/api/r/review/[token]` funciona. Como o link de teste aponta pra
+  uma busca genérica no Google Maps (não o perfil real da clínica), o módulo foi desativado no fim
+  pra nenhum paciente real receber esse link por engano antes do Rafael colocar a URL definitiva.

@@ -15,9 +15,12 @@ real — WhatsApp/Baileys às vezes entrega celular BR sem o 9º dígito no JID,
 conversa duplicados; corrigido com `src/lib/telefone.ts` (função central de equivalência BR, sem
 migration) — round-trip completo de `capturar_resposta` fechado de verdade por WhatsApp real (o
 número de teste não era mais o mesmo da instância conectada). Evidência de antes/depois do bug
-preservada em produção. Próximo passo: avaliação Google, aniversário como "produto final" e
-dashboard executivo unificado — **aguardando sinal do Rafael pra avançar**, não iniciado.
-Odonto segue bloqueado (sem capability do ControleODONTO); Integração pausada (cofre de
+preservada em produção. **Fase 5 (avaliação Google) concluída, testada em produção de ponta a
+ponta sem depender do Rafael, e aprovada (2026-09-18)**: nova tela `/reputacao`, ação manual na
+ficha do paciente, tracking de clique com redirect próprio. Módulo desativado e Fluxo de teste
+pausado até o Rafael colocar a URL real de avaliação da OdontoMinas. Próximo passo: aniversário
+como "produto final" e dashboard executivo unificado — **aguardando sinal do Rafael pra avançar**,
+não iniciado. Odonto segue bloqueado (sem capability do ControleODONTO); Integração pausada (cofre de
 credenciais + SSRF, fase separada). Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
 manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
@@ -45,14 +48,18 @@ aceito conscientemente.
   execuções vinculadas; Fase 3: os 4 fluxos `[TESTE FASE 3]`, as 2 pesquisas de teste e as
   execuções/eventos de idempotência ligados a elas; Fase 4: o paciente e a conversa criados por
   engano pelo bug de telefone sem 9º dígito — `4e7ecb38-1d63-4ad8-90f5-b6ae12208b9f`/
-  `4bb228db-e7f5-4464-8b53-e1b1d43e31bc` — preservados como evidência antes/depois da correção)
-  antes da produção real com clientes — pedido explícito do Rafael de deixar tudo configurado/
-  preservado por enquanto, a Fase 3 e a evidência da Fase 4 especificamente até depois da
-  apresentação (2026-09-16/17/18, ver andamento.md e decisoes.md).
+  `4bb228db-e7f5-4464-8b53-e1b1d43e31bc` — preservados como evidência antes/depois da correção;
+  Fase 5: o fluxo `[TESTE FASE 5]` (`9593cf0f…`), a pesquisa/execução/evento de avaliação Google
+  ligados a ele) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
+  configurado/preservado por enquanto, até depois da apresentação (2026-09-16/17/18, ver
+  andamento.md e decisoes.md).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
-- Próximo passo da frente "Noryos Odonto" (avaliação Google, aniversário como produto final,
-  dashboard executivo unificado) — infraestrutura pronta desde a Fase 3/4, mas Rafael pediu
-  explicitamente pra não avançar sem o sinal dele (2026-09-17).
+- Ativar Reputação/Google Reviews de verdade: colocar a URL real de avaliação da OdontoMinas em
+  `/reputacao` e ligar o módulo (hoje desativado de propósito, só com a URL de teste salva) —
+  decisão do Rafael, sem prazo (2026-09-18).
+- Próximo passo da frente "Noryos Odonto" (aniversário como produto final, dashboard executivo
+  unificado) — infraestrutura pronta desde a Fase 3, mas Rafael pediu explicitamente pra não
+  avançar sem o sinal dele (2026-09-17).
 - Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
   fechar (2026-09-14).
 
@@ -65,10 +72,10 @@ aceito conscientemente.
   capturar_resposta, pesquisas + NPS classificado, evento interno, scanner temporal, branding
   dinâmico. Odonto bloqueado; Integração pausada. Migration em produção e envio real de WhatsApp
   continuam exigindo aprovação explícita a cada fase, nunca automáticas.
-- "Noryos Odonto": Fase 3 (infraestrutura) e Fase 4 (NPS completo) concluídas e aprovadas —
-  próximo passo (avaliação Google/aniversário-produto-final/dashboard unificado) aguarda sinal do
-  Rafael. Princípio de escopo: "controla tudo antes da cadeira e depois que o paciente sai"; nunca
-  vira prontuário/agenda/financeiro (isso é ControleODONTO).
+- "Noryos Odonto": Fase 3 (infraestrutura), Fase 4 (NPS completo) e Fase 5 (avaliação Google)
+  concluídas e aprovadas — próximo passo (aniversário-produto-final/dashboard unificado) aguarda
+  sinal do Rafael. Princípio de escopo: "controla tudo antes da cadeira e depois que o paciente
+  sai"; nunca vira prontuário/agenda/financeiro (isso é ControleODONTO).
 - Bug real de normalização de telefone BR (celular sem 9º dígito no JID do WhatsApp) corrigido e
   validado em produção com WhatsApp real (2026-09-17/18) — função central em
   `clientes/odontominas/crm/src/lib/telefone.ts`.
