@@ -1486,3 +1486,83 @@ principal do projeto agora; site (já no ar) e tráfego pago ficam em segundo pl
     clique real numa tela (sem `chromium-cli` nesta máquina, limitação já conhecida) — a aba segue
     o mesmo padrão já validado da aba Conhecimento.
   - Ainda não commitado nem enviado ao GitHub nesta sessão.
+- 2026-09-17: **Fase 3 do motor de Fluxo de Conversa — evolução arquitetural pra motor central de
+  automação** (decisão em `_memoria/decisoes.md`). Decisão confirmada antes de codar: não criar um
+  2º motor — o Fluxo de Conversa evolui pra aceitar gatilho temporal e interno, não só webhook.
+  - **Implementado**: nó genérico `capturar_resposta` (texto/número, min/max, regex, tentativas,
+    timeout — mesma máquina de estados de `menu`); infra de pesquisas (`pesquisas` +
+    `pesquisa_respostas`, NPS/satisfação/avaliação Google compartilham schema, nunca a mesma
+    semântica) com nós `criar_pesquisa`/`persistir_resposta_pesquisa`; eventos internos
+    (`emitirEventoAutomacao`, `fluxo-eventos-internos.ts`) e scanner temporal genérico
+    (`executarScannerTemporal`, `fluxo-scanner-temporal.ts`, aniversário como 1ª regra);
+    `pacientes.data_nascimento`; observabilidade (`automacao_eventos`); branding dinâmico
+    (`buscarClinicaAtual`, `{clinica_nome}` no `resolverVariaveis`) removendo os hardcodes de
+    "OdontoMinas" restantes; editor visual completo pros 3 nós novos (paleta, canvas, propriedades,
+    conexão, validação, salvar/reabrir).
+  - Idempotência 100% reaproveitada do índice único já existente
+    (`fluxo_execucoes_gatilho_dedupe_idx`) — nenhuma tabela nova só pra isso. Migrations
+    `v21_pacientes_data_nascimento`, `v22_pesquisas`, `v23_automacao_eventos` aplicadas uma a uma
+    via MCP do Supabase, cada uma validada por leitura de schema depois.
+  - **3 bugs reais achados e corrigidos durante a validação em produção** (não durante o
+    desenvolvimento — só apareceram testando de verdade):
+    1. `pesquisas.updated_at` nunca era atualizado ao marcar respondida (`persistir_resposta_pesquisa`
+       esquecia o campo no UPDATE).
+    2. A guarda "recusa se `dono_conversa='humano'`" (certa pro gatilho por mensagem, protege
+       atendimento humano em andamento) bloqueava TODO gatilho temporal/interno, porque "humano" é
+       só o estado de repouso da imensa maioria das conversas, não sinal de atendimento ativo — sem
+       o fix, aniversário/evento interno nunca alcançariam paciente real nenhum. Corrigido com
+       `conversaEraNova=true` nesses dois caminhos (mesma exceção que `nova_conversa` já usa).
+    3. `/api/cron/fluxo-temporal` faltava na allowlist do `middleware.ts` — o middleware barrava a
+       rota (401) antes dela sequer rodar, mesmo com a autenticação por `CRON_SECRET` correta.
+    4. (achado colateral, corrigido a pedido) `transferirExecucaoAtivaParaHumano` (função pré-Fase 3)
+       mudava `estado`/`motivo_finalizacao`/`finalizado_em` mas esquecia `updated_at`.
+  - Validado: 544 testes/typecheck/lint/build limpos. 3 deploys no Railway durante a validação (1
+    inicial + 2 correções), todos `SUCCESS`, workers (`agentes-buffer`/`disparos-worker`/
+    `fluxo-worker`) subindo limpos em todos. Commit final no `main`: `f26340b`.
+  - Testado ao vivo em produção via API real (login como admin, mesmas rotas que o editor usa) +
+    banco: fluxo criado → rascunho salvo (validação de forma/grafo real, sem erro/aviso) → lido de
+    volta idêntico → publicado → executado via `/testar`. Evento interno (`atendimento_concluido`)
+    e scanner temporal (aniversário) testados com paciente de teste: 1ª emissão inicia execução, 2ª
+    emissão idêntica detecta idempotência (dedupe key), confirmado no banco (1 execução só, nunca
+    2). Round-trip completo de `capturar_resposta` com resposta chegando por WhatsApp de verdade
+    **não fechou** — limitação de infraestrutura de teste descoberta na validação: o único número
+    de teste disponível (`61981925241`) é o mesmo número logado como instância do CRM, então
+    qualquer mensagem dele sai sempre como `fromMe=true` ("a clínica falando"), nunca como resposta
+    de paciente — precisa de um 2º número/aparelho pra fechar esse teste especificamente. Evidência
+    parcial preservada (mensagem enviada, execução em `waiting_input`, pesquisa criada) — ver seção
+    abaixo.
+  - `atendimento_concluido` continua sem origem real no CRM (nem `respondido` nem `agendado`
+    significam isso) — só testável pela rota `/api/automacao/eventos/testar`, protegida por sessão
+    de admin + `ENABLE_AUTOMATION_EVENT_TEST_ROUTE=true` setada só durante a validação e desligada
+    (`false`) logo depois.
+  - Execução de demo `a98ee509` (Fase 6, ver auditoria anterior): mudou de estado durante esta
+    sessão (`waiting_input` → `transferred`, `motivo_finalizacao=resposta_manual_chat`) — **não foi
+    causado por nenhuma migration/código da Fase 3**, foi o próprio Rafael respondendo manualmente
+    pelo Chat ao Vivo do painel (confirmado por ele). Variáveis e histórico de passos continuam
+    intactos.
+  - Artefatos de teste preservados de propósito (não apagar sem autorização explícita — servem de
+    prova prática pra apresentação): ver `EVIDÊNCIAS DA FASE 3` abaixo. Todos os fluxos de teste com
+    gatilho real (`atendimento_concluido`, `aniversario`) ficaram `pausado` — nenhum dispara sozinho.
+  - Commitado e enviado ao GitHub (`main`, commit final `f26340b`). Deploy em produção confirmado.
+  - **Pendências reais**: (1) fechar o round-trip completo de `capturar_resposta` com resposta de
+    WhatsApp de verdade quando houver um 2º número de teste disponível; (2) decidir quando apagar
+    os artefatos `[TESTE FASE 3]` (aguardando autorização explícita do Rafael, pós-apresentação);
+    (3) Fase 4 (NPS: classificação detrator/neutro/promotor, dashboard) ainda não iniciada de
+    propósito.
+
+  ### EVIDÊNCIAS DA FASE 3
+
+  Preservadas em produção até autorização explícita do Rafael pra apagar (pós-apresentação). Todos
+  os fluxos abaixo têm `[TESTE FASE 3]` no nome e `uso: demonstracao_fase3` na descrição/metadata.
+
+  | teste | fluxo_id | execução | pesquisa_id | paciente de teste | dedupe key | resultado |
+  |---|---|---|---|---|---|---|
+  | Captura + Pesquisa (sem resposta) | `fc61b397-9c44-4ebf-8c29-6d0658ee203d` | `42b4a109-e8da-4393-b9bc-aa3603848e23` (cancelada na limpeza de conversa) | `cd9226ef-2251-4346-b8a4-890e90b9957b` (status `enviada`, nunca respondida — prova "pesquisa sem resposta continua existindo") | Camila Duarte (fixture) | — | pesquisa criada, sem resposta |
+  | Round-trip WhatsApp — Captura + Pesquisa | `c95d85a7-8b08-4e7d-8a7d-4f343ffa82dd` | `9867cb23-a61a-49dd-8a93-fe52c2fbc299` (em `waiting_input`, nó `captura`) | `605e8497-aa8a-40be-9fc7-780d5a3ac853` (status `enviada`) | Rafael (teste Disparos) | — | mensagem enviada de verdade por WhatsApp; resposta não fechou (limitação de nº de teste, ver acima) |
+  | Evento interno — atendimento_concluido | `8d763b38-23f0-4406-a646-924204b3dd8e` (pausado) | `2d737690-0ed6-4b5a-9a6b-94fafe949e2c` (completed) | — | Camila Duarte (fixture) | `atendimento_concluido:64295231-de94-4b92-8816-6f0d794cce07:fase3-prod-001` | 1ª emissão: `execucao_iniciada`; 2ª emissão idêntica: `idempotencia_existente` (`automacao_eventos` linhas `ce3d677d…`/`019dd02a…`) |
+  | Scanner temporal — aniversário | `9fcb1331-ec5f-40d7-ae69-94c7b6f36329` (pausado) | `a1ae79dd-dd90-4c46-b765-1367672dd847` (completed) | — | Camila Duarte (fixture, `data_nascimento` de teste já removida depois) | `aniversario:64295231-de94-4b92-8816-6f0d794cce07:2026` | 1ª rodada: `execucao_iniciada`; 2ª rodada (mesma referência anual): `idempotencia_existente` (`automacao_eventos` linha `38e1949b…`) |
+
+  Commit dos fixes achados na validação: `57d62ff` (updated_at pesquisas), `94308ec` (guarda
+  conversa_com_humano), `161cb73` (allowlist middleware), `f26340b` (updated_at transferência pra
+  humano). Deploy final: Railway, deployment `b36cb174-06c0-47b9-9d73-063fa380be02`, status
+  `SUCCESS`. Flag `ENABLE_AUTOMATION_EVENT_TEST_ROUTE=false` confirmada desde o fim da validação.
