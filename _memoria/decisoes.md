@@ -636,3 +636,38 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   evento de violação) fica **preservada em produção**, não apagar. Mesmo critério já usado nas
   Fases 3/4/5 do Fluxo de Conversa — serve de prova de que o ciclo de espera/idempotência/
   transferência funcionam de verdade, não só em teste unitário.
+- **2026-09-18** (Rafael) [odontominas]: RBAC evolui de 2 papéis (admin/atendente) pra 6 perfis —
+  `noryos_admin`/`noryos_suporte` (identidade de plataforma, `clinica_id` nulo) e
+  `dona`/`gerente`/`supervisora`/`atendente` (escopo de clínica). Por quê: 2 papéis não sustentam
+  mais o produto — Noryos precisa de identidade própria (plataforma) separada de identidade de
+  clínica, e a clínica precisa de hierarquia real (Dona ≠ Gerente ≠ Supervisora ≠ Atendente).
+- **2026-09-18** (Rafael) [odontominas]: catálogo de permissões vive em código
+  (`src/lib/permissoes.ts`), não em tabela relacional; customização por pessoa mora numa coluna
+  jsonb (`atendentes.permissoes_customizadas`). Por quê: escala atual (1 clínica, poucas contas) não
+  justifica uma tabela `permissoes`/`perfil_permissoes` — o catálogo muda por deploy, não por
+  usuário; jsonb cobre a customização real (Dona ajustando o que uma pessoa pode fazer) sem
+  overengineering. `null` = usa o default do perfil; array (mesmo vazio) = override completo.
+- **2026-09-18** (Rafael) [odontominas]: **não criar tabela `memberships` ainda**, mesmo o pedido
+  original desenhando `usuario → membership → clínica`. Por quê: hoje é 1 clínica por deploy e
+  nenhum usuário real participa de 2 clínicas — `atendentes.clinica_id` (agora nullable, pra contas
+  de plataforma) já cobre o caso real; criar a tabela agora seria uma relação 1:1 sem uso nenhum.
+  Não trava o futuro: quando existir uma 2ª clínica com usuário compartilhado de verdade,
+  `memberships` entra como migration nova, sem reconstruir identidade/RBAC/sessão.
+- **2026-09-18** (Rafael) [odontominas]: sessão vira revogável via `sessao_versao` (coluna em
+  `atendentes`, embutida no token assinado) em vez de uma tabela de sessão por dispositivo. Por
+  quê: o que o produto pede agora é "bloquear/resetar senha derruba o acesso na hora" — isso um
+  contador resolve sem tabela nova; "Sessões Ativas" por dispositivo (Chrome/Android, encerrar 1 só)
+  fica pendência registrada, não resolvida à toa com uma tabela que a demanda de hoje não usa.
+- **2026-09-18** (Rafael) [odontominas]: as ~60 telas que já existiam antes desta fase (Agentes,
+  Campanhas, Disparos, Fluxos, Conexão, Reputação, ControleODONTO, Resumo, ficha do paciente)
+  continuam gateadas por `isAdminEquivalente` (`perfil === "dona" || perfil === "noryos_admin"`) em
+  vez do catálogo granular. Por quê: aplicar permissão granular nelas não era o escopo desta fase
+  (que mirou Chat ao Vivo/SLA/Horário/Notas Internas/Equipe) e essas telas precisavam continuar
+  funcionando sem regressão. **Isto é dívida técnica explícita, não solução permanente** — migrar
+  pra permissão granular é pendência registrada em `agora.md`, não pra ser esquecida.
+- **2026-09-18** (Rafael) [odontominas]: mapeamento das 3 contas reais existentes —
+  `admin`/"Administração" → `dona`; `recepcao1`/`recepcao2` → `atendente`. Nenhuma promovida a
+  `noryos_admin` automaticamente. Por quê: checado por SQL antes da migration que as 3 contas têm
+  `clinica_id` preenchido (nenhuma é conta de plataforma) e são placeholders de demo (nenhuma é a
+  Ariadna ainda) — decisão de negócio (quem é a 1ª conta `noryos_admin` de verdade) fica pro Rafael
+  decidir depois, não assumida no vácuo.

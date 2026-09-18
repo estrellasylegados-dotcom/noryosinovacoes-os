@@ -24,8 +24,18 @@ não iniciado. Odonto segue bloqueado (sem capability do ControleODONTO); Integr
 credenciais + SSRF, fase separada). **Nova frente iniciada 2026-09-18**: reconstrução do
 CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops, pedida pelo Rafael) — Equipe (RBAC), Notas
 Internas, Horário de Atendimento e SLA Operacional (fundação, ainda sem automação) concluídos,
-testados e em produção (2 deploys reais no Railway, não só commit). Kanban visual e Noryos Ops
-(painel cross-clínica) ainda não iniciados. Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
+testados e em produção (2 deploys reais no Railway, não só commit). **Mesmo dia, fatia maior:
+IDENTIDADE / LOGIN / RBAC — FUNDAÇÃO CONCLUÍDA** — 6 perfis (`noryos_admin`, `noryos_suporte`,
+`dona`, `gerente`, `supervisora`, `atendente`), sessão revogável em tempo real, convites e reset de
+senha por e-mail (token hash, uso único), RBAC granular de verdade em Equipe/Chat ao
+Vivo/SLA/Horário/Notas Internas, `auditoria_eventos`, privilege escalation e proteção da última
+Dona ativa. As ~60 telas mais antigas (Agentes, Campanhas, Disparos, Fluxos etc.) seguem por um
+shim de compatibilidade (`isAdminEquivalente`) — **dívida técnica registrada, não solução
+permanente**. Deploy real no Railway (`SUCCESS`) e smoke test em produção ok; migração das 3 contas
+reais feita (`admin`→`dona`, atendentes→`atendente`), nenhuma virou `noryos_admin` sozinha. Detalhe
+completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. Kanban visual e Noryos Ops
+(painel cross-clínica) seguem não iniciados — Rafael pediu validar primeiro e-mail real (convite +
+reset) e os 6 perfis antes de avançar pra módulo grande novo. Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
 manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
 completo em `clientes/odontominas/andamento.md`. Compliance: risco de exclusividade Mirante/Sicoob
@@ -70,6 +80,14 @@ aceito conscientemente.
   avançar sem o sinal dele (2026-09-17).
 - Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
   fechar (2026-09-14).
+- Identidade/RBAC (2026-09-18): configurar `RESEND_API_KEY` e `APP_URL` em produção (Railway) —
+  sem isso convite e reset de senha criam o token mas o e-mail não sai de verdade; testar os dois
+  fluxos com e-mail real depois de configurar; criar contas `[TESTE]` dos 6 perfis (Dona, Gerente,
+  Supervisora, Atendente, Noryos Admin, Noryos Suporte) e validar E2E de cada uma; construir a tela
+  visual de permissões por checkboxes (hoje só a API existe, `PATCH /api/equipe/[id]/permissoes`);
+  implementar "Sessões Ativas" por dispositivo (hoje só dá pra encerrar tudo de uma vez); migrar as
+  ~60 telas que ainda usam o shim `isAdminEquivalente` pra permissão granular; revisar o modelo de
+  `membership` quando existir de verdade uma 2ª clínica com usuário compartilhado.
 
 ## Quente agora
 
@@ -90,5 +108,8 @@ aceito conscientemente.
 - CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
 - Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).
 - Reconstrução do CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops): Equipe, Notas Internas,
-  Horário de Atendimento e SLA Operacional prontos e em produção (2026-09-18) — próximo passo
-  (Kanban ou Noryos Ops) ainda não decidido, aguarda sinal do Rafael.
+  Horário de Atendimento e SLA Operacional prontos e em produção (2026-09-18). **Identidade/Login/
+  RBAC — fundação concluída no mesmo dia** (6 perfis, sessão revogável, convites/reset por e-mail,
+  RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Próximo passo
+  recomendado: validar e-mail real (convite + reset) e os 6 perfis ponta a ponta antes de avançar
+  pra Kanban ou Noryos Ops — aguarda sinal do Rafael.

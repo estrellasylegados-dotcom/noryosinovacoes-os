@@ -1,5 +1,100 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, Identidade/Login/RBAC — fundação concluída)
+
+**IDENTIDADE / LOGIN / RBAC — FUNDAÇÃO CONCLUÍDA.** Mesmo dia da fatia 1-4 abaixo (Equipe/Notas/
+Horário/SLA), o Rafael trouxe um pedido extenso — arquiteto sênior de identidade/autorização —
+pedindo pra ir além do RBAC binário admin/atendente que a fatia 1 tinha herdado. Auditoria real
+antes de desenhar (não de memória): schema (`atendentes` sem e-mail, 3 contas reais — nenhuma da
+Ariadna, todas placeholder de demo), sessão (cookie assinado sem revogação), e uma varredura de
+`papel === "admin"` que achou **63 arquivos**, bem mais que a estimativa inicial de 18 (a 1ª busca
+só pegava `papel === "admin"`, não `papel !== "admin"`).
+
+**1. Modelo de identidade e RBAC granular.** 6 perfis: `noryos_admin`/`noryos_suporte` (identidade
+de plataforma, `clinica_id` nulo) e `dona`/`gerente`/`supervisora`/`atendente` (escopo de clínica).
+Catálogo de permissões em código (`src/lib/permissoes.ts`, não tabela relacional — escala atual não
+justifica), autorização central (`can`/`requirePermission`, `src/lib/autorizacao.ts`) substituindo
+o `papel === "admin"` espalhado. Customização por pessoa via `atendentes.permissoes_customizadas`
+(jsonb; `null`=default do perfil, array mesmo vazio=override completo). Migrations `v28`/`v29`
+(aditivas): `perfil`/`status`/`email`/`sessao_versao`/`permissoes_customizadas`/`origem`/
+`criado_por` em `atendentes`, `clinica_id` virou nullable, `senha_hash` virou nullable (pra suportar
+`status='invited'`); tabelas novas `convites`, `password_reset_tokens`, `identidades_externas`
+(schema pronto pro futuro ControleODONTO, vazia, nenhuma capability ligada), `auditoria_eventos`.
+Migração real das 3 contas, confirmada por SQL antes: `admin`→`dona`, `recepcao1`/`recepcao2`→
+`atendente` — nenhuma virou `noryos_admin` sozinha.
+
+**Decisão consciente de não criar `memberships` ainda** (o pedido original desenhava
+`usuario → membership → clínica`): hoje é 1 clínica por deploy, zero usuário real multi-clínica —
+`atendentes.clinica_id` já cobre, e uma tabela 1:1 sem uso seria complexidade especulativa. Fica
+registrado em `decisoes.md` e em `crm/docs/RBAC.md` (seção 6) como decisão, não gap.
+
+**2. Sessão revogável.** `sessao_versao` (coluna em `atendentes`) embutida no token assinado —
+bloqueio, desativação, reset/troca de senha incrementam a versão e todo token emitido antes passa a
+divergir, rejeitado em `getSessaoAtual()`. Reescrita de `src/lib/sessao.ts` (camada Edge-safe, só
+`atendenteId:sessaoVersao:expiraEm` assinado — nunca perfil/permissões no cookie) e
+`src/lib/sessao-servidor.ts` (Node, autoridade real — sempre lê o banco a cada request). Efeito
+colateral aceito e comunicado: o formato do token mudou, então as sessões abertas antes do deploy
+precisam logar de novo (nenhuma perda de dado, só re-login).
+
+**3. Convites e reset de senha.** Fluxo de convite (`src/lib/convites.ts`) substitui "admin define
+senha temporária": Dona/Noryos Admin convida por nome+e-mail+perfil (sem senha), conta nasce
+`status='invited'`, token de 32 bytes (só o hash SHA-256 persiste) com validade 24h e uso único,
+pessoa define a própria senha em `/convite/[token]` e a conta vira `active`. Reset de senha
+self-service (`src/lib/reset-senha.ts`): `/esqueci-senha` sempre responde genérico (nunca revela se
+o e-mail existe), token de 30min, ao usar revoga todas as sessões existentes. E-mails via Resend
+(`src/lib/email.ts`, dependência nova) — **sem `RESEND_API_KEY`/`APP_URL` configuradas em produção
+ainda**, o token é criado normalmente e o envio só loga aviso, não quebra o fluxo.
+
+**4. RBAC aplicado de verdade** (não só desenhado) em Equipe (`/api/equipe/*`, tela reconstruída
+com convite/status/bloqueio/reenvio/edição de perfil com regra de elevação nos dois sentidos), Chat
+ao Vivo (enviar mensagem/finalizar/atribuir), SLA (`sla.visualizar`/`sla.configurar`) e Horário de
+Atendimento (`configuracoes.horario`), Notas Internas (`conversas.notas_internas`).
+
+**5. Compatibilidade explícita nas telas antigas.** Agentes, Campanhas, Disparos, Fluxos, Conexão,
+Reputação, ControleODONTO, Resumo e a ficha do paciente (~60 arquivos) usavam `papel === "admin"`
+direto. Como o campo de sessão virou `perfil` (6 valores, não mais 2), troquei pelo helper
+`isAdminEquivalente(sessao)` = `perfil === "dona" || perfil === "noryos_admin"` — comportamento
+idêntico ao de antes, zero regressão. **Registrado explicitamente como dívida técnica, não solução
+permanente** (`decisoes.md`, `crm/docs/RBAC.md` seção 4, pendência em `agora.md`) — migrar essas
+telas pra permissão granular é trabalho de fase seguinte.
+
+**6. Segurança**: privilege escalation bloqueado nos dois sentidos (`podeAtribuirPerfil` — ator não
+atribui nem edita um perfil mais poderoso que o próprio escopo; ninguém edita a própria conta pela
+rota de gestão de equipe); última Dona ativa de uma clínica protegida contra ficar sem ninguém no
+comando (mesmo espírito do guard antigo de "último admin"); `auditoria_eventos` (append-only)
+registra `USER_INVITED`/`INVITE_ACCEPTED`/`ROLE_CHANGED`/`PERMISSIONS_CHANGED`/
+`PASSWORD_RESET_*`/`MEMBERSHIP_BLOCKED`/`USER_DISABLED`/`USER_REACTIVATED` — nunca senha nem token
+puro; rate limit reaproveitado (mesmo mecanismo de login) nos novos endpoints de convite/reset.
+
+**Gates**: typecheck/lint/674 testes (13 novos, incluindo os que prendem a regra de elevação e a
+resolução de permissões customizadas)/build de produção — todos limpos. 5 commits (`1ebaf50`
+modelo de identidade/RBAC/sessão, `56c1a16` convites/reset, `0136616` Equipe + RBAC granular,
+`11d9ce1` shim nas telas legadas, `159221c` documentação).
+
+**Deploy real no Railway** (`railway up`, deployment `83ffaddd…`, `SUCCESS`, os 3 workers
+`agentes-buffer`/`disparos-worker`/`fluxo-worker` subindo limpos) e **smoke test contra produção**:
+`/login` 200, `/equipe` sem sessão redireciona 307, `/api/login` com credencial errada devolve 401
+(nunca 500 — prova que a query contra o schema novo funciona), `/api/auth/forgot-password` sempre
+200 genérico, `/convite/[token]` inválido carrega a página normalmente. **Não deu pra logar de
+verdade como cada um dos 6 perfis** — a sessão não tinha senha real de nenhuma conta pra testar
+login ponta a ponta; fica pendência explícita.
+
+**Documentação nova**: `crm/docs/RBAC.md` (perfis, catálogo, regra de elevação, por que não existe
+`memberships` ainda, sessão revogável, auditoria, pendências desta fase) e
+`crm/docs/CONTROLE-ODONTO-IDENTITY-INTEGRATION.md` (como o schema já criado permite plugar
+OIDC/API/sync no futuro sem reconstruir identidade/RBAC/sessão — nada implementado, só desenho e
+checklist do que pedir ao ControleODONTO).
+
+**Pendências obrigatórias**: configurar `RESEND_API_KEY` e `APP_URL` em produção; testar convite
+real por e-mail; testar reset real por e-mail; criar contas `[TESTE]` dos 6 perfis e validar E2E de
+cada uma; construir a tela visual de permissões por checkboxes (hoje só a API existe); implementar
+gerenciamento de sessões ativas por dispositivo (hoje só "encerrar tudo"); migrar as ~60 telas do
+shim pra permissão granular; revisar o modelo de membership quando existir de verdade uma 2ª
+clínica com usuário compartilhado. **Próximo passo recomendado**: validar primeiro os fluxos reais
+de e-mail e os 6 perfis antes de avançar pra módulo grande novo (Kanban, Noryos Ops) — aguarda
+sinal do Rafael, mesmo critério já usado nas fases anteriores. Nenhuma evidência de teste de fases
+anteriores foi apagada nesta fatia.
+
 ## Onde está (2026-09-18, RBAC/Atendimento — Equipe, Notas Internas, Horário de Atendimento e SLA Operacional)
 
 **4 fatias da nova frente "RBAC/Atendimento/Kanban/Noryos Ops" (roteiro trazido pelo Rafael)
@@ -114,12 +209,12 @@ typecheck/lint/663 testes (mais de 90 novos nesta sessão)/build de produção l
 4 fatias. 5 commits no total (`01aac13`, `260ac10`, `d8172b0`, `7a96e12`, `5dbdb46`), todos
 enviados ao GitHub.
 
-**Pendências**: horário real de atendimento da OdontoMinas (destrava o SLA de fato); RBAC segue
-binário admin/atendente — "Gerente"/"Supervisora" registrados como limitação real, não fingidos
-como resolvidos; convite por e-mail e reset self-service (dependem de provedor de e-mail); limpar
-dados de teste desta frente junto com os das fases anteriores (ver `agora.md`). **Próximo passo**
-(Kanban visual ou Noryos Ops) ainda não decidido — aguarda sinal do Rafael, mesmo critério já usado
-nas fases do Fluxo de Conversa.
+**Pendências**: horário real de atendimento da OdontoMinas (destrava o SLA de fato); limpar dados
+de teste desta frente junto com os das fases anteriores (ver `agora.md`). ~~RBAC segue binário
+admin/atendente; convite por e-mail e reset self-service dependem de provedor de e-mail~~ —
+**superado no mesmo dia** pela fatia "Identidade/Login/RBAC — fundação concluída" logo acima (6
+perfis, convite/reset por e-mail via Resend). **Próximo passo**: ver a fatia de Identidade/RBAC
+acima — validar e-mail real e os 6 perfis antes de Kanban/Noryos Ops.
 
 ## Onde está (2026-09-17, Fluxo de Conversa — Fase 4 completa: classificação NPS + dashboard + fix real de telefone)
 
