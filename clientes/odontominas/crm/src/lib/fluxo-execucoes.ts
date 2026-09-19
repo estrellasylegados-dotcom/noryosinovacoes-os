@@ -1,6 +1,8 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { assumirControle, liberarControle } from "@/lib/dono-conversa";
-import { enviarPeloCanal, enviarPeloCanalPrincipal } from "@/lib/canais-envio";
+import { enviarPeloCanal, enviarPeloCanalPrincipal, isErroDeCanal } from "@/lib/canais-envio";
+import { abrirAlertaPorEvento } from "@/lib/alertas";
+import { chaves } from "@/lib/alertas-tipos";
 import { buscarCanalDaConversa, type Canal } from "@/lib/canais";
 import { atribuirPorAutomacao } from "@/lib/atribuicao";
 import { detectarPedidoOptOut } from "@/lib/opt-out";
@@ -500,6 +502,21 @@ async function processarPassoReivindicado(clinicaId: string, execucaoId: string,
     const envio = await enviarComRetry(canalEnvio, contexto.paciente.telefone, texto);
     if (!envio.ok) {
       console.error("[fluxo-execucoes] envio_falhou", JSON.stringify({ execucaoId, error: envio.error ?? null }));
+      // Alerta SÓ na falha definitiva (enviarComRetry já esgotou as tentativas transitórias) e SÓ se a causa não for o
+      // canal fora do ar — esse já tem alerta próprio (canal_desconectado), repetir por mensagem seria ruído.
+      if (!isErroDeCanal(envio.error)) {
+        await abrirAlertaPorEvento(clinicaId, {
+          tipo: "mensagem_falha_definitiva",
+          chave: chaves.mensagemFalha("fluxo", `${execucaoId}:${sequencia}`),
+          severidade: "atencao",
+          titulo: "Mensagem automática não entregue",
+          descricao: "O fluxo tentou enviar uma mensagem ao paciente e não conseguiu, mesmo após novas tentativas. Confira a conversa e, se preciso, envie manualmente.",
+          tipoEntidade: "conversa",
+          entidadeId: contexto.conversaId,
+          responsavelId: null,
+          dados: { origem: "fluxo", execucaoId, erro: (envio.error ?? "envio_falhou").slice(0, 80) },
+        });
+      }
       continue; // 1 bloco falhando não derruba os outros nem o avanço do fluxo — mesmo critério de agentes.ts:enviarBlocos
     }
     const agora = new Date().toISOString();
