@@ -10,6 +10,7 @@ import { deveResponder } from "@/lib/agentes";
 import { processarMensagemRecebida } from "@/lib/agentes-buffer";
 import { detectarPedidoOptOut, aplicarOptOut, MENSAGEM_CONFIRMACAO_OPT_OUT } from "@/lib/opt-out";
 import { enviarPeloCanal } from "@/lib/canais-envio";
+import { garantirOportunidadeDaConversa } from "@/lib/kanban";
 import {
   cancelarExecucoesAtivasDoPaciente,
   resolverRespostaWaitingInput,
@@ -237,6 +238,12 @@ export async function POST(request: Request) {
       statusNovo = decisao.evento.statusNovo;
       motivoEvento = decisao.evento.motivo;
     }
+  }
+
+  // Kanban: 1ª conversa válida de paciente sem oportunidade aberta -> oportunidade em "Novo" (idempotente,
+  // best-effort: nunca derruba o webhook). Só mensagem RECEBIDA conta como lead.
+  if (!fromMe && pacienteId && conversaId) {
+    await garantirOportunidadeDaConversa(clinicaId, pacienteId, conversaId, { conversaNova: conversaEraNova });
   }
 
   if (statusAnterior && statusNovo && motivoEvento) {

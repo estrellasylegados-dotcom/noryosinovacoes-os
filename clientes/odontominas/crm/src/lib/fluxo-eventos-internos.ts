@@ -40,6 +40,7 @@ async function registrarEvento(
     execucaoId: string | null;
     resultado: string;
     detalhe?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
   }
 ): Promise<void> {
   const { error } = await supabase.from("automacao_eventos").insert({
@@ -50,7 +51,7 @@ async function registrarEvento(
     evento_tipo: input.tipo,
     referencia_id: input.referenciaId ?? null,
     resultado: input.resultado,
-    detalhe: input.detalhe ?? {},
+    detalhe: { ...(input.metadata ?? {}), ...(input.detalhe ?? {}) },
   });
   if (error) {
     console.error("[fluxo-eventos-internos] registrar_evento_failed", JSON.stringify({ tipo: input.tipo, code: error.code ?? null }));

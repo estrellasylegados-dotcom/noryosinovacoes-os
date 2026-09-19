@@ -81,6 +81,9 @@ const CATEGORIA_POR_GATILHO: Record<string, CategoriaGatilho> = {
   // confiável de atendimento concluído, ela pode emitir este MESMO tipo
   // (referenciaId = atendimento_id) sem precisar de um fluxo novo.
   solicitacao_avaliacao_google: "interno",
+  // Kanban comercial (2026-09-18): emitido por src/lib/kanban.ts DEPOIS de persistir a mudança de
+  // estágio. Sem automação ligada nesta fase: só registra em automacao_eventos (fluxo_nao_encontrado).
+  kanban_stage_changed: "interno",
 };
 
 export function categoriaDoGatilho(gatilhoTipo: string): CategoriaGatilho | null {

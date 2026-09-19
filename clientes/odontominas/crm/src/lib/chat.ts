@@ -4,6 +4,7 @@ import { atualizarStatus, extrairNomeEmbutido, type NomeEmbutido } from "@/lib/c
 import { enviarPeloCanal, mensagemErroEnvio } from "@/lib/canais-envio";
 import { buscarCanalDaConversa, buscarCanalPorId, buscarCanalPrincipal } from "@/lib/canais";
 import { assumirConversa, decidirEnvioHumano, registrarEventoConversa, type AtorConversa } from "@/lib/atribuicao";
+import { garantirOportunidadeDaConversa } from "@/lib/kanban";
 import { decidirTransicaoWebhook } from "@/lib/funil";
 import { pausarAgenteManual, pausarAgenteSeConfigurado } from "@/lib/agentes";
 import { transferirExecucaoAtivaParaHumano } from "@/lib/fluxo-execucoes";
@@ -442,6 +443,7 @@ export async function iniciarConversaChat(
 
   let conversaId = encontrarPorTelefoneEquivalente(conversasEncontradas ?? [], telefone)?.id as string | undefined;
   const agora = new Date().toISOString();
+  const conversaNova = !conversaId;
 
   if (!conversaId) {
     const { data: novaConversa, error } = await supabase
@@ -465,6 +467,8 @@ export async function iniciarConversaChat(
     if (error || !novaConversa) return { ok: false, error: "persist_failed" };
     conversaId = novaConversa.id as string;
   }
+
+  await garantirOportunidadeDaConversa(clinicaId, pacienteId, conversaId, { conversaNova, atorId: ator?.atendenteId ?? null });
 
   // Reaproveita o motor de envio da conversa já existente — mesmo comportamento
   // do webhook/funil, sem duplicar a lógica de transição aqui.
