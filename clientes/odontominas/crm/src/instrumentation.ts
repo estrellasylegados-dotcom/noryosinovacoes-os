@@ -21,5 +21,8 @@ export async function register() {
 
     const { iniciarWorkerFluxo } = await import("@/lib/fluxo-worker");
     iniciarWorkerFluxo();
+
+    const { iniciarWorkerAlertas } = await import("@/lib/alertas-worker");
+    iniciarWorkerAlertas();
   }
 }

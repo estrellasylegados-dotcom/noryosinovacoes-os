@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { buscarAtendenteCompletoPorId } from "@/lib/atendentes";
 import { liberarControle } from "@/lib/dono-conversa";
 import { registrarEvento } from "@/lib/auditoria";
+import { resolverPorEvento } from "@/lib/alertas";
 import { sincronizarResponsavelDaConversa } from "@/lib/kanban";
 import { PERFIS_PLATAFORMA, resolverPermissoes, type Perfil, type Permissao } from "@/lib/permissoes";
 
@@ -132,6 +133,8 @@ export async function assumirConversa(clinicaId: string, conversaId: string, ato
     });
     // Kanban: oportunidade sem responsável herda quem assumiu (não troca a que já tem dono).
     await sincronizarResponsavelDaConversa(clinicaId, conversaId, null, ator.atendenteId, ator.atendenteId);
+    // Alertas: "sem responsável" deixa de ser verdade na hora (o SLA, se houver, troca de dono no verificador).
+    await resolverPorEvento(clinicaId, { tipos: ["conversa_sem_responsavel"], tipoEntidade: "conversa", entidadeId: conversaId, evento: "conversa_assumida", atorId: ator.atendenteId });
   } else if (!resultado.ok && resultado.error === "ja_assumida") {
     console.log("[atribuicao] assign_conflict", JSON.stringify({ conversaId, atorId: ator.atendenteId, porId: resultado.porId ?? null }));
   }
@@ -187,6 +190,7 @@ export async function transferirConversa(
     });
     // Kanban: só leva a oportunidade junto se o responsável dela era o anterior da conversa.
     await sincronizarResponsavelDaConversa(clinicaId, conversaId, esperadoAtribuidoA, destinoId, ator.atendenteId);
+    await resolverPorEvento(clinicaId, { tipos: ["conversa_sem_responsavel"], tipoEntidade: "conversa", entidadeId: conversaId, evento: "conversa_transferida", atorId: ator.atendenteId });
   } else if (resultado.error === "conflito") {
     console.log("[atribuicao] transfer_conflict", JSON.stringify({ conversaId, atorId: ator.atendenteId, porId: resultado.porId ?? null }));
   }

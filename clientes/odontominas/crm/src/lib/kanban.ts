@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { buscarStatusSlaLista } from "@/lib/sla";
 import { registrarEvento } from "@/lib/auditoria";
+import { resolverPorEvento } from "@/lib/alertas";
 import { emitirEventoAutomacao } from "@/lib/fluxo-eventos-internos";
 import { buscarAtendenteCompletoPorId } from "@/lib/atendentes";
 import { destinoElegivel, type AtorConversa } from "@/lib/atribuicao";
@@ -432,6 +433,8 @@ export async function moverOportunidade(clinicaId: string, ator: AtorConversa, i
     detalhes: { de: r.estagio_de, para: r.estagio_id, origem },
   });
   await emitirEstagioAlterado(clinicaId, id, r, ator.atendenteId, origem);
+  // Alertas: mudou de etapa → "oportunidade parada" da etapa anterior deixa de valer (a nova etapa começa o relógio do zero).
+  await resolverPorEvento(clinicaId, { tipos: ["oportunidade_parada"], tipoEntidade: "oportunidade", entidadeId: id, evento: "oportunidade_movida", atorId: ator.atendenteId });
 
   return { ok: true, versao: r.versao as number, estagioId: r.estagio_id as string, status: r.status as string };
 }

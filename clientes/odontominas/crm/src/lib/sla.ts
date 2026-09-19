@@ -141,7 +141,7 @@ export async function salvarSlaConfig(clinicaId: string, input: SalvarSlaConfigI
   return { ok: true };
 }
 
-type CicloAberto = { mensagemId: string; inicioEm: string; tipo: TipoCicloSla };
+export type CicloAberto = { mensagemId: string; inicioEm: string; tipo: TipoCicloSla };
 
 /**
  * Deriva o ciclo de espera atual a partir de `mensagens` — sem tabela de
@@ -153,14 +153,17 @@ type CicloAberto = { mensagemId: string; inicioEm: string; tipo: TipoCicloSla };
  * finalizarAtendimento usa (src/lib/chat.ts) — reaproveita o funil que já
  * existe em vez de inventar um estado novo.
  */
-async function buscarCicloAberto(clinicaId: string, conversaId: string): Promise<CicloAberto | null> {
+export async function buscarCicloAberto(clinicaId: string, conversaId: string, statusConhecido?: StatusConversa): Promise<CicloAberto | null> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return null;
 
-  const { data: conversa } = await supabase.from("conversas").select("status").eq("id", conversaId).eq("clinica_id", clinicaId).maybeSingle();
-  if (!conversa) return null;
-
-  const status = conversa.status as StatusConversa;
+  // `statusConhecido`: quem já leu a conversa (o verificador de alertas) evita a consulta repetida.
+  let status = statusConhecido;
+  if (!status) {
+    const { data: conversa } = await supabase.from("conversas").select("status").eq("id", conversaId).eq("clinica_id", clinicaId).maybeSingle();
+    if (!conversa) return null;
+    status = conversa.status as StatusConversa;
+  }
   if (STATUS_RESOLVIDOS.includes(status)) return null;
 
   const { data: ultimaRespostaHumana } = await supabase
@@ -186,23 +189,18 @@ async function buscarCicloAberto(clinicaId: string, conversaId: string): Promise
   };
 }
 
-function minutosEntre(inicio: Date, fim: Date, horario: ConfiguracaoHorario | null, respeitaHorario: boolean): number {
+export function minutosEntre(inicio: Date, fim: Date, horario: ConfiguracaoHorario | null, respeitaHorario: boolean): number {
   if (!respeitaHorario || !horario) return Math.max(0, Math.floor((fim.getTime() - inicio.getTime()) / 60000));
   const resultado = calcularMinutosUteisAtendimento(inicio, fim, horario);
   return resultado.ok ? resultado.minutos : 0;
 }
 
-/** `not_configured` cobre: SLA desligado, ou (só quando `considerarApenasHorarioUtil`) horário de atendimento ainda não configurado — nunca finge 24x7 pra produzir métrica falsa. */
-export async function avaliarStatusSlaConversa(clinicaId: string, conversaId: string, agora: Date): Promise<StatusSlaConversa> {
-  const config = await buscarSlaConfig(clinicaId);
-  if (!config.ativo) return { tipo: "not_configured" };
-
-  const horario = config.considerarApenasHorarioUtil ? await buscarConfiguracaoHorario(clinicaId) : null;
-  if (config.considerarApenasHorarioUtil && (!horario || horario.periodos.length === 0)) return { tipo: "not_configured" };
-
-  const ciclo = await buscarCicloAberto(clinicaId, conversaId);
-  if (!ciclo) return { tipo: "sem_ciclo" };
-
+/**
+ * Núcleo do status a partir de um ciclo já conhecido — ÚNICO cálculo de SLA
+ * (a tela do Chat, o resumo e o verificador de alertas passam por aqui; nenhum
+ * outro lugar recalcula minutos úteis).
+ */
+export function statusSlaDoCiclo(config: SlaConfig, horario: ConfiguracaoHorario | null, ciclo: CicloAberto, agora: Date): StatusSlaConversa {
   const limiteMinutos = ciclo.tipo === "primeira_resposta" ? config.primeiraRespostaMinutos : config.respostaAtendimentoMinutos;
   const minutosConsumidos = minutosEntre(new Date(ciclo.inicioEm), agora, horario, config.considerarApenasHorarioUtil);
   const dentroDoHorarioAgora = horario ? avaliarHorarioAtendimento(horario, agora).dentro : true;
@@ -218,6 +216,28 @@ export async function avaliarStatusSlaConversa(clinicaId: string, conversaId: st
     minutosConsumidos,
     percentual,
   };
+}
+
+export type ContextoSla = { config: SlaConfig; horario: ConfiguracaoHorario | null; horarioConfigurado: boolean };
+
+/** Config do SLA + horário, lidos UMA vez (o verificador avalia várias conversas com o mesmo contexto). */
+export async function carregarContextoSla(clinicaId: string): Promise<ContextoSla> {
+  const [config, horario] = await Promise.all([buscarSlaConfig(clinicaId), buscarConfiguracaoHorario(clinicaId)]);
+  return { config, horario, horarioConfigurado: Boolean(horario && horario.periodos.length > 0) };
+}
+
+/** `not_configured` cobre: SLA desligado, ou (só quando `considerarApenasHorarioUtil`) horário de atendimento ainda não configurado — nunca finge 24x7 pra produzir métrica falsa. */
+export async function avaliarStatusSlaConversa(clinicaId: string, conversaId: string, agora: Date): Promise<StatusSlaConversa> {
+  const config = await buscarSlaConfig(clinicaId);
+  if (!config.ativo) return { tipo: "not_configured" };
+
+  const horario = config.considerarApenasHorarioUtil ? await buscarConfiguracaoHorario(clinicaId) : null;
+  if (config.considerarApenasHorarioUtil && (!horario || horario.periodos.length === 0)) return { tipo: "not_configured" };
+
+  const ciclo = await buscarCicloAberto(clinicaId, conversaId);
+  if (!ciclo) return { tipo: "sem_ciclo" };
+
+  return statusSlaDoCiclo(config, horario, ciclo, agora);
 }
 
 /**

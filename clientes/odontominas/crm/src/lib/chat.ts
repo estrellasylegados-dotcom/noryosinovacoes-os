@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { registrarEvento } from "@/lib/auditoria";
+import { resolverPorEvento } from "@/lib/alertas";
 import { atualizarStatus, extrairNomeEmbutido, type NomeEmbutido } from "@/lib/conversas";
 import { enviarPeloCanal, mensagemErroEnvio } from "@/lib/canais-envio";
 import { buscarCanalDaConversa, buscarCanalPorId, buscarCanalPrincipal } from "@/lib/canais";
@@ -311,6 +312,12 @@ export async function enviarRespostaChat(
     })
     .select("id, direcao, tipo, conteudo, timestamp_whatsapp")
     .single();
+
+  // Alertas (detecção por evento): resposta humana encerra a espera na hora. Só depois do insert — é a mensagem
+  // gravada que fecha o ciclo de SLA; o verificador periódico apenas confirma. Nunca lança.
+  if (!mensagemError && atendenteId) {
+    await resolverPorEvento(clinicaId, { tipos: ["sla_limite", "conversa_sem_responsavel"], tipoEntidade: "conversa", entidadeId: conversaId, evento: "resposta_humana", atorId: atendenteId });
+  }
 
   if (mensagemError) {
     // unique(evolution_message_id): o webhook pode ter espelhado o eco da própria

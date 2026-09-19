@@ -16,7 +16,7 @@ export interface ResultadoLock {
  * propósito (não importado de outro módulo) — garante que o worker do motor
  * de Fluxo de Conversa nunca roda 2 ciclos ao mesmo tempo pra uma clínica.
  */
-export async function adquirirLock(clinicaId: string, resource: string, ttlMs: number): Promise<ResultadoLock> {
+export async function adquirirLock(clinicaId: string, resource: string, ttlMs: number, provider: string = PROVIDER): Promise<ResultadoLock> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
 
@@ -26,7 +26,7 @@ export async function adquirirLock(clinicaId: string, resource: string, ttlMs: n
     .from("integration_locks")
     .delete()
     .eq("clinica_id", clinicaId)
-    .eq("provider", PROVIDER)
+    .eq("provider", provider)
     .eq("resource", resource)
     .lt("expires_at", agora.toISOString());
 
@@ -35,7 +35,7 @@ export async function adquirirLock(clinicaId: string, resource: string, ttlMs: n
 
   const { error } = await supabase.from("integration_locks").insert({
     clinica_id: clinicaId,
-    provider: PROVIDER,
+    provider,
     resource,
     holder,
     locked_at: agora.toISOString(),
@@ -51,7 +51,7 @@ export async function adquirirLock(clinicaId: string, resource: string, ttlMs: n
   return { ok: true, holder };
 }
 
-export async function liberarLock(clinicaId: string, resource: string, holder: string): Promise<void> {
+export async function liberarLock(clinicaId: string, resource: string, holder: string, provider: string = PROVIDER): Promise<void> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return;
 
@@ -59,7 +59,7 @@ export async function liberarLock(clinicaId: string, resource: string, holder: s
     .from("integration_locks")
     .delete()
     .eq("clinica_id", clinicaId)
-    .eq("provider", PROVIDER)
+    .eq("provider", provider)
     .eq("resource", resource)
     .eq("holder", holder);
 }
