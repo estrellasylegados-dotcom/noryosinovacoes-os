@@ -6,14 +6,14 @@ import { can } from "@/lib/autorizacao";
 import { listarAtendentes } from "@/lib/atendentes";
 import { marcarVisualizados } from "@/lib/alertas";
 import { atorAlerta, clinicaDaSessao } from "@/lib/alertas-http";
-import { listarAlertas, resumirAlertas, type AlertaView, type FiltrosAlertas } from "@/lib/alertas-consulta";
+import { inicioDoDiaBrasilia, listarAlertas, resumirAlertas, type AlertaView, type FiltrosAlertas } from "@/lib/alertas-consulta";
 import { CATEGORIAS, CATEGORIA_ROTULO, isSeveridade, SEVERIDADES, SEVERIDADE_ROTULO } from "@/lib/alertas-tipos";
 import { formatDuracao } from "@/lib/tempo";
 import { AlertaCard } from "@/components/alertas/AlertaCard";
 
 export const dynamic = "force-dynamic";
 
-type Params = { situacao?: string; severidade?: string; categoria?: string; responsavel?: string; busca?: string; de?: string; ate?: string; pagina?: string };
+type Params = { hoje?: string; situacao?: string; severidade?: string; categoria?: string; responsavel?: string; busca?: string; de?: string; ate?: string; pagina?: string };
 
 const VERIFICADOR_ATRASADO_MS = 5 * 60_000;
 
@@ -61,6 +61,7 @@ export default async function AlertasPage({ searchParams }: { searchParams: Prom
     categoria: params.categoria || undefined,
     responsavel: params.responsavel || undefined,
     busca: params.busca || undefined,
+    resolvidoDesde: situacao === "resolvidos" && params.hoje === "1" ? inicioDoDiaBrasilia(new Date()).toISOString() : undefined,
     de: params.de ? `${params.de}T00:00:00-03:00` : undefined,
     ate: params.ate ? `${params.ate}T23:59:59.999-03:00` : undefined,
     pagina: Number(params.pagina) || 1,
@@ -77,7 +78,7 @@ export default async function AlertasPage({ searchParams }: { searchParams: Prom
   const outros = lista.alertas.filter((a) => a.severidade === "informativo");
   const totalPaginas = Math.max(1, Math.ceil(lista.total / lista.porPagina));
   const idadeVerificacao = resumo.ultimaVerificacaoEm ? agora.getTime() - new Date(resumo.ultimaVerificacaoEm).getTime() : null;
-  const temFiltro = Boolean(params.severidade || params.categoria || params.responsavel || params.busca || params.de || params.ate);
+  const temFiltro = Boolean(params.hoje || params.severidade || params.categoria || params.responsavel || params.busca || params.de || params.ate);
 
   const CAMPO = "rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm";
 
@@ -97,22 +98,19 @@ export default async function AlertasPage({ searchParams }: { searchParams: Prom
         </header>
 
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-            <dt className="text-xs font-medium text-red-700">Críticos abertos</dt>
-            <dd className="text-2xl font-semibold text-red-700">{resumo.criticos}</dd>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <dt className="text-xs font-medium text-amber-800">De atenção abertos</dt>
-            <dd className="text-2xl font-semibold text-amber-800">{resumo.atencao}</dd>
-          </div>
-          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
-            <dt className="text-xs font-medium text-sky-800">Informativos</dt>
-            <dd className="text-2xl font-semibold text-sky-800">{resumo.informativos}</dd>
-          </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-            <dt className="text-xs font-medium text-emerald-800">Resolvidos hoje</dt>
-            <dd className="text-2xl font-semibold text-emerald-800">{resumo.resolvidosHoje}</dd>
-          </div>
+          {(
+            [
+              { titulo: "Críticos abertos", valor: resumo.criticos, destino: href({}, { severidade: "critico" }), classe: "border-red-200 bg-red-50 text-red-700", ativo: situacao === "ativos" && params.severidade === "critico" },
+              { titulo: "De atenção abertos", valor: resumo.atencao, destino: href({}, { severidade: "atencao" }), classe: "border-amber-200 bg-amber-50 text-amber-800", ativo: situacao === "ativos" && params.severidade === "atencao" },
+              { titulo: "Informativos", valor: resumo.informativos, destino: href({}, { severidade: "informativo" }), classe: "border-sky-200 bg-sky-50 text-sky-800", ativo: situacao === "ativos" && params.severidade === "informativo" },
+              { titulo: "Resolvidos hoje", valor: resumo.resolvidosHoje, destino: href({}, { situacao: "resolvidos", hoje: "1" }), classe: "border-emerald-200 bg-emerald-50 text-emerald-800", ativo: situacao === "resolvidos" && params.hoje === "1" },
+            ] as const
+          ).map((c) => (
+            <Link key={c.titulo} href={c.destino} aria-current={c.ativo ? "true" : undefined} className={`block rounded-xl border p-3 transition hover:shadow-sm ${c.classe} ${c.ativo ? "ring-2 ring-current" : ""}`}>
+              <dt className="text-xs font-medium">{c.titulo}</dt>
+              <dd className="text-2xl font-semibold">{c.valor}</dd>
+            </Link>
+          ))}
         </dl>
 
         {(idadeVerificacao === null || idadeVerificacao > VERIFICADOR_ATRASADO_MS) && (
@@ -134,6 +132,7 @@ export default async function AlertasPage({ searchParams }: { searchParams: Prom
 
         <form method="get" action="/alertas" className="flex flex-wrap items-end gap-3 rounded-xl border border-neutral-200 bg-white p-3">
           {situacao === "resolvidos" && <input type="hidden" name="situacao" value="resolvidos" />}
+          {situacao === "resolvidos" && params.hoje === "1" && <input type="hidden" name="hoje" value="1" />}
           <div className="min-w-[10rem] flex-1">
             <label htmlFor="busca" className="mb-1 block text-xs font-medium text-neutral-600">
               Buscar

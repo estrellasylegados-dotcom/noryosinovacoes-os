@@ -33,6 +33,8 @@ export type FiltrosAlertas = {
   /** id do atendente, ou "sem" (sem responsável). */
   responsavel?: string;
   natureza?: Natureza;
+  /** Só resolvidos (status "resolvido") com resolvido_em a partir daqui — o mesmo recorte do contador "Resolvidos hoje". */
+  resolvidoDesde?: string;
   de?: string;
   ate?: string;
   busca?: string;
@@ -208,7 +210,8 @@ export async function listarAlertas(clinicaId: string, ator: AtorAlerta, f: Filt
   let q = baseVisivel(supabase, clinicaId, ator, "*");
   if (!q) return vazio;
 
-  q = q.in("status", [...(situacao === "ativos" ? STATUS_ATIVOS : STATUS_ENCERRADOS)]);
+  if (f.resolvidoDesde && situacao === "resolvidos") q = q.eq("status", "resolvido").gte("resolvido_em", f.resolvidoDesde);
+  else q = q.in("status", [...(situacao === "ativos" ? STATUS_ATIVOS : STATUS_ENCERRADOS)]);
   if (f.severidade && isSeveridade(f.severidade)) q = q.eq("severidade", f.severidade);
   if (f.categoria) q = q.eq("categoria", f.categoria);
   if (f.natureza) q = q.eq("natureza", f.natureza);
