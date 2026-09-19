@@ -33,7 +33,7 @@ Dona ativa. As ~60 telas mais antigas (Agentes, Campanhas, Disparos, Fluxos etc.
 shim de compatibilidade (`isAdminEquivalente`) — **dívida técnica registrada, não solução
 permanente**. Deploy real no Railway (`SUCCESS`) e smoke test em produção ok; migração das 3 contas
 reais feita (`admin`→`dona`, atendentes→`atendente`), nenhuma virou `noryos_admin` sozinha. Detalhe
-completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. **Kanban comercial em produção (2026-09-18, mesmo dia)**, UI logada aguardando validação do Rafael. Noryos Ops
+completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. **Kanban comercial em produção (2026-09-18, mesmo dia)**, UI logada aguardando validação do Rafael. **Central de Alertas Operacionais em produção (2026-09-18, mesmo dia)**: 1 motor reconciliador + verificador de 1 min (SLA, sem responsável, Kanban parado, canal, falhas de fluxo/mensagem), dedupe no banco, sino + `/alertas`; UI logada e SLA real ainda não validados. Noryos Ops
 (painel cross-clínica) segue não iniciado. **Validação E2E de Identidade/RBAC (2026-09-18, 2ª
 sessão): convite por e-mail real validado** — Noryos Admin e Noryos Suporte de teste ativos, login
 confirmado pelo Rafael; 5 achados de autorização corrigidos e em produção. Faltam reset de senha
@@ -108,6 +108,8 @@ aceito conscientemente.
   com login; ponte CONVERSATION_* → gatilhos do Fluxo (não feita de propósito); `search_path` fixo nas
   funções Postgres novas; rotacionar a chave do Resend (já listada acima).
 - Kanban comercial (2026-09-18): o Rafael validar `/kanban` logado (arrastar, perdido com motivo, filtros, painel, celular) e o campo de resposta do Chat sempre no rodapé; decidir se a Supervisora pode mover cards; editor de pipeline (`kanban.configurar`) fica pra depois. Doc: `clientes/odontominas/crm/docs/KANBAN.md`.
+
+- Central de Alertas (2026-09-18): Rafael validar `/alertas`, o sino, Assumir/Resolver/Ignorar e os links diretos logado; ligar o SLA real + horário da OdontoMinas pra testar SLA de ponta a ponta; decidir se a Dona vê alertas técnicos (`alertas.tecnicos`). Doc: `clientes/odontominas/crm/docs/ALERTAS.md`. Os 14 alertas abertos hoje são de dados de teste/demo (preservados).
 
 ## Quente agora
 

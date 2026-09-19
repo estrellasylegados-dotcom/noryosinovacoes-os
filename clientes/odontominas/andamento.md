@@ -1,5 +1,14 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, CENTRAL DE ALERTAS OPERACIONAIS — em produção, UI logada pendente)
+
+- Migration v35 aplicada (4 tabelas novas), deploy `SUCCESS`, verificador rodando sozinho a cada minuto. Doc completo: `crm/docs/ALERTAS.md`.
+- Tipos ativos: SLA, conversa sem responsável, oportunidade parada (por etapa), canal desconectado, mensagem/fluxo/disparo com falha definitiva, fluxo preso (técnico). Dedupe/nova ocorrência no banco; resolução automática e por evento.
+- Testado: 903 unitários; produção só com `[TESTE]` (sem responsável, Kanban, canal). **Não testado:** SLA real (SLA desligado, horário vazio), UI logada, ações Assumir/Resolver/Ignorar.
+- Passada do verificador 8–30 s; lock 180 s. Se piorar: buscar mensagens em lote (exige paginação, PostgREST limita 1000 linhas).
+- 14 alertas abertos hoje vêm de dados de teste/demo (não apagados, pedido de preservar).
+- Pendências: Rafael validar `/alertas`, sino, ações e links (`?conversa=`, `?card=`, `?canal=`) logado; ligar SLA real + horário; decidir se a Dona vê alertas técnicos (`alertas.tecnicos`). Noryos Ops segue não iniciado.
+
 ## Onde está (2026-09-18, KANBAN COMERCIAL — em produção, UI logada pendente)
 
 - Modelo paciente → oportunidade → pipeline → estágio (migrations v33/v34, aditivas), pipeline "Comercial" com 7 estágios (tipo open/won/lost), 7 motivos de perda. Backfill: 10 oportunidades. Mover por `versao` (409), histórico de negócio, evento `kanban_stage_changed`, auditoria `OPPORTUNITY_*`. RBAC: Dona/Gerente todos, Supervisora só vê, Atendente próprios + sem responsável.
