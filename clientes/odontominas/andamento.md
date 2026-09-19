@@ -1,5 +1,12 @@
 # Andamento · OdontoMinas
 
+## Onde está (2026-09-18, KANBAN COMERCIAL — em produção, UI logada pendente)
+
+- Modelo paciente → oportunidade → pipeline → estágio (migrations v33/v34, aditivas), pipeline "Comercial" com 7 estágios (tipo open/won/lost), 7 motivos de perda. Backfill: 10 oportunidades. Mover por `versao` (409), histórico de negócio, evento `kanban_stage_changed`, auditoria `OPPORTUNITY_*`. RBAC: Dona/Gerente todos, Supervisora só vê, Atendente próprios + sem responsável.
+- Testes: 26 unitários novos (806 no total), E2E real `crm/scripts/e2e-kanban.ts` 36/36 (inclui corrida A×B), gates verdes. Deploy `railway up` SUCCESS, smoke 401 sem sessão. Evidências `[TESTE KANBAN]` preservadas.
+- Ajuste no Chat: campo de resposta sempre no rodapé, notas internas recolhíveis.
+- Pendente: validação visual logada pelo Rafael; Supervisora mover?; editor de pipeline; alertas de card parado e automações por estágio (dado pronto: `estagio_entrou_em`); ControleODONTO via `mover_oportunidade` com origem `controle_odonto`. Detalhe e rollback: `crm/docs/KANBAN.md`.
+
 ## Onde está (2026-09-18, CANAIS + ATENDIMENTO COMPARTILHADO — 100% CONCLUÍDO)
 
 **Status: backend + E2E real + UI autenticada validados pelo Rafael. Fase concluída em 2026-09-18.**

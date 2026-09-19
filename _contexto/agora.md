@@ -33,8 +33,8 @@ Dona ativa. As ~60 telas mais antigas (Agentes, Campanhas, Disparos, Fluxos etc.
 shim de compatibilidade (`isAdminEquivalente`) — **dívida técnica registrada, não solução
 permanente**. Deploy real no Railway (`SUCCESS`) e smoke test em produção ok; migração das 3 contas
 reais feita (`admin`→`dona`, atendentes→`atendente`), nenhuma virou `noryos_admin` sozinha. Detalhe
-completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. Kanban visual e Noryos Ops
-(painel cross-clínica) seguem não iniciados. **Validação E2E de Identidade/RBAC (2026-09-18, 2ª
+completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. **Kanban comercial em produção (2026-09-18, mesmo dia)**, UI logada aguardando validação do Rafael. Noryos Ops
+(painel cross-clínica) segue não iniciado. **Validação E2E de Identidade/RBAC (2026-09-18, 2ª
 sessão): convite por e-mail real validado** — Noryos Admin e Noryos Suporte de teste ativos, login
 confirmado pelo Rafael; 5 achados de autorização corrigidos e em produção. Faltam reset de senha
 real e as 4 contas de clínica (Dona/Gerente/Supervisora/Atendente, aguardando e-mails reais). **Canais WhatsApp + Caixa Compartilhada Multiatendente em produção
@@ -42,7 +42,7 @@ real e as 4 contas de clínica (Dona/Gerente/Supervisora/Atendente, aguardando e
 telefone), envio conversa→canal→instância sem fallback, assumir/transferir/devolver atômicos com 409 e
 histórico (provado com corrida real no banco), resposta com enforcement no backend, filas e filtros por
 canal/responsável, tela Configurações → Canais. Backend e E2E real em produção validados (mensagem real "Testando 1941" → canal → conversa → assume → barra → responde → transfere → barra → responde → histórico, SLA preservado); UI autenticada validada com login real (A assume → transfere → B responde pelo canal real); Atendente só vê as próprias conversas.
-Kanban, distribuição automática, grupos e Noryos Ops seguem não iniciados — aguardam sinal do Rafael.
+Distribuição automática, grupos e Noryos Ops seguem não iniciados — aguardam sinal do Rafael.
 Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
 manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
@@ -73,7 +73,7 @@ aceito conscientemente.
   `4bb228db-e7f5-4464-8b53-e1b1d43e31bc` — preservados como evidência antes/depois da correção;
   Fase 5: o fluxo `[TESTE FASE 5]` (`9593cf0f…`), a pesquisa/execução/evento de avaliação Google
   ligados a ele; SLA Operacional: a conversa `[TESTE SLA]` (`a9074a4a…`), suas mensagens, a nota
-  interna e o evento de violação ligados a ela; Canais + Caixa Compartilhada: os canais `[TESTE] WhatsApp Recepção/Comercial`, as 3 atendentes `[TESTE]` (sem login), o paciente `[TESTE] Maria Canais` e as ~48 conversas `5500000000xxx` com seus eventos; e a conversa do número de teste `5561981925241` — responsável atual `[TESTE] Atendente B`, com histórico, mensagens `[TESTE Canais]`, atribuições e transferências, evidência do E2E real, **NÃO apagar**) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
+  interna e o evento de violação ligados a ela; Canais + Caixa Compartilhada: os canais `[TESTE] WhatsApp Recepção/Comercial`, as 3 atendentes `[TESTE]` (sem login), o paciente `[TESTE] Maria Canais` e as ~48 conversas `5500000000xxx` com seus eventos; e os `[TESTE KANBAN]` (pacientes, conversas, oportunidades, histórico, eventos, tag, script `crm/scripts/e2e-kanban.ts`), a conversa do número de teste `5561981925241` — responsável atual `[TESTE] Atendente B`, com histórico, mensagens `[TESTE Canais]`, atribuições e transferências, evidência do E2E real, **NÃO apagar**) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
   configurado/preservado por enquanto, até depois da apresentação (2026-09-16/17/18, ver
   andamento.md e decisoes.md).
 - Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
@@ -106,7 +106,8 @@ aceito conscientemente.
 - Canais, melhorias sem urgência (2026-09-18): erro de envio mais específico na tela (hoje só "Não foi
   possível enviar a mensagem agora"); ver a proteção "não assume conversa de outro" numa conta Supervisora
   com login; ponte CONVERSATION_* → gatilhos do Fluxo (não feita de propósito); `search_path` fixo nas
-  funções Postgres novas; rotacionar a chave do Resend (já listada acima). Kanban só com sinal do Rafael.
+  funções Postgres novas; rotacionar a chave do Resend (já listada acima).
+- Kanban comercial (2026-09-18): o Rafael validar `/kanban` logado (arrastar, perdido com motivo, filtros, painel, celular) e o campo de resposta do Chat sempre no rodapé; decidir se a Supervisora pode mover cards; editor de pipeline (`kanban.configurar`) fica pra depois. Doc: `clientes/odontominas/crm/docs/KANBAN.md`.
 
 ## Quente agora
 
@@ -131,8 +132,7 @@ aceito conscientemente.
   RBAC — fundação concluída no mesmo dia** (6 perfis, sessão revogável, convites/reset por e-mail,
   RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Validação E2E
   em andamento: convite por e-mail real ok e Noryos Admin/Suporte de teste ativos; falta reset real
-  e os 4 perfis da clínica antes de avançar pra Kanban ou Noryos Ops — aguarda sinal do Rafael.
+  e os 4 perfis da clínica antes de avançar pra Noryos Ops — aguarda sinal do Rafael.
 - Canais + Caixa Compartilhada (2026-09-18): **100% concluído** — backend + E2E real (`crm/scripts/e2e-canais-fluxo-real.ts`,
   commit `54a8b6c`) + UI autenticada aprovada pelo Rafael (assumir, transferir, responder, filtros, Configurações →
-  Canais, visual). Seed corrigido (datas futuras escondiam conversas reais). Kanban não iniciado, só com sinal do
-  Rafael. Doc: `clientes/odontominas/crm/docs/CANAIS.md`.
+  Canais, visual). Seed corrigido (datas futuras escondiam conversas reais). Kanban veio depois (ver abaixo). Doc: `clientes/odontominas/crm/docs/CANAIS.md`.
