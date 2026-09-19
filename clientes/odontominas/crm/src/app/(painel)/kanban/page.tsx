@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
  * status da conversa. A página só busca o estado inicial; drag-and-drop e
  * ações rodam contra /api/kanban/* (o backend valida tudo de novo).
  */
-export default async function KanbanPage({ searchParams }: { searchParams: Promise<{ pipeline?: string }> }) {
-  const [sessao, clinicaId, { pipeline }] = await Promise.all([getSessaoAtual(), getClinicaId(), searchParams]);
+export default async function KanbanPage({ searchParams }: { searchParams: Promise<{ pipeline?: string; card?: string }> }) {
+  const [sessao, clinicaId, { pipeline, card }] = await Promise.all([getSessaoAtual(), getClinicaId(), searchParams]);
 
   if (!sessao || !can(sessao, "kanban.visualizar")) redirect("/");
 
@@ -51,6 +51,7 @@ export default async function KanbanPage({ searchParams }: { searchParams: Promi
       etiquetas={etiquetas}
       permissoes={Array.from(sessao.permissoes)}
       atendenteId={sessao.atendenteId}
+      cardInicialId={card && resultado.board.cards.some((c) => c.id === card) ? card : null}
     />
   );
 }

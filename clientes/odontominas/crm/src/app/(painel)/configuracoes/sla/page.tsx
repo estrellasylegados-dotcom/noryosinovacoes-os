@@ -31,7 +31,7 @@ export default async function SlaPage() {
         <header>
           <h1 className="text-xl font-semibold text-neutral-900">SLA / Atendimento</h1>
           <p className="text-sm text-neutral-500">
-            Tempo de resposta calculado só em minutos úteis (horário de atendimento configurado) — ainda não conectado a alertas automáticos.
+            Tempo de resposta calculado só em minutos úteis (horário de atendimento configurado). A faixa de atenção abaixo também define quando o alerta de SLA aparece na Central de Alertas.
           </p>
         </header>
 

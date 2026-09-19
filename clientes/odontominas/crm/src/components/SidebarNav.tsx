@@ -10,6 +10,7 @@ type Item = { href: string; label: string; permissao?: Permissao; group?: string
 const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
   { href: "/chat", label: "Chat ao Vivo" },
+  { href: "/alertas", label: "Alertas", permissao: "alertas.visualizar" },
   { href: "/kanban", label: "CRM · Kanban", permissao: "kanban.visualizar" },
   { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
   { href: "/configuracoes/canais", label: "Canais", permissao: "canais.visualizar" },
@@ -22,9 +23,11 @@ const ITENS: Item[] = [
   { href: "/equipe", label: "Equipe", permissao: "usuarios.visualizar", group: "Configurações" },
   { href: "/configuracoes/horario", label: "Horário de Atendimento", permissao: "configuracoes.horario", group: "Configurações" },
   { href: "/configuracoes/sla", label: "SLA / Atendimento", permissao: "sla.visualizar", group: "Configurações" },
+  { href: "/configuracoes/alertas", label: "Alertas (regras)", permissao: "alertas.configurar", group: "Configurações" },
 ];
 
-function ItemLink({ item, ativo, naoLidas }: { item: Item; ativo: boolean; naoLidas: number }) {
+function ItemLink({ item, ativo, naoLidas, alertas }: { item: Item; ativo: boolean; naoLidas: number; alertas: number }) {
+  const contagem = item.href === "/chat" ? naoLidas : item.href === "/alertas" ? alertas : 0;
   return (
     <Link
       href={item.href}
@@ -33,13 +36,13 @@ function ItemLink({ item, ativo, naoLidas }: { item: Item; ativo: boolean; naoLi
       }`}
     >
       <span>{item.label}</span>
-      {item.href === "/chat" && naoLidas > 0 && (
+      {contagem > 0 && (
         <span
           className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
             ativo ? "bg-white/20 text-white" : "bg-red-500 text-white"
           }`}
         >
-          {naoLidas > 99 ? "99+" : naoLidas}
+          {contagem > 99 ? "99+" : contagem}
         </span>
       )}
     </Link>
@@ -73,7 +76,7 @@ function IconeChevron({ aberto }: { aberto: boolean }) {
 }
 
 /** `permissoes` vem de `sessao.permissoes` (Server Component, já resolvida — ver src/lib/sessao-servidor.ts). Esconder item aqui é só UX: a rota por trás sempre reconfere com requirePermission (backend é autoridade, seção 14 do pedido). */
-export function SidebarNav({ permissoes, naoLidas = 0 }: { permissoes: readonly Permissao[]; naoLidas?: number }) {
+export function SidebarNav({ permissoes, naoLidas = 0, alertas = 0 }: { permissoes: readonly Permissao[]; naoLidas?: number; alertas?: number }) {
   const pathname = usePathname();
   const [gruposFechados, setGruposFechados] = useState<Record<string, boolean>>({});
   const temPermissao = (p?: Permissao) => !p || permissoes.includes(p);
@@ -93,7 +96,7 @@ export function SidebarNav({ permissoes, naoLidas = 0 }: { permissoes: readonly 
   return (
     <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">
       {soltos.map((item) => (
-        <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} />
+        <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} alertas={alertas} />
       ))}
       {Array.from(grupos.entries()).map(([nome, itens]) => {
         const aberto = !gruposFechados[nome];
@@ -113,7 +116,7 @@ export function SidebarNav({ permissoes, naoLidas = 0 }: { permissoes: readonly 
             </button>
             <div className={`contents ${aberto ? "" : "sm:hidden"}`}>
               {itens.map((item) => (
-                <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} />
+                <ItemLink key={item.href} item={item} ativo={ehAtivo(item)} naoLidas={naoLidas} alertas={alertas} />
               ))}
             </div>
           </div>

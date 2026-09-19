@@ -37,7 +37,10 @@ export function CanaisPanel({
   podeConfigurar,
   podeConectar,
   podeDesconectar,
+  destaqueId = null,
 }: {
+  /** Link direto (ex.: alerta → "Abrir canal"): destaca e rola até este canal. */
+  destaqueId?: string | null;
   canais: CanalView[];
   podeConfigurar: boolean;
   podeConectar: boolean;
@@ -104,7 +107,12 @@ export function CanaisPanel({
         const visual = STATUS_VISUAL[canal.status];
         const trabalhando = ocupado === canal.id;
         return (
-          <section key={canal.id} className={`rounded-xl border bg-white p-5 ${canal.ativo ? "border-neutral-200" : "border-neutral-200 opacity-80"}`}>
+          <section
+            key={canal.id}
+            id={`canal-${canal.id}`}
+            ref={canal.id === destaqueId ? (el) => el?.scrollIntoView({ block: "center" }) : undefined}
+            className={`rounded-xl border bg-white p-5 ${canal.id === destaqueId ? "border-teal-500 ring-2 ring-teal-200" : canal.ativo ? "border-neutral-200" : "border-neutral-200 opacity-80"}`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

@@ -18,8 +18,8 @@ export const dynamic = "force-dynamic";
  * conversa, mandar mensagem) roda no cliente contra as rotas /api/chat/*,
  * sem recarregar a página inteira.
  */
-export default async function ChatAoVivoPage() {
-  const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
+export default async function ChatAoVivoPage({ searchParams }: { searchParams: Promise<{ conversa?: string }> }) {
+  const [sessao, clinicaId, { conversa }] = await Promise.all([getSessaoAtual(), getClinicaId(), searchParams]);
 
   if (!clinicaId) {
     return (
@@ -55,6 +55,7 @@ export default async function ChatAoVivoPage() {
       clinicaNome={clinicaAtual?.nome ?? "Clínica"}
       canais={canais.map((c) => ({ id: c.id, nome: c.nome, ativo: c.ativo }))}
       permissoes={sessao ? Array.from(sessao.permissoes) : []}
+      conversaInicialId={conversa && conversas.some((c) => c.id === conversa) ? conversa : null}
     />
   );
 }

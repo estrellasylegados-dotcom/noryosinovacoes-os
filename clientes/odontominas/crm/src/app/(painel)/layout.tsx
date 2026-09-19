@@ -6,6 +6,9 @@ import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { buscarCanalPrincipal } from "@/lib/canais";
 import { contarNaoLidas } from "@/lib/chat";
 import { buscarNotificacoes } from "@/lib/notificacoes";
+import { resumirAlertas } from "@/lib/alertas-consulta";
+import { atorAlerta, clinicaDaSessao } from "@/lib/alertas-http";
+import { can } from "@/lib/autorizacao";
 import { formatTelefone } from "@/lib/tempo";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -13,6 +16,7 @@ import { SidebarNav } from "@/components/SidebarNav";
 import { SidebarShell } from "@/components/SidebarShell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Notificacoes } from "@/components/Notificacoes";
+import { AlertasSino } from "@/components/alertas/AlertasSino";
 
 /**
  * Casca visual de todo o painel logado: menu lateral (nav + status de
@@ -31,11 +35,13 @@ export default async function PainelLayout({ children }: { children: ReactNode }
   const clinicaId = await getClinicaId();
   // A bolinha do menu lateral mostra o canal PRINCIPAL da clínica (status ao vivo).
   const canalPrincipal = clinicaId ? await buscarCanalPrincipal(clinicaId) : null;
-  const [statusConexao, naoLidas, notificacoes, clinicaAtual] = await Promise.all([
+  const clinicaDosAlertas = clinicaDaSessao(sessao, clinicaId);
+  const [statusConexao, naoLidas, notificacoes, clinicaAtual, resumoAlertas] = await Promise.all([
     buscarStatusConexao(canalPrincipal?.providerInstanceId),
     clinicaId ? contarNaoLidas(clinicaId) : Promise.resolve(0),
     clinicaId ? buscarNotificacoes(clinicaId) : Promise.resolve([]),
     buscarClinicaAtual(),
+    clinicaDosAlertas && can(sessao, "alertas.visualizar") ? resumirAlertas(clinicaDosAlertas, atorAlerta(sessao)) : Promise.resolve(null),
   ]);
   const apelidoInstancia = canalPrincipal?.nome ?? null;
   const corConexao = statusConexao.conectado ? "bg-emerald-500" : statusConexao.conectado === false ? "bg-red-500" : "bg-neutral-300";
@@ -55,7 +61,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             <p className="text-xs text-neutral-400">CRM · Atendimento</p>
           </div>
         }
-        nav={<SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} />}
+        nav={<SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} alertas={resumoAlertas?.relevantes ?? 0} />}
         rodape={
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -91,6 +97,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center justify-end gap-1 border-b border-neutral-200 bg-white px-4 sm:px-6">
           <ThemeToggle />
+          {resumoAlertas && <AlertasSino inicial={resumoAlertas} />}
           <Notificacoes inicial={notificacoes} />
           <span className="ml-1 truncate text-sm font-medium text-neutral-700">{sessao.nome}</span>
         </header>

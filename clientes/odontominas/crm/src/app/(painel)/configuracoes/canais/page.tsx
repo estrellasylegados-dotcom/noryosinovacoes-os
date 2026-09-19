@@ -8,8 +8,8 @@ import { CanaisPanel, type CanalView } from "@/components/canais/CanaisPanel";
 export const dynamic = "force-dynamic";
 
 /** Configurações → Canais: cada número de WhatsApp da clínica, com status ao vivo e as ações que o perfil permite. */
-export default async function CanaisPage() {
-  const sessao = await getSessaoAtual();
+export default async function CanaisPage({ searchParams }: { searchParams: Promise<{ canal?: string }> }) {
+  const [sessao, { canal: canalDestaque }] = await Promise.all([getSessaoAtual(), searchParams]);
   if (!sessao || !(can(sessao, "canais.visualizar") || can(sessao, "suporte.acesso_tecnico"))) redirect("/");
 
   const clinicaId = await getClinicaId();
@@ -40,6 +40,7 @@ export default async function CanaisPage() {
           podeConfigurar={can(sessao, "canais.configurar")}
           podeConectar={can(sessao, "canais.conectar")}
           podeDesconectar={can(sessao, "canais.desconectar")}
+          destaqueId={canalDestaque && canaisView.some((c) => c.id === canalDestaque) ? canalDestaque : null}
         />
       </div>
     </main>

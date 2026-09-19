@@ -121,7 +121,10 @@ export function ChatAoVivo({
   clinicaNome,
   canais,
   permissoes,
+  conversaInicialId = null,
 }: {
+  /** Link direto (ex.: alerta → "Abrir conversa"): abre já nesta conversa. */
+  conversaInicialId?: string | null;
   conversasIniciais: ConversaChat[];
   etiquetasIniciais: Etiqueta[];
   etiquetasComAgente: string[];
@@ -136,7 +139,7 @@ export function ChatAoVivo({
 }) {
   const [conversas, setConversas] = useState(conversasIniciais);
   const [etiquetas, setEtiquetas] = useState(etiquetasIniciais);
-  const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(conversaInicialId);
   const [aba, setAba] = useState<AbaChat>("todos");
   const [busca, setBusca] = useState("");
   const [filtroPrioridade, setFiltroPrioridade] = useState<Prioridade | "">("");

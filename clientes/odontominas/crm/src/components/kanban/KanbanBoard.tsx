@@ -99,7 +99,10 @@ export function KanbanBoard({
   etiquetas,
   permissoes,
   atendenteId,
+  cardInicialId = null,
 }: {
+  /** Link direto (ex.: alerta → "Abrir no Kanban"): abre já o painel deste card. */
+  cardInicialId?: string | null;
   boardInicial: BoardKanban;
   atendentes: Opcao[];
   canais: Opcao[];
@@ -109,7 +112,7 @@ export function KanbanBoard({
 }) {
   const [board, setBoard] = useState(boardInicial);
   const [filtros, setFiltros] = useState<FiltrosKanban>({});
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(cardInicialId);
   const [carregando, setCarregando] = useState(false);
   const [arrastando, setArrastando] = useState<CardKanban | null>(null);
   const [abertoId, setAbertoId] = useState<string | null>(null);
