@@ -19,6 +19,7 @@ function formatQuando(iso: string): string {
  * Conversa). Self-contained: busca as notas sozinho quando `conversaId` muda.
  */
 export function NotasInternas({ conversaId }: { conversaId: string }) {
+  const [aberto, setAberto] = useState(false);
   const [notas, setNotas] = useState<NotaInterna[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [texto, setTexto] = useState("");
@@ -67,11 +68,19 @@ export function NotasInternas({ conversaId }: { conversaId: string }) {
   }
 
   return (
-    <div className="space-y-3 border-t border-neutral-200 bg-neutral-50/60 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-        Notas internas · nunca visível pro paciente
-      </p>
-
+    <div className="border-t border-neutral-200 bg-neutral-50/60 px-4 py-2">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        aria-expanded={aberto}
+        className="flex w-full items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-neutral-400 hover:text-neutral-600"
+      >
+        <span>
+          Notas internas{notas.length > 0 ? ` (${notas.length})` : ""} · nunca visível pro paciente
+        </span>
+        <span aria-hidden>{aberto ? "▾" : "▸"}</span>
+      </button>
+      {aberto && <div className="mt-2 space-y-3">
       <div className="flex items-end gap-2">
         <textarea
           value={texto}
@@ -113,6 +122,7 @@ export function NotasInternas({ conversaId }: { conversaId: string }) {
           ))}
         </ul>
       )}
+      </div>}
     </div>
   );
 }

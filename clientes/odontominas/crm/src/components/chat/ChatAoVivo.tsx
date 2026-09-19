@@ -500,7 +500,7 @@ export function ChatAoVivo({
   }
 
   return (
-    <div ref={containerRef} className="flex h-[calc(100vh-1px)] min-h-0 sm:h-screen">
+    <div ref={containerRef} className="flex h-[calc(100dvh-3.5rem)] min-h-0">
       <section
         style={{ "--largura-lista": `${larguraLista}px` } as { [key: string]: string }}
         className={`flex w-full min-w-0 flex-col border-r border-neutral-200 bg-white sm:w-[var(--largura-lista)] sm:shrink-0 ${
@@ -896,7 +896,9 @@ export function ChatAoVivo({
               <div ref={fimDaThreadRef} />
             </div>
 
-            <div className="border-t border-neutral-200 bg-white px-4 py-3">
+            <NotasInternas conversaId={selecionada.id} />
+
+            <div className="shrink-0 border-t border-neutral-200 bg-white px-4 py-3">
               {erroAtribuicao && <p className="mb-1.5 text-xs text-amber-700">{erroAtribuicao}</p>}
               {erroEnvio && <p className="mb-1.5 text-xs text-red-600">{erroEnvio}</p>}
               {selecionada.atribuidoAId && selecionada.atribuidoAId !== atendenteAtualId && (
@@ -937,7 +939,6 @@ export function ChatAoVivo({
               </div>
             </div>
 
-            <NotasInternas conversaId={selecionada.id} />
           </>
         )}
       </section>

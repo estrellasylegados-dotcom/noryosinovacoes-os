@@ -89,7 +89,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-end gap-1 border-b border-neutral-200 bg-white px-4 py-2 sm:px-6">
+        <header className="flex h-14 shrink-0 items-center justify-end gap-1 border-b border-neutral-200 bg-white px-4 sm:px-6">
           <ThemeToggle />
           <Notificacoes inicial={notificacoes} />
           <span className="ml-1 truncate text-sm font-medium text-neutral-700">{sessao.nome}</span>
