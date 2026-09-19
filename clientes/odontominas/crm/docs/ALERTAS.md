@@ -109,7 +109,7 @@ histórico) · `/configuracoes/alertas`. Links diretos: `/chat?conversa=`, `/kan
 
 ## Desempenho
 
-Verificador 1/min. Consultas por estado/data com índices parciais (`alertas_condicao_viva_idx`,
+Verificador 1/min (passada de 8 a 30 s medida em produção; lock de 180 s). Consultas por estado/data com índices parciais (`alertas_condicao_viva_idx`,
 `alertas_abertos_idx`, `oportunidades_board_idx`). Ordem por severidade é feita em JS (fila ativa pequena; texto
 ordenaria "atencao" < "critico"). **Limite conhecido**: SLA/sem-dono fazem 2 consultas de mensagens por conversa
 candidata (novo/aguardando); ver "Riscos" no relatório final.

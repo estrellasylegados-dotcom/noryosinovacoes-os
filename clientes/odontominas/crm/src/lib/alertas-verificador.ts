@@ -18,7 +18,8 @@ import type { TipoAlerta } from "@/lib/alertas-tipos";
 
 export const LOCK_PROVIDER = "alertas";
 export const LOCK_RESOURCE = "verificador";
-export const LOCK_TTL_MS = 55_000;
+/** Folga larga: a passada leva de 8 a 30 s conforme a latência do banco; o lock só evita sobreposição (a verificação já é idempotente). */
+export const LOCK_TTL_MS = 180_000;
 
 export type ResultadoVerificacao = {
   pulada: boolean;
