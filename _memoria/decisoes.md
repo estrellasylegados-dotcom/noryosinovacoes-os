@@ -727,3 +727,5 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
   histórico (ASSIGNED/TRANSFERRED), mensagens `[TESTE Canais]`, atribuições, transferências e a
   evidência (`crm/scripts/e2e-canais-fluxo-real.ts`, commit `54a8b6c`). Por quê: são a prova da fase e
   ficam até depois da apresentação, junto do resto dos dados de teste.
+- **2026-09-18** (Rafael) [odontominas]: Canais + Caixa Compartilhada Multiatendente **100% concluído** (backend + E2E real + UI autenticada). Substitui: 2026-09-18 (status "não 100%"). Por quê: login real das contas A/B e validação pela tela (assumir, transferir, responder, filtros, Configurações → Canais, visual/responsivo) feitos e aprovados pelo Rafael. Kanban segue não iniciado, só com sinal dele.
+- **2026-09-18** (Rafael) [odontominas]: contas `[TESTE] Atendente A/B` reaproveitadas (mesmo id, histórico preservado) com senha de teste fraca (valor combinado no chat, não registrado aqui), a pedido dele. Por quê: teste rápido da UI. Vale só pra contas `[TESTE]` de perfil atendente; trocar ou desativar antes da produção real.

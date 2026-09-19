@@ -38,10 +38,10 @@ completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. Kanban vis
 sessão): convite por e-mail real validado** — Noryos Admin e Noryos Suporte de teste ativos, login
 confirmado pelo Rafael; 5 achados de autorização corrigidos e em produção. Faltam reset de senha
 real e as 4 contas de clínica (Dona/Gerente/Supervisora/Atendente, aguardando e-mails reais). **Canais WhatsApp + Caixa Compartilhada Multiatendente em produção
-(2026-09-18, mesmo dia) — status: backend + E2E real validados; UI autenticada pendente (fase NÃO 100% concluída)**: número = canal da clínica (`canais`), conversa única por (clínica, canal,
+(2026-09-18, mesmo dia) — CONCLUÍDO 100% (backend + E2E real + UI autenticada validada pelo Rafael)**: número = canal da clínica (`canais`), conversa única por (clínica, canal,
 telefone), envio conversa→canal→instância sem fallback, assumir/transferir/devolver atômicos com 409 e
 histórico (provado com corrida real no banco), resposta com enforcement no backend, filas e filtros por
-canal/responsável, tela Configurações → Canais. Backend e E2E real em produção validados (mensagem real "Testando 1941" → canal → conversa → assume → barra → responde → transfere → barra → responde → histórico, SLA preservado); falta login real e a UI autenticada (ver pendências);
+canal/responsável, tela Configurações → Canais. Backend e E2E real em produção validados (mensagem real "Testando 1941" → canal → conversa → assume → barra → responde → transfere → barra → responde → histórico, SLA preservado); UI autenticada validada com login real (A assume → transfere → B responde pelo canal real); Atendente só vê as próprias conversas.
 Kanban, distribuição automática, grupos e Noryos Ops seguem não iniciados — aguardam sinal do Rafael.
 Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
 Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
@@ -98,14 +98,15 @@ aceito conscientemente.
   `PATCH /api/equipe/[id]/permissoes`); "Sessões Ativas" por dispositivo; migrar as ~60 telas do
   shim `isAdminEquivalente` pra permissão granular; revisar `membership` quando existir 2ª clínica
   com usuário compartilhado.
-- Canais, UI autenticada (2026-09-18): fechar login real das contas de teste (2 e-mails de teste, ex.:
-  aliases `+atendenteA`/`+atendenteB`; senha definida por elas no convite) e validar pela tela: botão
-  Assumir, transferência pela tela, filtros (canal/responsável/fila/SLA), Configurações → Canais e
-  responsividade/visual do Chat ao Vivo. Backend e E2E real já validados (ver "Quente agora"). Fase só
-  fecha depois disso; **fechar login/UI antes de iniciar o Kanban**.
-- Canais, pendências técnicas menores (2026-09-18): ponte CONVERSATION_* → gatilhos do motor de Fluxo
-  (não feita de propósito); `search_path` fixo nas funções Postgres novas; rotacionar a chave do Resend
-  (já listada acima).
+- Contas `[TESTE] Atendente A/B` (2026-09-18): senha de teste fraca, combinada no chat (usuários `teste_atendente_a/b`); trocar ou
+  desativar antes da produção real.
+- Menu lateral recolhível + rodapé fixo (2026-09-18, em produção): o Rafael conferir (rolar página longa,
+  recolher/expandir, recarregar) e depois commitar `crm/src/components/SidebarShell.tsx`, `(painel)/layout.tsx`
+  e `crm/scripts/convidar-atendente-teste.ts` (criados, fora do git).
+- Canais, melhorias sem urgência (2026-09-18): erro de envio mais específico na tela (hoje só "Não foi
+  possível enviar a mensagem agora"); ver a proteção "não assume conversa de outro" numa conta Supervisora
+  com login; ponte CONVERSATION_* → gatilhos do Fluxo (não feita de propósito); `search_path` fixo nas
+  funções Postgres novas; rotacionar a chave do Resend (já listada acima). Kanban só com sinal do Rafael.
 
 ## Quente agora
 
@@ -131,8 +132,7 @@ aceito conscientemente.
   RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Validação E2E
   em andamento: convite por e-mail real ok e Noryos Admin/Suporte de teste ativos; falta reset real
   e os 4 perfis da clínica antes de avançar pra Kanban ou Noryos Ops — aguarda sinal do Rafael.
-- Canais + Caixa Compartilhada (2026-09-18): **backend + E2E real validados; UI autenticada pendente**
-  (não é 100%). Provado em produção: webhook → canal → conversa → atribuição → ownership → envio real →
-  transferência → autorização pós-transferência → histórico → SLA preservado (`crm/scripts/e2e-canais-fluxo-real.ts`,
-  commit `54a8b6c`), mais corrida real no banco. Próximo passo: login/UI com as contas de teste, **antes**
-  de qualquer Kanban (não avançar sem sinal do Rafael). Doc: `clientes/odontominas/crm/docs/CANAIS.md`.
+- Canais + Caixa Compartilhada (2026-09-18): **100% concluído** — backend + E2E real (`crm/scripts/e2e-canais-fluxo-real.ts`,
+  commit `54a8b6c`) + UI autenticada aprovada pelo Rafael (assumir, transferir, responder, filtros, Configurações →
+  Canais, visual). Seed corrigido (datas futuras escondiam conversas reais). Kanban não iniciado, só com sinal do
+  Rafael. Doc: `clientes/odontominas/crm/docs/CANAIS.md`.

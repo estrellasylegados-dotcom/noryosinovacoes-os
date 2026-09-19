@@ -1,8 +1,8 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-18, CANAIS + ATENDIMENTO COMPARTILHADO — BACKEND/E2E REAL VALIDADO, UI AUTENTICADA AINDA PENDENTE)
+## Onde está (2026-09-18, CANAIS + ATENDIMENTO COMPARTILHADO — 100% CONCLUÍDO)
 
-**Status: backend + E2E real validados; UI autenticada pendente. A fase NÃO está 100% concluída.**
+**Status: backend + E2E real + UI autenticada validados pelo Rafael. Fase concluída em 2026-09-18.**
 
 Doc completa (modelo, fluxos, RBAC, rollback): `crm/docs/CANAIS.md`.
 
@@ -28,9 +28,20 @@ Doc completa (modelo, fluxos, RBAC, rollback): `crm/docs/CANAIS.md`.
   certa. Cadeia provada: webhook → resolução de canal → conversa → atribuição → controle de ownership →
   envio real → transferência → autorização pós-transferência → histórico → SLA preservado. Evidência:
   `crm/scripts/e2e-canais-fluxo-real.ts` (commit `54a8b6c`).
-- **Pendente (UI autenticada):** login real das contas de teste; botão Assumir; transferência pela tela;
-  filtros; Configurações → Canais; validação visual/responsiva. **Próximo passo: fechar login/UI com as
-  contas de teste antes de iniciar o Kanban.**
+- **Validado pela UI autenticada (2026-09-18):** convites oficiais por CLI (`crm/scripts/convidar-atendente-teste.ts`,
+  não commitado) pras contas `[TESTE] Atendente A/B` existentes (id e histórico preservados); senha de teste
+  uma senha de teste fraca (valor combinado no chat, não registrado aqui) a pedido do Rafael (usuários `teste_atendente_a/b`; trocar/desativar antes da produção real). Roteiro:
+  A assume a conversa 00000-0014 → transfere pra B → B recebe; no canal fictício `[TESTE] WhatsApp Recepção` o envio
+  falha controlado (instância `teste-recepcao` inexistente, 404, nada salvo); mensagem real do 61 98192-5241 entrou
+  pelo canal real sem duplicar e a B respondeu pela tela, assinada por ela. Atendente só vê as próprias conversas
+  (`visualizar_proprias`). Filtros, Configurações → Canais e visual/responsivo aprovados pelo Rafael.
+  **Achados:** login só por usuário (não e-mail) e rate limit de 5 falhas/IP em memória (zera com restart do
+  serviço); 47 conversas do seed com `ultima_mensagem_em` no futuro escondiam as reais em "Mais recentes", corrigidas
+  pra `created_at`. **Melhoria sem urgência:** mensagem de erro de envio mais específica na tela.
+- **Menu lateral (2026-09-18, pedido do Rafael após a validação):** recolhível (faixa de 64px com bolinhas de
+  status, conteúdo se reajusta; preferência em `localStorage` `crm-menu-colapsado`, só de `sm` pra cima) e preso à
+  altura da tela (sticky), com o rodapé WhatsApp/usuário/Sair sempre visível. `src/components/SidebarShell.tsx` +
+  `src/app/(painel)/layout.tsx`. Em produção via `railway up`, sem commit; aguardando conferência visual dele.
 - **Preparado, não feito:** Kanban, distribuição automática, grupos/setores, presença, Noryos Ops
   (`verificarSaudeCanal` + `/api/canais/:id/diagnostico`), omnichannel, ponte CONVERSATION_* → Fluxo.
 - **Dados [TESTE] preservados** (canais Recepção/Comercial de instância fictícia, 3 atendentes sem

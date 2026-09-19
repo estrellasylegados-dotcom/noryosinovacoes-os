@@ -10,6 +10,7 @@ import { formatTelefone } from "@/lib/tempo";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { LogoutButton } from "@/components/LogoutButton";
 import { SidebarNav } from "@/components/SidebarNav";
+import { SidebarShell } from "@/components/SidebarShell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Notificacoes } from "@/components/Notificacoes";
 
@@ -37,56 +38,55 @@ export default async function PainelLayout({ children }: { children: ReactNode }
     buscarClinicaAtual(),
   ]);
   const apelidoInstancia = canalPrincipal?.nome ?? null;
+  const corConexao = statusConexao.conectado ? "bg-emerald-500" : statusConexao.conectado === false ? "bg-red-500" : "bg-neutral-300";
+  const textoConexao = statusConexao.conectado
+    ? apelidoInstancia || statusConexao.nome || "WhatsApp conectado"
+    : statusConexao.conectado === false
+      ? "WhatsApp desconectado"
+      : "WhatsApp — sem status";
 
   return (
     <div className="min-h-screen bg-neutral-50 sm:flex">
       <AutoRefresh />
-      <aside className="flex flex-col gap-4 border-b border-neutral-200 bg-white px-4 py-4 sm:h-screen sm:w-60 sm:shrink-0 sm:justify-between sm:border-b-0 sm:border-r sm:px-5 sm:py-6">
-        <div>
-          <div className="mb-5">
+      <SidebarShell
+        titulo={
+          <div className="sm:mb-1">
             <p className="text-sm font-semibold tracking-tight text-teal-800">{clinicaAtual?.nome ?? "Clínica"}</p>
             <p className="text-xs text-neutral-400">CRM · Atendimento</p>
           </div>
-          <SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} />
-        </div>
-
-        <div className="space-y-3 border-t border-neutral-100 pt-4 sm:mt-auto">
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2 w-2 shrink-0 rounded-full ${
-                statusConexao.conectado
-                  ? "bg-emerald-500"
-                  : statusConexao.conectado === false
-                    ? "bg-red-500"
-                    : "bg-neutral-300"
-              }`}
-            />
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-neutral-700">
-                {statusConexao.conectado
-                  ? apelidoInstancia || statusConexao.nome || "WhatsApp conectado"
-                  : statusConexao.conectado === false
-                    ? "WhatsApp desconectado"
-                    : "WhatsApp — sem status"}
-              </p>
-              {statusConexao.numero && (
-                <p className="truncate text-[11px] text-neutral-400">{formatTelefone(statusConexao.numero)}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" title="Sessão ativa" />
+        }
+        nav={<SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} />}
+        rodape={
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${corConexao}`} />
               <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-neutral-900">{sessao.nome}</p>
-                <p className="truncate text-[11px] capitalize text-neutral-400">{sessao.perfil}</p>
+                <p className="truncate text-xs font-medium text-neutral-700">{textoConexao}</p>
+                {statusConexao.numero && (
+                  <p className="truncate text-[11px] text-neutral-400">{formatTelefone(statusConexao.numero)}</p>
+                )}
               </div>
             </div>
-            <LogoutButton />
+
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" title="Sessão ativa" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-neutral-900">{sessao.nome}</p>
+                  <p className="truncate text-[11px] capitalize text-neutral-400">{sessao.perfil}</p>
+                </div>
+              </div>
+              <LogoutButton />
+            </div>
           </div>
-        </div>
-      </aside>
+        }
+        rodapeCompacto={
+          <div className="flex flex-col items-center gap-3 border-t border-neutral-100 pt-4">
+            <span className={`h-2 w-2 rounded-full ${corConexao}`} title={textoConexao} />
+            <span className="h-2 w-2 rounded-full bg-emerald-500" title={`${sessao.nome} · ${sessao.perfil}`} />
+          </div>
+        }
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-end gap-1 border-b border-neutral-200 bg-white px-4 py-2 sm:px-6">
