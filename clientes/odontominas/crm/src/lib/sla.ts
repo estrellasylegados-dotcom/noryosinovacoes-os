@@ -422,3 +422,22 @@ export async function buscarResumoSlaHoje(clinicaId: string, agora: Date): Promi
     taxaDentroPercentual: totalAvaliavel > 0 ? Math.round((dentro / totalAvaliavel) * 100) : null,
   };
 }
+
+export type MensagemDoCiclo = { id: string; direcao: "recebida" | "enviada"; enviadaPorAtendenteId: string | null; createdAt: string };
+
+/**
+ * Mesma regra de `buscarCicloAberto`, a partir de mensagens já lidas (em qualquer
+ * ordem): início = 1ª `recebida` depois da última resposta HUMANA. Serve ao
+ * verificador de alertas, que lê as mensagens recentes de cada conversa em 1
+ * consulta em vez de 2. Sem `recebida` pendente → null.
+ */
+export function derivarCicloDeMensagens(mensagens: MensagemDoCiclo[]): CicloAberto | null {
+  const ordenadas = [...mensagens].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  let ultimaHumana = -1;
+  ordenadas.forEach((m, i) => {
+    if (m.direcao === "enviada" && m.enviadaPorAtendenteId) ultimaHumana = i;
+  });
+  const primeira = ordenadas.slice(ultimaHumana + 1).find((m) => m.direcao === "recebida");
+  if (!primeira) return null;
+  return { mensagemId: primeira.id, inicioEm: primeira.createdAt, tipo: ultimaHumana >= 0 ? "resposta_atendimento" : "primeira_resposta" };
+}

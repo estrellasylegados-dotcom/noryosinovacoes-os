@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avaliarStatusPorMinutos, mediana, validarSlaConfig } from "@/lib/sla";
+import { avaliarStatusPorMinutos, derivarCicloDeMensagens, mediana, validarSlaConfig } from "@/lib/sla";
 
 describe("avaliarStatusPorMinutos", () => {
   const LIMITE = 15;
@@ -66,5 +66,30 @@ describe("validarSlaConfig", () => {
   it("rejeita alerta fora de 1-100", () => {
     expect(validarSlaConfig({ ...base, alertaPercentual: 0 })).toBe("alerta_invalido");
     expect(validarSlaConfig({ ...base, alertaPercentual: 101 })).toBe("alerta_invalido");
+  });
+});
+
+describe("derivarCicloDeMensagens (mesma regra do ciclo do SLA)", () => {
+  const rec = (id: string, t: string) => ({ id, direcao: "recebida" as const, enviadaPorAtendenteId: null, createdAt: t });
+  const hum = (id: string, t: string) => ({ id, direcao: "enviada" as const, enviadaPorAtendenteId: "u1", createdAt: t });
+  const bot = (id: string, t: string) => ({ id, direcao: "enviada" as const, enviadaPorAtendenteId: null, createdAt: t });
+
+  it("nunca respondida por humano: 1ª recebida, primeira_resposta (várias seguidas = 1 ciclo)", () => {
+    const c = derivarCicloDeMensagens([rec("m2", "2026-09-18T12:05:00Z"), rec("m1", "2026-09-18T12:00:00Z")]);
+    expect(c).toEqual({ mensagemId: "m1", inicioEm: "2026-09-18T12:00:00Z", tipo: "primeira_resposta" });
+  });
+
+  it("resposta humana fecha o ciclo; nova recebida abre outro (resposta_atendimento)", () => {
+    expect(derivarCicloDeMensagens([rec("m1", "2026-09-18T12:00:00Z"), hum("h1", "2026-09-18T12:03:00Z")])).toBeNull();
+    const c = derivarCicloDeMensagens([rec("m1", "2026-09-18T12:00:00Z"), hum("h1", "2026-09-18T12:03:00Z"), rec("m2", "2026-09-18T12:10:00Z"), rec("m3", "2026-09-18T12:11:00Z")]);
+    expect(c).toMatchObject({ mensagemId: "m2", tipo: "resposta_atendimento" });
+  });
+
+  it("mensagem automática (Fluxo/IA/disparo) NÃO fecha o ciclo", () => {
+    expect(derivarCicloDeMensagens([rec("m1", "2026-09-18T12:00:00Z"), bot("b1", "2026-09-18T12:01:00Z")])).toMatchObject({ mensagemId: "m1" });
+  });
+
+  it("sem mensagens → null", () => {
+    expect(derivarCicloDeMensagens([])).toBeNull();
   });
 });

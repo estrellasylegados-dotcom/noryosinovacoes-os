@@ -1,8 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { listarCanais, verificarSaudeCanal, type StatusCanal } from "@/lib/canais";
 import { ERROS_DE_CANAL } from "@/lib/canais-envio";
-import { buscarCicloAberto, minutosEntre, statusSlaDoCiclo, type ContextoSla, type StatusSlaConversa } from "@/lib/sla";
-import type { StatusConversa } from "@/lib/status";
+import { derivarCicloDeMensagens, minutosEntre, statusSlaDoCiclo, type ContextoSla, type StatusSlaConversa } from "@/lib/sla";
 import { chaves, type Condicao } from "@/lib/alertas-tipos";
 import type { DeteccaoAlertas } from "@/lib/alertas";
 import type { ConfigVerificador } from "@/lib/alertas-config";
@@ -34,6 +33,7 @@ export const JANELA_FATOS_MS = 7 * DIA_MS;
 export const LIMITE_POR_REGRA_KANBAN = 100;
 export const LIMITE_FALHAS_FLUXO = 20;
 export const TRAVA_FLUXO_MINUTOS = 15;
+export const MENSAGENS_POR_CONVERSA = 100;
 
 // ---------------------------------------------------------------------------
 // Conversa: SLA + sem responsável (mesmas conversas, mesmo ciclo — 1 leitura)
@@ -146,8 +146,18 @@ export async function detectarConversas(ctx: ContextoVerificacao): Promise<Detec
   const slaLigado = ctx.sla.config.ativo && (!ctx.sla.config.considerarApenasHorarioUtil || ctx.sla.horarioConfigurado);
   const horarioUtil = ctx.sla.horarioConfigurado ? ctx.sla.horario : null;
 
-  await emLotes((data ?? []) as LinhaConversa[], 8, async (c) => {
-    const ciclo = await buscarCicloAberto(ctx.clinicaId, c.id, c.status as StatusConversa);
+  await emLotes((data ?? []) as LinhaConversa[], 16, async (c) => {
+    // 1 consulta por conversa: as `MENSAGENS_POR_CONVERSA` mais recentes bastam pra achar o ciclo aberto (última resposta humana + 1ª recebida depois).
+    const { data: msgs, error: erroMsgs } = await supabase
+      .from("mensagens")
+      .select("id, direcao, enviada_por_atendente_id, created_at")
+      .eq("conversa_id", c.id)
+      .order("created_at", { ascending: false })
+      .limit(MENSAGENS_POR_CONVERSA);
+    if (erroMsgs) throw new Error(`mensagens_${erroMsgs.code ?? "erro"}`);
+    const ciclo = derivarCicloDeMensagens(
+      (msgs ?? []).map((m) => ({ id: m.id as string, direcao: m.direcao as "recebida" | "enviada", enviadaPorAtendenteId: (m.enviada_por_atendente_id as string | null) ?? null, createdAt: m.created_at as string }))
+    );
     if (!ciclo) return;
 
     const statusSla = slaLigado ? statusSlaDoCiclo(ctx.sla.config, ctx.sla.config.considerarApenasHorarioUtil ? ctx.sla.horario : null, ciclo, ctx.agora) : null;
