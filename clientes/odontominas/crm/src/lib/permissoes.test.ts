@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERFIS_PADRAO, podeAtribuirPerfil, resolverPermissoes } from "@/lib/permissoes";
+import { isPermissaoDePlataforma, PERFIS_PADRAO, podeAtribuirPerfil, resolverPermissoes, validarConcessaoPermissoes } from "@/lib/permissoes";
 
 describe("resolverPermissoes", () => {
   it("sem customização, usa o default do perfil", () => {
@@ -158,5 +158,27 @@ describe("canais e caixa compartilhada — permissões padrão por perfil", () =
     expect(PERFIS_PADRAO.atendente.has("conversas.assumir")).toBe(true);
     expect(PERFIS_PADRAO.atendente.has("conversas.intervir")).toBe(false);
     for (const p of ["gerente", "supervisora"] as const) expect(PERFIS_PADRAO[p].has("conversas.intervir")).toBe(true);
+  });
+});
+
+describe("alertas.tecnicos é permissão de PLATAFORMA (decisão 2026-09-18)", () => {
+  it("por padrão só Noryos Admin e Noryos Suporte; nenhum perfil da clínica", () => {
+    expect(PERFIS_PADRAO.noryos_admin.has("alertas.tecnicos")).toBe(true);
+    expect(PERFIS_PADRAO.noryos_suporte.has("alertas.tecnicos")).toBe(true);
+    for (const p of ["dona", "gerente", "supervisora", "atendente"] as const) expect(PERFIS_PADRAO[p].has("alertas.tecnicos")).toBe(false);
+  });
+
+  it("é classificada como de plataforma: nem a Dona nem o Admin concedem a perfil de clínica", () => {
+    expect(isPermissaoDePlataforma("alertas.tecnicos")).toBe(true);
+    const r = validarConcessaoPermissoes("dona", PERFIS_PADRAO.dona, "gerente", ["alertas.visualizar", "alertas.tecnicos"]);
+    expect(r.ok).toBe(false);
+    const admin = validarConcessaoPermissoes("noryos_admin", PERFIS_PADRAO.noryos_admin, "gerente", ["alertas.tecnicos"]);
+    expect(admin).toEqual({ ok: false, error: "permissao_de_plataforma_em_perfil_de_clinica" });
+  });
+
+  it("mesmo gravada direto no banco, não vale em perfil de clínica (defesa em profundidade); em plataforma vale", () => {
+    expect(resolverPermissoes("gerente", ["alertas.visualizar", "alertas.tecnicos"]).has("alertas.tecnicos")).toBe(false);
+    expect(resolverPermissoes("gerente", ["alertas.visualizar", "alertas.tecnicos"]).has("alertas.visualizar")).toBe(true);
+    expect(resolverPermissoes("noryos_suporte", ["alertas.tecnicos"]).has("alertas.tecnicos")).toBe(true);
   });
 });

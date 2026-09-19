@@ -241,7 +241,9 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
  */
 export function resolverPermissoes(perfil: Perfil, customizadas: readonly string[] | null): ReadonlySet<Permissao> {
   if (customizadas !== null) {
-    return new Set(customizadas.filter(isPermissaoValida));
+    const validas = customizadas.filter(isPermissaoValida);
+    // Defesa em profundidade: permissão de plataforma nunca vale em perfil de clínica, mesmo que alguém a grave direto no banco.
+    return new Set(PERFIS_PLATAFORMA.has(perfil) ? validas : validas.filter((p) => !isPermissaoDePlataforma(p)));
   }
   return PERFIS_PADRAO[perfil];
 }
@@ -286,7 +288,9 @@ export function podeRedefinirCredencial(atorPerfil: Perfil, perfilAlvo: Perfil):
 
 /** Permissões de identidade de plataforma — nunca atribuíveis a perfil de clínica, nem por Noryos Admin. */
 export function isPermissaoDePlataforma(p: Permissao): boolean {
-  return p.startsWith("platform.") || p.startsWith("suporte.");
+  // `alertas.tecnicos` (decisão 2026-09-18): detalhe técnico da plataforma (worker, infra, diagnóstico interno) é só de
+  // Noryos Admin/Suporte. A clínica recebe, no lugar, um alerta OPERACIONAL em linguagem amigável.
+  return p.startsWith("platform.") || p.startsWith("suporte.") || p === "alertas.tecnicos";
 }
 
 export type ResultadoConcessao = { ok: true } | { ok: false; error: "perfil_nao_permitido" | "permissao_acima_do_escopo" | "permissao_de_plataforma_em_perfil_de_clinica" };

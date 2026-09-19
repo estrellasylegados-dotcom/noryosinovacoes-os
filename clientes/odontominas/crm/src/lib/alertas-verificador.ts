@@ -58,7 +58,7 @@ export async function verificarAlertas(clinicaId: string, agora: Date = new Date
   }
 
   // Tipo desligado: o que já estava aberto some da fila (motivo registrado no histórico).
-  const desligados = (["sla_limite", "conversa_sem_responsavel", "oportunidade_parada", "canal_desconectado", "fluxo_falhou", "fluxo_preso", "disparo_falhas"] as TipoAlerta[]).filter((t) => !ligado(t));
+  const desligados = (["sla_limite", "conversa_sem_responsavel", "oportunidade_parada", "canal_desconectado", "fluxo_falhou", "fluxo_preso", "automacao_indisponivel", "disparo_falhas"] as TipoAlerta[]).filter((t) => !ligado(t));
   if (desligados.length > 0) somar(totais, await sincronizarAlertas(clinicaId, { tipos: desligados, ativas: [], motivoEncerramento: "tipo_desabilitado" }));
 
   const precisaConversas = ligado("sla_limite") || ligado("conversa_sem_responsavel") || ligado("oportunidade_parada");
@@ -78,11 +78,12 @@ export async function verificarAlertas(clinicaId: string, agora: Date = new Date
       if (ligado("canal_desconectado")) await aplicar(await tentar("canais", () => detectarCanais(ctx)));
     })(),
     (async () => {
-      if (!ligado("fluxo_falhou") && !ligado("fluxo_preso")) return;
+      if (!ligado("fluxo_falhou") && !ligado("fluxo_preso") && !ligado("automacao_indisponivel")) return;
       const f = await tentar("fluxos", () => detectarFluxos(ctx));
       if (f) {
         if (ligado("fluxo_falhou")) await aplicar(f.falhou);
         if (ligado("fluxo_preso")) await aplicar(f.preso);
+        if (ligado("automacao_indisponivel")) await aplicar(f.indisponivel);
       }
     })(),
     (async () => {

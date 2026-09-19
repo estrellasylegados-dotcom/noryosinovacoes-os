@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  condicaoAutomacaoIndisponivel,
   condicaoDisparoComFalhas,
   condicaoFluxoFalhou,
   condicaoFluxoPreso,
@@ -160,5 +161,26 @@ describe("Fluxo e disparo: só o que exige ação humana", () => {
   it("disparo: alerta só se houve falha do PRÓPRIO envio (queda de canal já tem alerta)", () => {
     expect(condicaoDisparoComFalhas({ disparoId: "d1", nome: "Retorno", falhasProprias: 0, enviados: 40, concluidoEm: "x" })).toBeNull();
     expect(condicaoDisparoComFalhas({ disparoId: "d1", nome: "Retorno", falhasProprias: 3, enviados: 40, concluidoEm: "x" })).toMatchObject({ tipo: "disparo_falhas", chave: "disparo_falhas:d1", severidade: "atencao" });
+  });
+});
+
+describe("problema técnico afeta a clínica: alerta OPERACIONAL amigável, sem detalhe interno", () => {
+  const TERMOS_INTERNOS = /worker|heartbeat|stack|trace|http_\d|instância|instancia|running|queued|waiting|erro_|no_invalido|provedor/i;
+
+  it("execuções travadas → 1 aviso por clínica, em linguagem simples; nenhuma → nada", () => {
+    expect(condicaoAutomacaoIndisponivel("clinica-1", 0)).toBeNull();
+    const c = condicaoAutomacaoIndisponivel("clinica-1", 3)!;
+    expect(c).toMatchObject({ tipo: "automacao_indisponivel", chave: "automacao_indisponivel:clinica-1", severidade: "atencao", tipoEntidade: "clinica" });
+    expect(c.titulo).toBe("Algumas automações estão temporariamente indisponíveis");
+  });
+
+  it("textos dos alertas OPERACIONAIS que a clínica lê não vazam termo técnico", () => {
+    const textos = [
+      condicaoAutomacaoIndisponivel("c", 2)!,
+      condicaoFluxoFalhou({ execucaoId: "e", fluxoId: "f", conversaId: "c", erro: "no_invalido", finalizadoEm: "x" })!,
+      condicaoDisparoComFalhas({ disparoId: "d", nome: "Retorno", falhasProprias: 2, enviados: 5, concluidoEm: "x" })!,
+      condicoesDaConversa({ conversaId: "c", atribuidoA: null, dono: "humano", ciclo: { mensagemId: "m", inicioEm: "2026-09-18T12:00:00Z" }, statusSla: { tipo: "breached", cicloTipo: "primeira_resposta", cicloMensagemId: "m", cicloInicioEm: "x", limiteMinutos: 15, minutosConsumidos: 20, percentual: 133 }, minutosSemResponsavel: 20, limiteSemResponsavelMinutos: 10 }).sla!,
+    ].flatMap((c) => [c.titulo, c.descricao ?? ""]);
+    for (const t of textos) expect(t).not.toMatch(TERMOS_INTERNOS);
   });
 });

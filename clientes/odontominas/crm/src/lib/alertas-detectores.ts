@@ -364,6 +364,25 @@ export function condicaoFluxoFalhou(e: { execucaoId: string; fluxoId: string; co
   };
 }
 
+/**
+ * Contraparte OPERACIONAL do problema técnico "execução travada": a clínica só sabe que algumas automações estão
+ * indisponíveis e o que fazer — nunca worker, estado interno ou diagnóstico (isso é do alerta técnico, só do Suporte).
+ */
+export function condicaoAutomacaoIndisponivel(clinicaId: string, quantidade: number): Condicao | null {
+  if (quantidade <= 0) return null;
+  return {
+    tipo: "automacao_indisponivel",
+    chave: chaves.automacaoIndisponivel(clinicaId),
+    severidade: "atencao",
+    titulo: "Algumas automações estão temporariamente indisponíveis",
+    descricao: "Mensagens automáticas podem atrasar. Nossa equipe técnica já foi avisada. Se algum paciente precisar de resposta, atenda manualmente.",
+    tipoEntidade: "clinica",
+    entidadeId: clinicaId,
+    responsavelId: null,
+    dados: { quantidade },
+  };
+}
+
 export function condicaoFluxoPreso(e: { execucaoId: string; fluxoId: string; conversaId: string; estado: string; parouEm: string; minutosParado: number }): Condicao {
   return {
     tipo: "fluxo_preso",
@@ -378,9 +397,10 @@ export function condicaoFluxoPreso(e: { execucaoId: string; fluxoId: string; con
   };
 }
 
-export async function detectarFluxos(ctx: ContextoVerificacao): Promise<{ falhou: DeteccaoAlertas; preso: DeteccaoAlertas }> {
+export async function detectarFluxos(ctx: ContextoVerificacao): Promise<{ falhou: DeteccaoAlertas; preso: DeteccaoAlertas; indisponivel: DeteccaoAlertas }> {
   const falhou: DeteccaoAlertas = { tipos: ["fluxo_falhou"], ativas: [] };
   const preso: DeteccaoAlertas = { tipos: ["fluxo_preso"], ativas: [], motivoEncerramento: "execucao_retomada" };
+  const indisponivel: DeteccaoAlertas = { tipos: ["automacao_indisponivel"], ativas: [], motivoEncerramento: "execucao_retomada" };
 
   const supabase = getSupabaseServerClient();
   if (!supabase) throw new Error("backend_unavailable");
@@ -423,7 +443,9 @@ export async function detectarFluxos(ctx: ContextoVerificacao): Promise<{ falhou
       })
     );
   }
-  return { falhou, preso };
+  const aviso = condicaoAutomacaoIndisponivel(ctx.clinicaId, preso.ativas.length);
+  if (aviso) indisponivel.ativas.push(aviso);
+  return { falhou, preso, indisponivel };
 }
 
 // ---------------------------------------------------------------------------

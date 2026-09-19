@@ -57,7 +57,7 @@ beforeEach(() => {
   cenarioConversas([]);
   det.kanban.mockResolvedValue(vazio(["oportunidade_parada"]));
   det.canais.mockResolvedValue(vazio(["canal_desconectado"]));
-  det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]) });
+  det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]), indisponivel: vazio(["automacao_indisponivel"]) });
   det.disparos.mockResolvedValue(vazio(["disparo_falhas"]));
   vi.spyOn(console, "log").mockImplementation(() => undefined);
 });
@@ -189,19 +189,19 @@ describe("canal", () => {
 describe("fluxo", () => {
   it("execução falha definitivamente → alerta; some da janela → continua aberto (fato, só a pessoa encerra)", async () => {
     const falha: Condicao = { tipo: "fluxo_falhou", chave: "fluxo_falhou:e1", severidade: "atencao", titulo: "Fluxo de conversa falhou", tipoEntidade: "fluxo_execucao", entidadeId: "e1", responsavelId: null };
-    det.fluxos.mockResolvedValue({ falhou: { tipos: ["fluxo_falhou"], ativas: [falha] }, preso: vazio(["fluxo_preso"]) });
+    det.fluxos.mockResolvedValue({ falhou: { tipos: ["fluxo_falhou"], ativas: [falha] }, preso: vazio(["fluxo_preso"]), indisponivel: vazio(["automacao_indisponivel"]) });
     await verificarAlertas(CLINICA);
-    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]) });
+    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]), indisponivel: vazio(["automacao_indisponivel"]) });
     await verificarAlertas(CLINICA);
     expect(alertas()[0]).toMatchObject({ tipo: "fluxo_falhou", status: "aberto", natureza: "operacional" });
   });
 
   it("execução travada é alerta TÉCNICO e se resolve sozinho quando o motor retoma", async () => {
     const preso: Condicao = { tipo: "fluxo_preso", chave: "fluxo_preso:e2", severidade: "atencao", titulo: "Execução de fluxo travada", tipoEntidade: "fluxo_execucao", entidadeId: "e2", responsavelId: null };
-    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: { tipos: ["fluxo_preso"], ativas: [preso] } });
+    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: { tipos: ["fluxo_preso"], ativas: [preso] }, indisponivel: vazio(["automacao_indisponivel"]) });
     await verificarAlertas(CLINICA);
     expect(alertas()[0]).toMatchObject({ natureza: "tecnico" });
-    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]) });
+    det.fluxos.mockResolvedValue({ falhou: vazio(["fluxo_falhou"]), preso: vazio(["fluxo_preso"]), indisponivel: vazio(["automacao_indisponivel"]) });
     await verificarAlertas(CLINICA);
     expect(alertas()[0].status).toBe("resolvido");
   });

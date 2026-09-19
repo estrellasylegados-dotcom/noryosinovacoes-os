@@ -63,7 +63,7 @@ export function severidadeRelevante(s: Severidade): boolean {
 // Tipos
 // ---------------------------------------------------------------------------
 
-export type TipoEntidade = "conversa" | "oportunidade" | "canal" | "fluxo_execucao" | "disparo";
+export type TipoEntidade = "conversa" | "oportunidade" | "canal" | "fluxo_execucao" | "disparo" | "clinica";
 
 export type DefinicaoTipo = {
   categoria: Categoria;
@@ -151,6 +151,16 @@ export const TIPOS_ALERTA = {
     rotulo: "Fluxo de conversa falhou",
     descricaoConfig: "Execução terminou em erro — o paciente pode não ter sido atendido.",
   },
+  automacao_indisponivel: {
+    categoria: "FLUXO",
+    natureza: "operacional",
+    permissaoLeitura: "automacoes.visualizar",
+    porResponsavel: false,
+    autoResolve: true,
+    tipoEntidade: "clinica",
+    rotulo: "Automações temporariamente indisponíveis",
+    descricaoConfig: "Aviso em linguagem simples quando um problema técnico afeta as automações (sem expor detalhes internos).",
+  },
   fluxo_preso: {
     categoria: "FLUXO",
     natureza: "tecnico",
@@ -189,6 +199,7 @@ export const chaves = {
   disparo: (disparoId: string) => `disparo_falhas:${disparoId}`,
   fluxoFalhou: (execucaoId: string) => `fluxo_falhou:${execucaoId}`,
   fluxoPreso: (execucaoId: string) => `fluxo_preso:${execucaoId}`,
+  automacaoIndisponivel: (clinicaId: string) => `automacao_indisponivel:${clinicaId}`,
 };
 
 // ---------------------------------------------------------------------------
@@ -305,6 +316,8 @@ export function destinoDoAlerta(alerta: { tipoEntidade: string | null; entidadeI
     }
     case "disparo":
       return { href: `/disparos/${id}`, rotulo: "Abrir disparo" };
+    case "clinica":
+      return { href: "/fluxos", rotulo: "Ver automações" };
     default:
       return null;
   }
