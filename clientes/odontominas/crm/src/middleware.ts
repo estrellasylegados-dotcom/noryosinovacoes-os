@@ -16,6 +16,7 @@ const ROTAS_PUBLICAS = [
   "/api/webhook/evolution",
   "/api/cron/reativacao",
   "/api/cron/fluxo-temporal",
+  "/api/cron/alertas",
   "/api/integrations/controle-odonto/webhook",
   "/api/cron/controle-odonto-sync",
   // Fase 5 (Reputação/Google Reviews) — o paciente clica no link recebido
