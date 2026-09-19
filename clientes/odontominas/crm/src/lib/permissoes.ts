@@ -41,6 +41,13 @@ export const PERMISSOES = [
   "sla.visualizar",
   "sla.visualizar_equipe",
   "sla.configurar",
+  // alertas operacionais (`alertas.tecnicos` = ver/operar alertas de natureza técnica)
+  "alertas.visualizar",
+  "alertas.assumir",
+  "alertas.resolver",
+  "alertas.ignorar",
+  "alertas.configurar",
+  "alertas.tecnicos",
   // relatórios
   "relatorios.visualizar",
   "relatorios.exportar",
@@ -113,6 +120,10 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "suporte.resetar_usuario",
     "suporte.sessao_temporaria",
     "canais.visualizar",
+    "alertas.visualizar",
+    "alertas.assumir",
+    "alertas.resolver",
+    "alertas.tecnicos",
     "platform.suporte"
   ),
 
@@ -142,6 +153,11 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "sla.visualizar",
     "sla.visualizar_equipe",
     "sla.configurar",
+    "alertas.visualizar",
+    "alertas.assumir",
+    "alertas.resolver",
+    "alertas.ignorar",
+    "alertas.configurar",
     "relatorios.visualizar",
     "relatorios.exportar",
     "automacoes.visualizar",
@@ -175,6 +191,10 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "kanban.mover",
     "sla.visualizar",
     "sla.visualizar_equipe",
+    "alertas.visualizar",
+    "alertas.assumir",
+    "alertas.resolver",
+    "alertas.ignorar",
     "canais.visualizar",
     "relatorios.visualizar",
     "relatorios.exportar"
@@ -191,6 +211,9 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "pacientes.visualizar",
     "kanban.visualizar",
     "sla.visualizar_equipe",
+    "alertas.visualizar",
+    "alertas.assumir",
+    "alertas.resolver",
     "canais.visualizar",
     "relatorios.visualizar"
   ),
@@ -204,7 +227,10 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "pacientes.visualizar",
     "kanban.visualizar",
     "kanban.mover",
-    "sla.visualizar"
+    "sla.visualizar",
+    "alertas.visualizar",
+    "alertas.assumir",
+    "alertas.resolver"
   ),
 };
 

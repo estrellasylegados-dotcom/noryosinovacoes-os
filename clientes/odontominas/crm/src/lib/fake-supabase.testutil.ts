@@ -97,6 +97,11 @@ class Builder implements PromiseLike<{ data: unknown; error: { code: string; mes
     this.filtros.push((l) => (l[col] ?? null) === val);
     return this;
   }
+  /** só `.not(col, "is", null)` (= "não é nulo") — o que o código sob teste usa. */
+  not(col: string, op: string, val: null) {
+    if (op === "is" && val === null) this.filtros.push((l) => (l[col] ?? null) !== null);
+    return this;
+  }
   order() {
     return this;
   }
