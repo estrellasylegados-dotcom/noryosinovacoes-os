@@ -1,140 +1,56 @@
-<!-- quem alimenta: o /setup semeia; o /atualizar reescreve no fim de cada sessão. Lido em toda conversa (boot). Teto: 40 linhas; estourou, vira ponteiro pra arquivo próprio. -->
+<!-- quem alimenta: o /setup semeia; o /atualizar reescreve no fim de cada sessão. Lido em toda conversa (boot). Meta: 40–60 linhas, só estado atual; histórico vive no diário, no andamento.md do projeto e em decisoes.md. Versão longa anterior (2026-09-18) preservada em _memoria/arquivo/2026/agora-2026-09-18-antes-da-faxina.md. -->
 # Agora · onde paramos
 
+## Estado atual (2026-09-19)
+- Cliente-piloto #1: OdontoMinas (`clientes/odontominas/`, Ariadna Pires). Site no ar (Cloudflare Pages). CRM em produção no Railway
+  (`odontominas-crm`) + Supabase. **Deploy = `railway up`** (o `git push` não publica). Detalhe: `clientes/odontominas/andamento.md`.
+- Em produção: painel, Chat ao Vivo, Relatórios, Agentes de IA, Disparos, Campanhas, Fluxo de Conversa (motor, NPS, avaliação Google),
+  Identidade/RBAC (6 perfis), Equipe, Notas, Horário, SLA, Canais + caixa compartilhada, Kanban comercial, **Central de Alertas**.
+- "Noryos Odonto": Fases 3–5 aprovadas. Próximo (aniversário como produto final, dashboard executivo) **só com sinal do Rafael**.
+  Odonto bloqueado (sem credencial ControleODONTO); Integração pausada. Noryos Ops, White-label e distribuição automática: não iniciados.
+
 ## Onde paramos
+- **Central de Alertas** (2026-09-18/19): em produção, verificador de 1 min rodando. **Decisão fechada:** `alertas.tecnicos` é permissão de
+  plataforma (só Noryos Admin/Suporte); a clínica recebe alerta operacional amigável. **SLA real validado** com evidência (atenção → alerta
+  único → mesmo alerta crítico → resolvido ao responder). **UI autenticada: NÃO validada ainda** → status ainda não é "CONCLUÍDA".
+- Roteiro pronto: `crm/scripts/e2e-alertas-sessao.mjs` (login real, senha oculta) + alertas `[TESTE UI]` criados para a validação.
 
-1º cliente-piloto em execução: `clientes/odontominas/` (Ariadna Pires, implantes e ortodontia). Site
-no ar (Cloudflare Pages). CRM em produção: Fases 1-5, V1 do painel, Chat ao Vivo, Relatórios,
-Agentes de IA (prompt estruturado, Conhecimento, Qualificação, Pixel), Fase 0 do ControleODONTO,
-Disparos completo (Fase A + Fase B), Campanhas (módulo estratégico separado de Disparos, 2026-09-16)
-e Fluxo de Conversa — motor de automação determinístico, Fases 0/1/2a/2b/3/4 completas, mais Ações
-CRM e Humano+IA, em produção desde 2026-09-17. **"Noryos Odonto" — Fase 4 (NPS completo:
-classificação detrator/neutro/promotor + dashboard) concluída, testada em produção e aprovada pelo
-Rafael (2026-09-17)**: nova aba "Pesquisas" em `/resumo`. Na validação, achado e corrigido um bug
-real — WhatsApp/Baileys às vezes entrega celular BR sem o 9º dígito no JID, causando paciente/
-conversa duplicados; corrigido com `src/lib/telefone.ts` (função central de equivalência BR, sem
-migration) — round-trip completo de `capturar_resposta` fechado de verdade por WhatsApp real (o
-número de teste não era mais o mesmo da instância conectada). Evidência de antes/depois do bug
-preservada em produção. **Fase 5 (avaliação Google) concluída, testada em produção de ponta a
-ponta sem depender do Rafael, e aprovada (2026-09-18)**: nova tela `/reputacao`, ação manual na
-ficha do paciente, tracking de clique com redirect próprio. Módulo desativado e Fluxo de teste
-pausado até o Rafael colocar a URL real de avaliação da OdontoMinas. Próximo passo: aniversário
-como "produto final" e dashboard executivo unificado — **aguardando sinal do Rafael pra avançar**,
-não iniciado. Odonto segue bloqueado (sem capability do ControleODONTO); Integração pausada (cofre de
-credenciais + SSRF, fase separada). **Nova frente iniciada 2026-09-18**: reconstrução do
-CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops, pedida pelo Rafael) — Equipe (RBAC), Notas
-Internas, Horário de Atendimento e SLA Operacional (fundação, ainda sem automação) concluídos,
-testados e em produção (2 deploys reais no Railway, não só commit). **Mesmo dia, fatia maior:
-IDENTIDADE / LOGIN / RBAC — FUNDAÇÃO CONCLUÍDA** — 6 perfis (`noryos_admin`, `noryos_suporte`,
-`dona`, `gerente`, `supervisora`, `atendente`), sessão revogável em tempo real, convites e reset de
-senha por e-mail (token hash, uso único), RBAC granular de verdade em Equipe/Chat ao
-Vivo/SLA/Horário/Notas Internas, `auditoria_eventos`, privilege escalation e proteção da última
-Dona ativa. As ~60 telas mais antigas (Agentes, Campanhas, Disparos, Fluxos etc.) seguem por um
-shim de compatibilidade (`isAdminEquivalente`) — **dívida técnica registrada, não solução
-permanente**. Deploy real no Railway (`SUCCESS`) e smoke test em produção ok; migração das 3 contas
-reais feita (`admin`→`dona`, atendentes→`atendente`), nenhuma virou `noryos_admin` sozinha. Detalhe
-completo em `clientes/odontominas/andamento.md` e `crm/docs/RBAC.md`. **Kanban comercial em produção (2026-09-18, mesmo dia)**, UI logada aguardando validação do Rafael. **Central de Alertas Operacionais em produção (2026-09-18, mesmo dia)**: 1 motor reconciliador + verificador de 1 min (SLA, sem responsável, Kanban parado, canal, falhas de fluxo/mensagem), dedupe no banco, sino + `/alertas`; UI logada e SLA real ainda não validados. Noryos Ops
-(painel cross-clínica) segue não iniciado. **Validação E2E de Identidade/RBAC (2026-09-18, 2ª
-sessão): convite por e-mail real validado** — Noryos Admin e Noryos Suporte de teste ativos, login
-confirmado pelo Rafael; 5 achados de autorização corrigidos e em produção. Faltam reset de senha
-real e as 4 contas de clínica (Dona/Gerente/Supervisora/Atendente, aguardando e-mails reais). **Canais WhatsApp + Caixa Compartilhada Multiatendente em produção
-(2026-09-18, mesmo dia) — CONCLUÍDO 100% (backend + E2E real + UI autenticada validada pelo Rafael)**: número = canal da clínica (`canais`), conversa única por (clínica, canal,
-telefone), envio conversa→canal→instância sem fallback, assumir/transferir/devolver atômicos com 409 e
-histórico (provado com corrida real no banco), resposta com enforcement no backend, filas e filtros por
-canal/responsável, tela Configurações → Canais. Backend e E2E real em produção validados (mensagem real "Testando 1941" → canal → conversa → assume → barra → responde → transfere → barra → responde → histórico, SLA preservado); UI autenticada validada com login real (A assume → transfere → B responde pelo canal real); Atendente só vê as próprias conversas.
-Distribuição automática, grupos e Noryos Ops seguem não iniciados — aguardam sinal do Rafael.
-Fase 6 (demo pro marido): fluxo "DEMO - Atendimento
-Odontológico" publicado; a execução de teste pendente foi encerrada pelo próprio Rafael assumindo
-manualmente pelo Chat ao Vivo (não pela resposta real de WhatsApp que o teste esperava). Histórico
-completo em `clientes/odontominas/andamento.md`. Compliance: risco de exclusividade Mirante/Sicoob
-aceito conscientemente.
+## Validado (com evidência)
+- Canais + caixa compartilhada 100% (E2E real + UI). Identidade/RBAC: convite real, Admin/Suporte de teste logando. Kanban: backend + E2E no banco.
+- Alertas: 908 testes, build/lint/typecheck; produção: sem responsável, Kanban, canal, SLA completo, nova ocorrência; workers sem erro.
 
-## Pendências
+## Pendências realmente abertas
+1. **Rafael — UI de alertas logado** (roteiro acima, perfis dona/gerente/atendente/suporte/admin) → só então marcar CONCLUÍDA.
+2. **Rafael — Kanban logado** (arrastar, perdido, filtros, celular), campo de resposta do Chat no rodapé, menu recolhível; decidir se a
+   Supervisora move cards. Depois commitar `SidebarShell.tsx` se ainda estiver fora do git.
+3. **Horário real da OdontoMinas** em `/configuracoes/horario` (vazio de propósito): é o que faz o SLA valer de verdade (hoje inerte).
+4. RBAC E2E: reset de senha real, contas de clínica (Dona/Gerente/Supervisora/Atendente com e-mails reais), rodar `e2e-rbac-sessao.mjs`
+   por perfil, **rotacionar a chave do Resend** (apareceu no chat). Trocar/desativar as senhas de teste fracas (`[TESTE] Atendente A/B`)
+   e as 3 senhas de demo antes de produção real.
+5. Reputação/Google: colocar a URL real de avaliação em `/reputacao` e ligar (desativada de propósito).
+6. Site/negócio: confirmar com a Ariadna WhatsApp oficial, responsável técnico, convênios, fotos, domínio; abrir CNPJ próprio da Noryos
+   (CNAE/MEI não cobre tráfego pago, trava cobrar o próximo odonto); 2º piloto (estética): confirmar a categoria profissional.
+7. Integrações: ControleODONTO precisa de credencial real; Pixel Google Ads precisa de app OAuth; ligar projeto site/CRM via
+   `/novo-projeto link`; Fase 1 CRM Twenty pausada até o CRM rodar ou o 1º pagante fechar.
+8. Dívidas técnicas conhecidas: ~60 telas antigas no shim `isAdminEquivalente` (migrar pra permissão granular); tela visual de permissões;
+   "Sessões ativas"; erro de envio mais específico no Chat; `search_path` fixo nas funções Postgres novas; buscar mensagens em lote
+   no verificador se a passada (hoje 8–30 s) piorar.
 
-- Trocar as 3 senhas de demo do painel do CRM pelas secretárias reais antes da demo (2026-09-15).
-- Antes de publicar o site de verdade, confirmar com a Ariadna: WhatsApp oficial, responsável
-  técnico da PJ, formação/mestrado, convênios, fotos reais, domínio próprio (2026-09-11).
-- CNAE/MEI da esposa não cobre tráfego pago — não trava o piloto #1 (grátis), trava cobrar o
-  próximo odonto. Abrir CNPJ próprio da Noryos antes de fechar esse cliente (2026-09-14).
-- Confirmar se a responsável da clínica de estética (2º piloto) é médica/biomédica/esteticista —
-  muda a resolução aplicável (2026-09-11).
-- Mapear processos recorrentes (`/mapear`) quando a operação tiver rotina definida (2026-09-11).
-- Pixel de Conversão (Google Ads): criar app OAuth no Google Cloud antes de ligar de verdade;
-  Facebook só precisa do Pixel ID/token do cliente (2026-09-16).
-- Integração ControleODONTO: obter credencial/documentação real antes de habilitar qualquer
-  capability (2026-09-16, checklist em
-  `clientes/odontominas/crm/docs/integrations/controle-odonto.md`).
-- Apagar todos os dados de teste (Disparos e Campanhas: paciente "Rafael (teste Disparos)",
-  conversa, o disparo de verificação, a campanha "Teste Campanhas — envio real" e os eventos dela;
-  Fluxo de Conversa: os 2 fluxos "TESTE - Fluxo Odonto" — Fase 2a e 2b/3, já arquivados — e as
-  execuções vinculadas; Fase 3: os 4 fluxos `[TESTE FASE 3]`, as 2 pesquisas de teste e as
-  execuções/eventos de idempotência ligados a elas; Fase 4: o paciente e a conversa criados por
-  engano pelo bug de telefone sem 9º dígito — `4e7ecb38-1d63-4ad8-90f5-b6ae12208b9f`/
-  `4bb228db-e7f5-4464-8b53-e1b1d43e31bc` — preservados como evidência antes/depois da correção;
-  Fase 5: o fluxo `[TESTE FASE 5]` (`9593cf0f…`), a pesquisa/execução/evento de avaliação Google
-  ligados a ele; SLA Operacional: a conversa `[TESTE SLA]` (`a9074a4a…`), suas mensagens, a nota
-  interna e o evento de violação ligados a ela; Canais + Caixa Compartilhada: os canais `[TESTE] WhatsApp Recepção/Comercial`, as 3 atendentes `[TESTE]` (sem login), o paciente `[TESTE] Maria Canais` e as ~48 conversas `5500000000xxx` com seus eventos; e os `[TESTE KANBAN]` (pacientes, conversas, oportunidades, histórico, eventos, tag, script `crm/scripts/e2e-kanban.ts`), a conversa do número de teste `5561981925241` — responsável atual `[TESTE] Atendente B`, com histórico, mensagens `[TESTE Canais]`, atribuições e transferências, evidência do E2E real, **NÃO apagar**) antes da produção real com clientes — pedido explícito do Rafael de deixar tudo
-  configurado/preservado por enquanto, até depois da apresentação (2026-09-16/17/18, ver
-  andamento.md e decisoes.md).
-- Ligar o projeto site/CRM institucional via `/novo-projeto link` (2026-09-10).
-- Ativar Reputação/Google Reviews de verdade: colocar a URL real de avaliação da OdontoMinas em
-  `/reputacao` e ligar o módulo (hoje desativado de propósito, só com a URL de teste salva) —
-  decisão do Rafael, sem prazo (2026-09-18).
-- Configurar o horário real de atendimento da OdontoMinas em `/configuracoes/horario` (hoje
-  vazio de propósito) — é o que destrava o SLA Operacional de fato (hoje ativo mas inerte,
-  `not_configured`, por falta desse dado) (2026-09-18).
-- Próximo passo da frente "Noryos Odonto" (aniversário como produto final, dashboard executivo
-  unificado) — infraestrutura pronta desde a Fase 3, mas Rafael pediu explicitamente pra não
-  avançar sem o sinal dele (2026-09-17).
-- Fase 1 do CRM Twenty pausada até o CRM da OdontoMinas rodar ou o 1º cliente pagante do nicho
-  fechar (2026-09-14).
-- Identidade/RBAC, o que falta da validação E2E (2026-09-18): testar o reset de senha por e-mail
-  real (`/esqueci-senha`); criar as contas `[TESTE]` Dona, Gerente, Supervisora e Atendente quando
-  o Rafael tiver os e-mails reais da clínica (não usar e-mail fictício); rodar
-  `crm/scripts/e2e-rbac-sessao.mjs` por perfil no terminal dele (senha oculta) e trazer a saída;
-  rotacionar a chave do Resend (apareceu no chat). Melhorias conhecidas, sem urgência: ver
-  `andamento.md` (auditoria, rate limit, menu×página, permissões `visualizar_*`).
-- Identidade/RBAC, dívidas já registradas: tela visual de permissões por checkboxes (hoje só a API,
-  `PATCH /api/equipe/[id]/permissoes`); "Sessões Ativas" por dispositivo; migrar as ~60 telas do
-  shim `isAdminEquivalente` pra permissão granular; revisar `membership` quando existir 2ª clínica
-  com usuário compartilhado.
-- Contas `[TESTE] Atendente A/B` (2026-09-18): senha de teste fraca, combinada no chat (usuários `teste_atendente_a/b`); trocar ou
-  desativar antes da produção real.
-- Menu lateral recolhível + rodapé fixo (2026-09-18, em produção): o Rafael conferir (rolar página longa,
-  recolher/expandir, recarregar) e depois commitar `crm/src/components/SidebarShell.tsx`, `(painel)/layout.tsx`
-  e `crm/scripts/convidar-atendente-teste.ts` (criados, fora do git).
-- Canais, melhorias sem urgência (2026-09-18): erro de envio mais específico na tela (hoje só "Não foi
-  possível enviar a mensagem agora"); ver a proteção "não assume conversa de outro" numa conta Supervisora
-  com login; ponte CONVERSATION_* → gatilhos do Fluxo (não feita de propósito); `search_path` fixo nas
-  funções Postgres novas; rotacionar a chave do Resend (já listada acima).
-- Kanban comercial (2026-09-18): o Rafael validar `/kanban` logado (arrastar, perdido com motivo, filtros, painel, celular) e o campo de resposta do Chat sempre no rodapé; decidir se a Supervisora pode mover cards; editor de pipeline (`kanban.configurar`) fica pra depois. Doc: `clientes/odontominas/crm/docs/KANBAN.md`.
+## Próximo passo
+Rafael roda o roteiro de UI de alertas → `/atualizar` marca "CENTRAL DE ALERTAS OPERACIONAIS — CONCLUÍDA". Depois, esperar o sinal dele
+(aniversário/dashboard, Noryos Ops ou outra frente). Nada novo é iniciado sem sinal.
 
-- Central de Alertas (2026-09-18): Rafael validar `/alertas`, o sino, Assumir/Resolver/Ignorar e os links diretos logado; ligar o SLA real + horário da OdontoMinas pra testar SLA de ponta a ponta; decidir se a Dona vê alertas técnicos (`alertas.tecnicos`). Doc: `clientes/odontominas/crm/docs/ALERTAS.md`. Os 14 alertas abertos hoje são de dados de teste/demo (preservados).
+## Riscos importantes
+- Migration em produção e envio real de WhatsApp exigem aprovação a cada fase (regra do Rafael).
+- Segredos nunca no chat; o agente não forja sessão nem cookie.
+- Compliance: risco de exclusividade Mirante/Sicoob aceito conscientemente. Kaptar liberado só pra busca de nicho.
+- Alertas abertos hoje vêm de dados de teste/demo: a Dona vê a central "cheia" até a limpeza pós-apresentação.
 
-## Quente agora
-
-- Cliente-piloto #1 (OdontoMinas): CRM em produção, Disparos, Campanhas e Fluxo de Conversa (Fases
-  0 a 4, incluindo o editor visual, o motor central de automação e o NPS) testados com sucesso;
-  Fase 6 (demo) segue aberta. Painel tem 5 conversas fictícias — falta decidir se apaga.
-- Fluxo de Conversa (CRM OdontoMinas): motor central de automação em produção desde 2026-09-17 —
-  capturar_resposta, pesquisas + NPS classificado, evento interno, scanner temporal, branding
-  dinâmico. Odonto bloqueado; Integração pausada. Migration em produção e envio real de WhatsApp
-  continuam exigindo aprovação explícita a cada fase, nunca automáticas.
-- "Noryos Odonto": Fase 3 (infraestrutura), Fase 4 (NPS completo) e Fase 5 (avaliação Google)
-  concluídas e aprovadas — próximo passo (aniversário-produto-final/dashboard unificado) aguarda
-  sinal do Rafael. Princípio de escopo: "controla tudo antes da cadeira e depois que o paciente
-  sai"; nunca vira prontuário/agenda/financeiro (isso é ControleODONTO).
-- Bug real de normalização de telefone BR (celular sem 9º dígito no JID do WhatsApp) corrigido e
-  validado em produção com WhatsApp real (2026-09-17/18) — função central em
-  `clientes/odontominas/crm/src/lib/telefone.ts`.
-- CNAE/MEI: não trava mais o piloto, segue pendente antes de cobrar o próximo odonto.
-- Kaptar: liberado só pra busca/mapeamento de nicho; resto pausado até Twenty ativo (2026-09-14).
-- Reconstrução do CRM por fases (RBAC/Atendimento/Kanban/Noryos Ops): Equipe, Notas Internas,
-  Horário de Atendimento e SLA Operacional prontos e em produção (2026-09-18). **Identidade/Login/
-  RBAC — fundação concluída no mesmo dia** (6 perfis, sessão revogável, convites/reset por e-mail,
-  RBAC granular em Equipe/Chat/SLA/Horário/Notas, shim temporário nas telas antigas). Validação E2E
-  em andamento: convite por e-mail real ok e Noryos Admin/Suporte de teste ativos; falta reset real
-  e os 4 perfis da clínica antes de avançar pra Noryos Ops — aguarda sinal do Rafael.
-- Canais + Caixa Compartilhada (2026-09-18): **100% concluído** — backend + E2E real (`crm/scripts/e2e-canais-fluxo-real.ts`,
-  commit `54a8b6c`) + UI autenticada aprovada pelo Rafael (assumir, transferir, responder, filtros, Configurações →
-  Canais, visual). Seed corrigido (datas futuras escondiam conversas reais). Kanban veio depois (ver abaixo). Doc: `clientes/odontominas/crm/docs/CANAIS.md`.
+## Dados [TESTE] que precisam ser preservados (não apagar até depois da apresentação)
+- Alertas: todos, inclusive resolvidos, o histórico, `alertas_config`/regras e os 9 `[TESTE UI …]`; pacientes/conversas
+  `[TESTE ALERTA SEM RESPONSÁVEL]` (`00c9ea9d…`) e `[TESTE ALERTA SLA]` (`77481b6a…`), com mensagens.
+- Canais `[TESTE] WhatsApp Recepção/Comercial`; atendentes `[TESTE]` A/B/Supervisora/Noryos Admin; conversa do número `5561981925241`
+  (responsável `[TESTE] Atendente B`, evidência do E2E de Canais) e as ~48 conversas `5500000000xxx`.
+- Kanban `[TESTE KANBAN]` (pacientes, conversas, oportunidades, histórico, tag, `crm/scripts/e2e-kanban.ts`); `[TESTE SLA]` (`a9074a4a…`).
+- Fluxos `[TESTE …]` (Fases 2a–5) e execuções/eventos/pesquisas ligados; paciente "Rafael (teste Disparos)", campanha "Teste Campanhas —
+  envio real"; par duplicado do bug de telefone (`4e7ecb38…`/`4bb228db…`, evidência antes/depois). Lista longa em `_memoria/decisoes.md` e no arquivo.

@@ -1,13 +1,15 @@
 # Andamento · OdontoMinas
 
-## Onde está (2026-09-18, CENTRAL DE ALERTAS OPERACIONAIS — em produção, UI logada pendente)
+## Onde está (2026-09-19, CENTRAL DE ALERTAS OPERACIONAIS — em produção; SLA real validado; UI logada pendente)
 
 - Migration v35 aplicada (4 tabelas novas), deploy `SUCCESS`, verificador rodando sozinho a cada minuto. Doc completo: `crm/docs/ALERTAS.md`.
 - Tipos ativos: SLA, conversa sem responsável, oportunidade parada (por etapa), canal desconectado, mensagem/fluxo/disparo com falha definitiva, fluxo preso (técnico). Dedupe/nova ocorrência no banco; resolução automática e por evento.
-- Testado: 903 unitários; produção só com `[TESTE]` (sem responsável, Kanban, canal). **Não testado:** SLA real (SLA desligado, horário vazio), UI logada, ações Assumir/Resolver/Ignorar.
+- Testado: 908 unitários; produção só com `[TESTE]` (sem responsável, Kanban, canal, **SLA real ponta a ponta**: atenção → alerta único → mesmo alerta crítico → resolvido ao responder; `sla_config` restaurada). **Não testado:** UI logada e ações Assumir/Resolver/Ignorar (dependem de sessão do Rafael).
+- Decisão definitiva: `alertas.tecnicos` = permissão de plataforma (só Noryos Admin/Suporte, nem por customização); a clínica vê alerta operacional amigável (`automacao_indisponivel`). Ver decisoes.md.
+- Roteiro autenticado: `crm/scripts/e2e-alertas-sessao.mjs --usuario <u> --perfil <p> [--alerta <id>] [--tecnico <id>]` + alertas `[TESTE UI 1–7, T1–T2]` (ids no diário/chat). Só depois disso vale "CONCLUÍDA".
 - Passada do verificador 8–30 s; lock 180 s. Se piorar: buscar mensagens em lote (exige paginação, PostgREST limita 1000 linhas).
 - 14 alertas abertos hoje vêm de dados de teste/demo (não apagados, pedido de preservar).
-- Pendências: Rafael validar `/alertas`, sino, ações e links (`?conversa=`, `?card=`, `?canal=`) logado; ligar SLA real + horário; decidir se a Dona vê alertas técnicos (`alertas.tecnicos`). Noryos Ops segue não iniciado.
+- Pendências: Rafael validar `/alertas`, sino, ações e links (`?conversa=`, `?card=`, `?canal=`) logado; configurar o horário real da OdontoMinas (SLA hoje inerte). Noryos Ops segue não iniciado.
 
 ## Onde está (2026-09-18, KANBAN COMERCIAL — em produção, UI logada pendente)
 
