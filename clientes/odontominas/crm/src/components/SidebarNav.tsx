@@ -10,6 +10,7 @@ type Item = { href: string; label: string; permissao?: Permissao; group?: string
 const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
   { href: "/chat", label: "Chat ao Vivo" },
+  { href: "/kanban", label: "CRM · Kanban", permissao: "kanban.visualizar" },
   { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
   { href: "/configuracoes/canais", label: "Canais", permissao: "canais.visualizar" },
   { href: "/campanhas", label: "Campanhas", permissao: "automacoes.visualizar", group: "Ferramentas" },
