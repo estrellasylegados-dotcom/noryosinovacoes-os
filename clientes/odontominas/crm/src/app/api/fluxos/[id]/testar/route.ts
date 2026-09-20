@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
-import { getClinicaId } from "@/lib/clinica";
+import { autorizarFluxos } from "@/lib/fluxo-http";
 import { buscarFluxoParaEditor } from "@/lib/fluxo-versoes";
 import { validarGrafo } from "@/lib/fluxo-validador";
 import { iniciarExecucaoFluxo } from "@/lib/fluxo-execucoes";
@@ -16,11 +14,9 @@ export const runtime = "nodejs";
  * duplicar a lógica da engine (ver fluxo-execucoes.ts).
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const sessao = await getSessaoAtual();
-  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  const clinicaId = await getClinicaId();
-  if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
+  const auth = await autorizarFluxos("automacoes.editar");
+  if ("erro" in auth) return auth.erro;
+  const { clinicaId } = auth;
 
   const { id } = await context.params;
   const body = (await request.json().catch(() => null)) as { pacienteId?: string; conversaId?: string } | null;

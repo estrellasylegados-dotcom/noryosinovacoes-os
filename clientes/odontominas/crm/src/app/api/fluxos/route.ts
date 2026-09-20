@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
-import { getClinicaId } from "@/lib/clinica";
+import { autorizarFluxos } from "@/lib/fluxo-http";
+import { registrarEvento } from "@/lib/auditoria";
 import { criarFluxoComRascunhoInicial, listarFluxos, isStatusFluxoValido, type DadosNovoFluxo, type StatusFluxo } from "@/lib/fluxo-versoes";
 
 export const runtime = "nodejs";
 
-async function sessaoAdmin() {
-  const sessao = await getSessaoAtual();
-  return isAdminEquivalente(sessao) ? sessao : null;
-}
-
 export async function GET(request: Request) {
-  if (!(await sessaoAdmin())) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  const clinicaId = await getClinicaId();
-  if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
+  const auth = await autorizarFluxos("automacoes.visualizar");
+  if ("erro" in auth) return auth.erro;
+  const { clinicaId } = auth;
 
   const { searchParams } = new URL(request.url);
   const statusBruto = searchParams.get("status");
@@ -28,11 +21,9 @@ export async function GET(request: Request) {
 type CorpoNovoFluxo = Partial<DadosNovoFluxo>;
 
 export async function POST(request: Request) {
-  const sessao = await sessaoAdmin();
-  if (!sessao) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  const clinicaId = await getClinicaId();
-  if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
+  const auth = await autorizarFluxos("automacoes.criar");
+  if ("erro" in auth) return auth.erro;
+  const { clinicaId, sessao } = auth;
 
   const body = (await request.json().catch(() => null)) as CorpoNovoFluxo | null;
   if (!body || typeof body.nome !== "string") {
@@ -40,5 +31,6 @@ export async function POST(request: Request) {
   }
 
   const resultado = await criarFluxoComRascunhoInicial(clinicaId, body as DadosNovoFluxo, sessao.atendenteId);
+  if (resultado.ok) await registrarEvento({ clinicaId, atorId: sessao.atendenteId, evento: "AUTOMATION_CREATED", alvoId: resultado.id });
   return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
 }
