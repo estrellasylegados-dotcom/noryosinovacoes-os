@@ -13,7 +13,7 @@ const ITENS: Item[] = [
   { href: "/alertas", label: "Alertas", permissao: "alertas.visualizar" },
   { href: "/ops", label: "Noryos Ops", permissao: "ops.visualizar" },
   { href: "/kanban", label: "CRM · Kanban", permissao: "kanban.visualizar" },
-  { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
+  { href: "/resumo", label: "Indicadores", permissao: "relatorios.visualizar" },
   { href: "/configuracoes/canais", label: "Canais", permissao: "canais.visualizar" },
   { href: "/campanhas", label: "Campanhas", permissao: "automacoes.visualizar", group: "Ferramentas" },
   { href: "/agentes", label: "Agentes de IA", permissao: "automacoes.visualizar", group: "Ferramentas" },

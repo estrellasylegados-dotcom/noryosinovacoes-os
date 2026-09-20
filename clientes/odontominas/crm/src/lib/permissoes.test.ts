@@ -25,6 +25,17 @@ describe("resolverPermissoes", () => {
   });
 });
 
+describe("Indicadores - acesso por perfil", () => {
+  it("Dona, Gerente, Supervisora e Noryos Admin veem; Atendente e Noryos Suporte nao veem por padrao", () => {
+    for (const perfil of ["dona", "gerente", "supervisora", "noryos_admin"] as const) {
+      expect(PERFIS_PADRAO[perfil].has("relatorios.visualizar")).toBe(true);
+    }
+    for (const perfil of ["atendente", "noryos_suporte"] as const) {
+      expect(PERFIS_PADRAO[perfil].has("relatorios.visualizar")).toBe(false);
+    }
+  });
+});
+
 describe("Noryos Ops — permissões de plataforma", () => {
   it("Noryos Admin tem acesso completo ao Ops por padrão", () => {
     for (const p of ["ops.visualizar", "ops.clinicas", "ops.canais", "ops.integracoes", "ops.workers", "ops.erros", "ops.incidentes", "ops.auditoria"] as const) {

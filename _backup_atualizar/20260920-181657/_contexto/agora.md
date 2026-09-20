@@ -14,9 +14,13 @@
 - “Noryos Odonto”: Fases 3–5 aprovadas. Aniversário e dashboard executivo só com sinal do Rafael. ControleODONTO segue bloqueado por falta de credencial.
 
 ## Onde paramos
-**Atualizado em:** 2026-09-20
-
-- teste concluido
+- **Automações por Kanban:** motor aprovado em teste isolado e E2E real controlado. O fluxo `[TESTE AUTOMAÇÃO KANBAN]` foi criado, publicado, executou o caminho esperado e enviou exatamente uma mensagem ao número autorizado `5561981925241`.
+- O fluxo ficou pausado e a execução foi interrompida manualmente ao final. Evidências e histórico devem ser preservados.
+- A liberação operacional está **reprovada por enquanto**: `AUTOMACOES_KANBAN_ENABLED` continua `false` no Railway, duas correções de UX estão apenas locais e a experiência em 768 px precisa de ajuste.
+- Correções locais: erro de ativação agora é mostrado ao usuário; histórico traduz motivos técnicos e esconde o UUID nos detalhes técnicos.
+- Evidências completas: `clientes/odontominas/crm/docs/AUTOMACOES-KANBAN-VALIDACAO-E2E-2026-09-20.md`. Roteiro: `clientes/odontominas/crm/scripts/e2e-automacoes-kanban-prod.ts`.
+- **Noryos Ops V1:** implementado localmente com telas `/ops/*`, RBAC `ops.*`, APIs de incidentes e migration aditiva `v37`. Migration aplicada/validada no Supabase; falta publicar no Railway e validar logado.
+- **Distribuição Automática V1:** validação final em produção aprovada; evidências `[TESTE]` preservadas e configuração permanece desativada.
 
 ## Pendências realmente abertas
 1. Automações por Kanban: ajustar a interface em 768 px, publicar as correções locais, ligar `AUTOMACOES_KANBAN_ENABLED` no Railway e repetir a validação final antes de liberar.

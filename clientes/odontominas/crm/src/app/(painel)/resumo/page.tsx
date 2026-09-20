@@ -2,233 +2,97 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { buscarClinicaAtual, getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
-import { buscarResumoExecutivo } from "@/lib/resumo";
-import { buscarStatsAtendentes } from "@/lib/equipe";
-import { contarNaoLidas } from "@/lib/chat";
-import {
-  buscarRelatorioAtendimento,
-  isPeriodoValido,
-  listarNovosPacientes,
-  PERIODO_CONFIG,
-  type PeriodoRelatorio,
-} from "@/lib/relatorios";
-import { formatDataHora, formatDuracao, formatTelefone } from "@/lib/tempo";
-import { FiltroPeriodo } from "@/components/FiltroPeriodo";
-import { AbasRelatorio } from "@/components/relatorios/AbasRelatorio";
-import { BarChart, COR_SERIE_A, COR_SERIE_B } from "@/components/relatorios/BarChart";
+import { can } from "@/lib/autorizacao";
+import { listarNovosPacientes, inicioPeriodo, isPeriodoValido, PERIODO_CONFIG, type PeriodoRelatorio } from "@/lib/relatorios";
 import { montarRelatorioMarketing } from "@/lib/campanha-metricas";
 import { listarAtendentes } from "@/lib/atendentes";
-import { inicioPeriodo } from "@/lib/relatorios";
-import { RelatorioMarketing } from "@/components/campanhas/RelatorioMarketing";
 import { buscarPainelNps } from "@/lib/nps";
+import { buscarIndicadores } from "@/lib/indicadores";
+import { formatDataHora, formatTelefone } from "@/lib/tempo";
+import { FiltroPeriodo } from "@/components/FiltroPeriodo";
+import { AbasRelatorio } from "@/components/relatorios/AbasRelatorio";
+import { RelatorioMarketing } from "@/components/campanhas/RelatorioMarketing";
 import { RelatorioNps } from "@/components/relatorios/RelatorioNps";
+import { FiltrosIndicadores } from "@/components/indicadores/FiltrosIndicadores";
+import { PainelIndicadores } from "@/components/indicadores/PainelIndicadores";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Relatórios (2026-09-15, redesenhado no estilo "Painel Principal" da
- * RoiZap, a pedido do Rafael) — reúne o que era "Resumo Executivo" (visão
- * de funil, ainda sobre o estado atual) com séries por período (novos
- * pacientes, mensagens, horário de pico) e a Equipe (antes uma página à
- * parte, agora uma aba aqui — /equipe continua existindo, só saiu do menu).
- * Só admin — mesmo gate de sempre, redirect real, não só esconder o link.
- */
 export default async function ResumoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ periodo?: string; responsavel?: string; canal?: string }>;
 }) {
-  const [sessao, clinicaId, { periodo: periodoBruto }] = await Promise.all([
-    getSessaoAtual(),
-    getClinicaId(),
-    searchParams,
-  ]);
+  const [sessao, clinicaId, params] = await Promise.all([getSessaoAtual(), getClinicaId(), searchParams]);
 
-  if (!isAdminEquivalente(sessao)) {
-    redirect("/");
-  }
+  if (!sessao || !can(sessao, "relatorios.visualizar")) redirect("/");
 
   if (!clinicaId) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center p-8">
-        <p className="text-sm text-red-600">
-          Não consegui conectar ao banco do CRM. Confira as variáveis de ambiente do Supabase.
-        </p>
+        <p className="text-sm text-red-600">Não consegui conectar ao banco do CRM. Confira as variáveis de ambiente do Supabase.</p>
       </main>
     );
   }
 
-  const periodo: PeriodoRelatorio = periodoBruto && isPeriodoValido(periodoBruto) ? periodoBruto : "7d";
-
+  const periodo: PeriodoRelatorio = params.periodo && isPeriodoValido(params.periodo) ? params.periodo : "7d";
   const agora = new Date();
-  const [resumo, relatorio, leads, statsAtendentes, naoLidas, marketing, atendentes, clinicaAtual, painelNps] = await Promise.all([
-    buscarResumoExecutivo(clinicaId),
-    buscarRelatorioAtendimento(clinicaId, periodo),
-    listarNovosPacientes(clinicaId, periodo),
-    buscarStatsAtendentes(clinicaId),
-    contarNaoLidas(clinicaId),
-    montarRelatorioMarketing(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
+  const inicio = inicioPeriodo(periodo, agora);
+  const filtros = {
+    inicio,
+    fim: agora,
+    responsavelId: params.responsavel || undefined,
+    canalId: params.canal || undefined,
+  };
+
+  const [indicadores, marketing, atendentes, clinicaAtual, painelNps, contatos] = await Promise.all([
+    buscarIndicadores(clinicaId, filtros, agora),
+    montarRelatorioMarketing(clinicaId, { inicio, fim: agora }),
     listarAtendentes(clinicaId),
     buscarClinicaAtual(),
-    buscarPainelNps(clinicaId, { inicio: inicioPeriodo(periodo, agora), fim: agora }),
+    buscarPainelNps(clinicaId, { inicio, fim: agora }),
+    listarNovosPacientes(clinicaId, periodo, agora),
   ]);
-  const nomesAtendentes = Object.fromEntries(atendentes.map((a) => [a.id, a.nome]));
 
-  const semResposta = resumo.contagens.novo + resumo.contagens.aguardando;
-  const resolvidas = resumo.contagens.respondido + resumo.contagens.agendado;
-  const taxaResolucaoPct = resumo.total > 0 ? Math.round((resolvidas / resumo.total) * 100) : null;
+  if (!indicadores) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center p-8">
+        <p className="text-sm text-red-600">Não consegui montar os indicadores agora. Nenhum dado foi alterado; tente novamente em instantes.</p>
+      </main>
+    );
+  }
+
+  const nomesAtendentes = Object.fromEntries(atendentes.map((a) => [a.id, a.nome]));
+  const extrasPeriodo = { responsavel: params.responsavel ?? "", canal: params.canal ?? "" };
 
   return (
-    <main className="px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+    <main className="px-4 py-7 sm:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">Relatórios</h1>
-            <p className="text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} — desempenho de atendimento</p>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">Gestão comercial e operacional</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">Indicadores</h1>
+            <p className="mt-1 text-sm text-neutral-500">{clinicaAtual?.nome ?? "Clínica"} · visão do funil e do atendimento</p>
           </div>
-          <FiltroPeriodo ativo={periodo} />
+          <FiltroPeriodo ativo={periodo} paramsExtras={extrasPeriodo} />
         </header>
 
-        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Card label="Novos pacientes" valor={relatorio.novosPacientes} legenda={PERIODO_CONFIG[periodo].label} />
-          <Card
-            label="Conversas ativas"
-            valor={relatorio.conversasAtivas}
-            legenda={`de ${relatorio.conversasTocadas} tocadas no período`}
-          />
-          <Card
-            label="Mensagens enviadas"
-            valor={relatorio.mensagensEnviadas}
-            legenda={`${relatorio.mensagensRecebidas} recebidas`}
-          />
-          <Card label="Aguardando resposta" valor={naoLidas} legenda="conversas não lidas" destaque={naoLidas > 0} />
-        </div>
-
-        <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Card
-            label="Tempo médio até 1ª resposta"
-            valor={resumo.tempoMedioRespostaMs === null ? "—" : formatDuracao(resumo.tempoMedioRespostaMs)}
-            legenda="sobre o funil inteiro"
-          />
-          <Card label="Sem resposta" valor={semResposta} legenda="conversas aguardando, agora" destaque={semResposta > 0} />
-          <Card
-            label="Taxa de resolução"
-            valor={taxaResolucaoPct === null ? "—" : `${taxaResolucaoPct}%`}
-            legenda="sobre o funil inteiro"
+        <div className="mb-6">
+          <FiltrosIndicadores
+            periodo={periodo}
+            responsavel={params.responsavel}
+            canal={params.canal}
+            atendentes={indicadores.opcoes.atendentes}
+            canais={indicadores.opcoes.canais}
           />
         </div>
-
-        <section className="mb-8">
-          <h2 className="mb-3 text-sm font-medium text-neutral-700">Leads esfriando (esperando há mais de 30min)</h2>
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            {resumo.leadsEsfriando.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-neutral-400">Nenhum lead esfriando agora.</p>
-            ) : (
-              <ul className="divide-y divide-neutral-100">
-                {resumo.leadsEsfriando.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between px-4 py-3">
-                    {c.pacienteId ? (
-                      <Link href={`/pacientes/${c.pacienteId}`} className="text-sm font-medium text-neutral-900 hover:underline">
-                        {c.pacienteNome || formatTelefone(c.telefone)}
-                      </Link>
-                    ) : (
-                      <span className="text-sm font-medium text-neutral-900">
-                        {c.pacienteNome || formatTelefone(c.telefone)}
-                      </span>
-                    )}
-                    <span className="text-sm font-semibold text-red-600">
-                      esperando há {formatDuracao(c.tempoPrimeiraRespostaMs ?? 0)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
 
         <AbasRelatorio
           abas={[
             {
-              valor: "visao-geral",
-              label: "Visão Geral",
-              conteudo: (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <BarChart
-                    titulo="Novos pacientes por dia"
-                    categorias={relatorio.porDia.map((p) => p.label)}
-                    series={[{ label: "Pacientes", cor: COR_SERIE_A, valores: relatorio.porDia.map((p) => p.novosPacientes) }]}
-                  />
-                  <BarChart
-                    titulo="Mensagens enviadas vs. recebidas"
-                    categorias={relatorio.porDia.map((p) => p.label)}
-                    series={[
-                      { label: "Enviadas", cor: COR_SERIE_A, valores: relatorio.porDia.map((p) => p.enviadas) },
-                      { label: "Recebidas", cor: COR_SERIE_B, valores: relatorio.porDia.map((p) => p.recebidas) },
-                    ]}
-                  />
-                  <BarChart
-                    titulo="Horários de pico"
-                    categorias={relatorio.porHora.map((p) => p.label)}
-                    series={[
-                      { label: "Enviadas", cor: COR_SERIE_A, valores: relatorio.porHora.map((p) => p.enviadas) },
-                      { label: "Recebidas", cor: COR_SERIE_B, valores: relatorio.porHora.map((p) => p.recebidas) },
-                    ]}
-                  />
-                  <BarChart
-                    titulo="Conversas abertas vs. concluídas"
-                    categorias={relatorio.porDia.map((p) => p.label)}
-                    series={[
-                      { label: "Abertas", cor: COR_SERIE_A, valores: relatorio.porDia.map((p) => p.abertas) },
-                      { label: "Concluídas", cor: COR_SERIE_B, valores: relatorio.porDia.map((p) => p.fechadas) },
-                    ]}
-                  />
-                </div>
-              ),
-            },
-            {
-              valor: "equipe",
-              label: "Equipe",
-              conteudo:
-                statsAtendentes.length === 0 ? (
-                  <p className="rounded-xl border border-neutral-200 bg-white px-4 py-8 text-center text-sm text-neutral-400">
-                    Nenhum atendente cadastrado ainda.
-                  </p>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {statsAtendentes.map((a) => (
-                      <div key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
-                        <div className="mb-3 flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-neutral-900">{a.nome}</p>
-                            <p className="text-xs capitalize text-neutral-400">{a.perfil}</p>
-                          </div>
-                          {!a.ativo && (
-                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-500">
-                              Inativa
-                            </span>
-                          )}
-                        </div>
-                        <dl className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <dt className="text-xs text-neutral-500">Hoje</dt>
-                            <dd className="text-lg font-semibold text-neutral-900">{a.atendimentosHoje}</dd>
-                          </div>
-                          <div>
-                            <dt className="text-xs text-neutral-500">No total</dt>
-                            <dd className="text-lg font-semibold text-neutral-900">{a.conversasAtendidas}</dd>
-                          </div>
-                          <div className="col-span-2">
-                            <dt className="text-xs text-neutral-500">Tempo médio até responder</dt>
-                            <dd className="font-medium text-neutral-900">
-                              {a.tempoMedioRespostaMs === null ? "—" : formatDuracao(a.tempoMedioRespostaMs)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                    ))}
-                  </div>
-                ),
+              valor: "comercial-operacional",
+              label: "Comercial e operação",
+              conteudo: <PainelIndicadores dados={indicadores} />,
             },
             {
               valor: "marketing",
@@ -241,25 +105,23 @@ export default async function ResumoPage({
               conteudo: <RelatorioNps painel={painelNps} />,
             },
             {
-              valor: "leads",
-              label: "Leads",
+              valor: "contatos",
+              label: "Novos contatos",
               conteudo: (
-                <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                  {leads.length === 0 ? (
-                    <p className="px-4 py-8 text-center text-sm text-neutral-400">
-                      Nenhum paciente novo {PERIODO_CONFIG[periodo].label.toLowerCase()}.
-                    </p>
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+                  {contatos.length === 0 ? (
+                    <p className="px-4 py-10 text-center text-sm text-neutral-400">Nenhum contato novo {PERIODO_CONFIG[periodo].label.toLowerCase()}.</p>
                   ) : (
                     <ul className="divide-y divide-neutral-100">
-                      {leads.map((lead) => (
-                        <li key={lead.id} className="flex items-center justify-between px-4 py-3">
-                          <div>
-                            <Link href={`/pacientes/${lead.id}`} className="text-sm font-medium text-neutral-900 hover:underline">
-                              {lead.nome || formatTelefone(lead.telefone)}
+                      {contatos.map((contato) => (
+                        <li key={contato.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                          <div className="min-w-0">
+                            <Link href={`/pacientes/${contato.id}`} className="truncate text-sm font-medium text-neutral-900 hover:underline">
+                              {contato.nome || formatTelefone(contato.telefone)}
                             </Link>
-                            <p className="text-xs text-neutral-500">{formatTelefone(lead.telefone)}</p>
+                            <p className="text-xs text-neutral-500">{formatTelefone(contato.telefone)}</p>
                           </div>
-                          <span className="text-xs text-neutral-400">{formatDataHora(lead.criadoEm)}</span>
+                          <span className="shrink-0 text-xs text-neutral-400">{formatDataHora(contato.criadoEm)}</span>
                         </li>
                       ))}
                     </ul>
@@ -271,25 +133,5 @@ export default async function ResumoPage({
         />
       </div>
     </main>
-  );
-}
-
-function Card({
-  label,
-  valor,
-  legenda,
-  destaque,
-}: {
-  label: string;
-  valor: number | string;
-  legenda: string;
-  destaque?: boolean;
-}) {
-  return (
-    <div className={`rounded-xl border bg-white p-4 ${destaque ? "border-red-300" : "border-neutral-200"}`}>
-      <p className="text-xs uppercase tracking-wide text-neutral-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${destaque ? "text-red-600" : "text-neutral-900"}`}>{valor}</p>
-      <p className="mt-0.5 text-xs text-neutral-400">{legenda}</p>
-    </div>
   );
 }

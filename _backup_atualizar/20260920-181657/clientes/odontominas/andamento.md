@@ -2060,8 +2060,3 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 
   Evento em `automacao_eventos`: `fa5a4a96-0a88-45d8-b836-9e3c2c4c1138` (`solicitacao_avaliacao_google` â†’ `execucao_iniciada`).
 
-## Onde está
-**Atualizado em:** 2026-09-20
-
-- teste concluido
-
