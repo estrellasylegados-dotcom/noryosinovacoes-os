@@ -25,6 +25,30 @@ describe("resolverPermissoes", () => {
   });
 });
 
+describe("Noryos Ops — permissões de plataforma", () => {
+  it("Noryos Admin tem acesso completo ao Ops por padrão", () => {
+    for (const p of ["ops.visualizar", "ops.clinicas", "ops.canais", "ops.integracoes", "ops.workers", "ops.erros", "ops.incidentes", "ops.auditoria"] as const) {
+      expect(PERFIS_PADRAO.noryos_admin.has(p)).toBe(true);
+    }
+  });
+
+  it("Noryos Suporte autorizado enxerga o Ops; perfis da clínica não", () => {
+    expect(PERFIS_PADRAO.noryos_suporte.has("ops.visualizar")).toBe(true);
+    for (const perfil of ["dona", "gerente", "supervisora", "atendente"] as const) {
+      expect(PERFIS_PADRAO[perfil].has("ops.visualizar")).toBe(false);
+      expect(PERFIS_PADRAO[perfil].has("ops.incidentes")).toBe(false);
+    }
+  });
+
+  it("permissões ops.* são de plataforma e não podem ser concedidas a perfil de clínica", () => {
+    expect(isPermissaoDePlataforma("ops.visualizar")).toBe(true);
+    expect(validarConcessaoPermissoes("noryos_admin", PERFIS_PADRAO.noryos_admin, "gerente", ["ops.visualizar"])).toEqual({
+      ok: false,
+      error: "permissao_de_plataforma_em_perfil_de_clinica",
+    });
+  });
+});
+
 describe("perfis padrão — regras de escopo (seções 6-11 do pedido)", () => {
   it("Dona nunca tem permissão de plataforma ou suporte", () => {
     const dona = PERFIS_PADRAO.dona;

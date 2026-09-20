@@ -8,6 +8,7 @@ import type { StatusFluxo } from "@/lib/fluxo-versoes";
 export function FluxoAcoes({ id, status, permissoes }: { id: string; status: StatusFluxo; permissoes: string[] }) {
   const router = useRouter();
   const [alterando, setAlterando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const podeEditar = permissoes.includes("automacoes.editar");
   const podeAtivar = permissoes.includes("automacoes.ativar");
   const podePausar = permissoes.includes("automacoes.pausar");
@@ -15,13 +16,23 @@ export function FluxoAcoes({ id, status, permissoes }: { id: string; status: Sta
 
   async function mudarStatus(novo: StatusFluxo, interromperExecucoes = false) {
     setAlterando(true);
+    setErro(null);
     try {
-      await fetch(`/api/fluxos/${id}/status`, {
+      const resposta = await fetch(`/api/fluxos/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: novo, interromperExecucoes }),
       });
+      const resultado = await resposta.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!resposta.ok || !resultado?.ok) {
+        setErro(resultado?.error === "comercial_nao_habilitado"
+          ? "As automações comerciais ainda não estão habilitadas neste ambiente."
+          : "Não foi possível alterar o status da automação. Tente novamente.");
+        return;
+      }
       router.refresh();
+    } catch {
+      setErro("Não foi possível alterar o status da automação. Tente novamente.");
     } finally {
       setAlterando(false);
     }
@@ -81,6 +92,7 @@ export function FluxoAcoes({ id, status, permissoes }: { id: string; status: Sta
           Reativar
         </button>
       ) : null}
+      {erro && <p role="alert" className="basis-full text-xs text-red-600">{erro}</p>}
     </div>
   );
 }

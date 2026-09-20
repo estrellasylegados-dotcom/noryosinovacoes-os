@@ -17,6 +17,7 @@ Thumbs.db
 .claude/telemetry/
 .claude/file-history/
 .claude/backups/
+.claude/settings.local.json
 
 # Identidade da máquina (cada computador tem a sua, fora do git)
 .origem

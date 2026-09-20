@@ -79,6 +79,14 @@ export const PERMISSOES = [
   "platform.suporte",
   "platform.feature_flags",
   "platform.ops",
+  "ops.visualizar",
+  "ops.clinicas",
+  "ops.canais",
+  "ops.integracoes",
+  "ops.workers",
+  "ops.erros",
+  "ops.incidentes",
+  "ops.auditoria",
 ] as const;
 
 export type Permissao = (typeof PERMISSOES)[number];
@@ -127,7 +135,15 @@ export const PERFIS_PADRAO: Record<Perfil, ReadonlySet<Permissao>> = {
     "alertas.assumir",
     "alertas.resolver",
     "alertas.tecnicos",
-    "platform.suporte"
+    "platform.suporte",
+    "ops.visualizar",
+    "ops.clinicas",
+    "ops.canais",
+    "ops.integracoes",
+    "ops.workers",
+    "ops.erros",
+    "ops.incidentes",
+    "ops.auditoria"
   ),
 
   // Controle completo da própria clínica — nunca platform.*/suporte.*.
@@ -296,7 +312,7 @@ export function podeRedefinirCredencial(atorPerfil: Perfil, perfilAlvo: Perfil):
 export function isPermissaoDePlataforma(p: Permissao): boolean {
   // `alertas.tecnicos` (decisão 2026-09-18): detalhe técnico da plataforma (worker, infra, diagnóstico interno) é só de
   // Noryos Admin/Suporte. A clínica recebe, no lugar, um alerta OPERACIONAL em linguagem amigável.
-  return p.startsWith("platform.") || p.startsWith("suporte.") || p === "alertas.tecnicos";
+  return p.startsWith("platform.") || p.startsWith("suporte.") || p.startsWith("ops.") || p === "alertas.tecnicos";
 }
 
 export type ResultadoConcessao = { ok: true } | { ok: false; error: "perfil_nao_permitido" | "permissao_acima_do_escopo" | "permissao_de_plataforma_em_perfil_de_clinica" };

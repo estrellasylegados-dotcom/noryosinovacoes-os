@@ -11,6 +11,7 @@ const ITENS: Item[] = [
   { href: "/", label: "Painel de Atendimento" },
   { href: "/chat", label: "Chat ao Vivo" },
   { href: "/alertas", label: "Alertas", permissao: "alertas.visualizar" },
+  { href: "/ops", label: "Noryos Ops", permissao: "ops.visualizar" },
   { href: "/kanban", label: "CRM · Kanban", permissao: "kanban.visualizar" },
   { href: "/resumo", label: "Relatórios", permissao: "relatorios.visualizar" },
   { href: "/configuracoes/canais", label: "Canais", permissao: "canais.visualizar" },

@@ -12,6 +12,15 @@ const ESTADOS: Record<string, string> = {
   transferred: "Transferida",
 };
 
+const MOTIVOS: Record<string, string> = {
+  interrompida_manualmente: "Interrompida ao pausar a automação",
+  etapa_alterada: "A oportunidade mudou de etapa",
+  oportunidade_encerrada: "A oportunidade foi convertida ou perdida",
+  paciente_respondeu: "O paciente respondeu",
+  intervencao_humana: "A equipe assumiu o atendimento",
+  opt_out: "O paciente não deseja receber mensagens",
+};
+
 export function FluxoHistoricoExecucoes({ execucoes }: { execucoes: ExecucaoFluxoResumo[] }) {
   return (
     <section className="border-b border-neutral-200 p-3">
@@ -24,12 +33,19 @@ export function FluxoHistoricoExecucoes({ execucoes }: { execucoes: ExecucaoFlux
                 <span className="font-medium text-neutral-700">{ESTADOS[execucao.estado] ?? execucao.estado}</span>
                 <span className="text-neutral-400">{formatDataHora(execucao.createdAt)}</span>
               </div>
-              {execucao.oportunidadeId && <p className="mt-1 truncate text-neutral-500">Oportunidade: {execucao.oportunidadeId}</p>}
+              {execucao.oportunidadeId && (
+                <details className="mt-1 text-neutral-500">
+                  <summary className="cursor-pointer">Oportunidade vinculada</summary>
+                  <code className="mt-1 block break-all text-[10px] text-neutral-400">{execucao.oportunidadeId}</code>
+                </details>
+              )}
               {execucao.aguardandoAte && ["queued", "waiting_time", "waiting_input"].includes(execucao.estado) && (
                 <p className="mt-1 text-neutral-500">Próxima verificação: {formatDataHora(execucao.aguardandoAte)}</p>
               )}
               {execucao.erro && <p className="mt-1 text-red-600">Erro: {execucao.erro}</p>}
-              {execucao.motivoFinalizacao && !execucao.erro && <p className="mt-1 text-neutral-500">Motivo: {execucao.motivoFinalizacao}</p>}
+              {execucao.motivoFinalizacao && !execucao.erro && (
+                <p className="mt-1 text-neutral-500">Motivo: {MOTIVOS[execucao.motivoFinalizacao] ?? "A execução foi encerrada pelo sistema"}</p>
+              )}
             </li>
           ))}
         </ul>
