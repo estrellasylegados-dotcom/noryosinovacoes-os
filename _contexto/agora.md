@@ -13,14 +13,15 @@
 - **Central de Alertas** (2026-09-18/19): em produção, verificador de 1 min rodando. **Decisão fechada:** `alertas.tecnicos` é permissão de
   plataforma (só Noryos Admin/Suporte); a clínica recebe alerta operacional amigável. **SLA real validado** com evidência (atenção → alerta
   único → mesmo alerta crítico → resolvido ao responder). **UI autenticada: NÃO validada ainda** → status ainda não é "CONCLUÍDA".
-- Roteiro pronto: `crm/scripts/e2e-alertas-sessao.mjs` (login real, senha oculta) + alertas `[TESTE UI]` criados para a validação.
+- API autenticada validada por Codex (2026-09-19): seis perfis, 190 verificações; conta temporária autorizada, desativada e sessões revogadas.
+  Evidências: `clientes/odontominas/crm/docs/ALERTAS-VALIDACAO-TEMPORARIA-2026-09-19.md`. `[TESTE UI]` originais preservados.
 
 ## Validado (com evidência)
 - Canais + caixa compartilhada 100% (E2E real + UI). Identidade/RBAC: convite real, Admin/Suporte de teste logando. Kanban: backend + E2E no banco.
 - Alertas: 908 testes, build/lint/typecheck; produção: sem responsável, Kanban, canal, SLA completo, nova ocorrência; workers sem erro.
 
 ## Pendências realmente abertas
-1. **Rafael — UI de alertas logado** (roteiro acima, perfis dona/gerente/atendente/suporte/admin) → só então marcar CONCLUÍDA.
+1. **UI visual de Alertas**: conectar navegador ao Codex (indisponível nesta sessão); conferir sino, cards, ações, links e celular. APIs já passaram; só após UI marcar CONCLUÍDA.
 2. **Rafael — Kanban logado** (arrastar, perdido, filtros, celular), campo de resposta do Chat no rodapé, menu recolhível; decidir se a
    Supervisora move cards. Depois commitar `SidebarShell.tsx` se ainda estiver fora do git.
 3. **Horário real da OdontoMinas** em `/configuracoes/horario` (vazio de propósito): é o que faz o SLA valer de verdade (hoje inerte).
@@ -37,7 +38,7 @@
    no verificador se a passada (hoje 8–30 s) piorar.
 
 ## Próximo passo
-Rafael roda o roteiro de UI de alertas → `/atualizar` marca "CENTRAL DE ALERTAS OPERACIONAIS — CONCLUÍDA". Depois, esperar o sinal dele
+Conectar navegador e fechar a validação visual real de Alertas → só então marcar "CENTRAL DE ALERTAS OPERACIONAIS — CONCLUÍDA". Depois, esperar o sinal dele
 (aniversário/dashboard, Noryos Ops ou outra frente). Nada novo é iniciado sem sinal.
 
 ## Riscos importantes

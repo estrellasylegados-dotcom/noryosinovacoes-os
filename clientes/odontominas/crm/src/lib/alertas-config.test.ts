@@ -60,6 +60,7 @@ describe("consulta", () => {
 
   it("busca: remove o que quebraria o filtro do PostgREST", () => {
     expect(limparTermoBusca("Maria, (Silva)%")).toBe("Maria Silva");
+    expect(limparTermoBusca("[TESTE UI]")).toBe("TESTE UI");
     expect(limparTermoBusca("   ")).toBe("");
   });
 

@@ -77,7 +77,11 @@ export type AlertaView = {
 
 /** Escapa o que quebraria a sintaxe de filtro do PostgREST (vírgula, parênteses, curingas). */
 export function limparTermoBusca(termo: string): string {
-  return termo.replace(/[,()%*\\:"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  // Colchetes fazem parte de muitos nomes de fixture (`[TESTE UI]`), mas o
+  // PostgREST não os trata como texto literal dentro do filtro `ilike`.
+  // Removê-los preserva as palavras pesquisadas e faz a busca pelo título
+  // se comportar como o rótulo visível promete.
+  return termo.replace(/[\[\],()%*\\:"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
 }
 
 /** Expressão `.or()` da visibilidade, ou null quando `.in("tipo", …)` basta (visão de equipe). */

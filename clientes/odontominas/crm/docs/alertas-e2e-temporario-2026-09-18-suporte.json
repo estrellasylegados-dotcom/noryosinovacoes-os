@@ -1,0 +1,77 @@
+{
+  "inicio": "2026-09-19T03:00:42.347Z",
+  "autorizacao": "Rafael autorizou no chat a criação de conta temporária, testes e desativação final (2026-09-18).",
+  "ui": "NÃO VALIDADA: navegador indisponível",
+  "perfis": [
+    {
+      "perfil": "noryos_suporte",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = noryos_suporte  (recebido: noryos_suporte)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 2, atenção 4, informativos 0, resolvidos hoje 5)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (6 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de plataforma: alertas técnicos permitidos (informativo: quantidade)  (4 técnicos)",
+        "PASSOU  200  filtro severidade=critico  (2)",
+        "PASSOU  200  filtro severidade=atencao  (4)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (7)",
+        "PASSOU  200  busca por texto/paciente/contexto  (2 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  403  GET /api/alertas/config",
+        "PASSOU  403  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  403  POST /api/alertas/<inexistente>/ignorar  (sem permissão)",
+        "PASSOU  200  alerta técnico [TESTE]: detalhe",
+        "PASSOU  200  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    }
+  ],
+  "verificacoes": [
+    {
+      "nome": "noryos_suporte: ignorar alerta",
+      "ok": true,
+      "status": 403
+    },
+    {
+      "nome": "Conta desativada, sem senha, sem privilégio de plataforma e sessões revogadas",
+      "ok": true
+    },
+    {
+      "nome": "Sessão anterior 1 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Novo login recusado após desativação",
+      "ok": true,
+      "status": 401
+    }
+  ],
+  "conta": {
+    "id": "f4c76331-fba5-40fa-9eac-60da47515f81",
+    "usuario": "qa_alertas_1789786637716"
+  },
+  "desativada": true,
+  "alertasCriados": [
+    "0ddaedcb-a6dc-4e97-b344-3f32ee0ea639",
+    "f4fb95fe-0315-45dd-a945-6ea0566ca0da",
+    "83fdcff2-765b-41ac-936e-f7c564079ad1"
+  ],
+  "fim": "2026-09-19T03:01:13.598Z"
+}

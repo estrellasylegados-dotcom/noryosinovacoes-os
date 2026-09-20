@@ -1,0 +1,344 @@
+{
+  "inicio": "2026-09-19T02:57:16.541Z",
+  "autorizacao": "Rafael autorizou no chat a criação de conta temporária, testes e desativação final (2026-09-18).",
+  "ui": "NÃO VALIDADA: navegador indisponível",
+  "perfis": [
+    {
+      "perfil": "dona",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = dona  (recebido: dona)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 6, atenção 16, informativos 0, resolvidos hoje 8)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (22 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de clínica: nenhum termo técnico interno na resposta",
+        "PASSOU  200  perfil de clínica: zero alertas de natureza técnica",
+        "PASSOU  200  filtro severidade=critico  (6)",
+        "PASSOU  200  filtro severidade=atencao  (16)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (8)",
+        "PASSOU  200  busca por texto/paciente/contexto  (3 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  200  GET /api/alertas/config",
+        "PASSOU  400  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/ignorar  (permitido → alerta não existe)",
+        "PASSOU  404  alerta técnico [TESTE]: detalhe  (clínica: 404)",
+        "PASSOU  404  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    },
+    {
+      "perfil": "gerente",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = gerente  (recebido: gerente)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 6, atenção 15, informativos 0, resolvidos hoje 9)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (21 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de clínica: nenhum termo técnico interno na resposta",
+        "PASSOU  200  perfil de clínica: zero alertas de natureza técnica",
+        "PASSOU  200  filtro severidade=critico  (6)",
+        "PASSOU  200  filtro severidade=atencao  (15)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (10)",
+        "PASSOU  200  busca por texto/paciente/contexto  (3 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  403  GET /api/alertas/config",
+        "PASSOU  403  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/ignorar  (permitido → alerta não existe)",
+        "PASSOU  404  alerta técnico [TESTE]: detalhe  (clínica: 404)",
+        "PASSOU  404  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    },
+    {
+      "perfil": "supervisora",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = supervisora  (recebido: supervisora)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 6, atenção 15, informativos 0, resolvidos hoje 10)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (21 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de clínica: nenhum termo técnico interno na resposta",
+        "PASSOU  200  perfil de clínica: zero alertas de natureza técnica",
+        "PASSOU  200  filtro severidade=critico  (6)",
+        "PASSOU  200  filtro severidade=atencao  (15)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (12)",
+        "PASSOU  200  busca por texto/paciente/contexto  (3 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  403  GET /api/alertas/config",
+        "PASSOU  403  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  403  POST /api/alertas/<inexistente>/ignorar  (sem permissão)",
+        "PASSOU  404  alerta técnico [TESTE]: detalhe  (clínica: 404)",
+        "PASSOU  404  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    },
+    {
+      "perfil": "atendente",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = atendente  (recebido: atendente)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 5, atenção 12, informativos 0, resolvidos hoje 8)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (17 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de clínica: nenhum termo técnico interno na resposta",
+        "PASSOU  200  perfil de clínica: zero alertas de natureza técnica",
+        "PASSOU  200  filtro severidade=critico  (5)",
+        "PASSOU  200  filtro severidade=atencao  (12)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (10)",
+        "PASSOU  200  busca por texto/paciente/contexto  (0 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /chat?conversa=77481b6a-5ab2-4d09-8cc7-c2cb2f7fb7e5)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  403  GET /api/alertas/config",
+        "PASSOU  403  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  403  POST /api/alertas/<inexistente>/ignorar  (sem permissão)",
+        "PASSOU  404  alerta técnico [TESTE]: detalhe  (clínica: 404)",
+        "PASSOU  404  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    },
+    {
+      "perfil": "noryos_suporte",
+      "code": 1,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = noryos_suporte  (recebido: noryos_suporte)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 2, atenção 7, informativos 0, resolvidos hoje 1)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (9 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de plataforma: alertas técnicos permitidos (informativo: quantidade)  (7 técnicos)",
+        "PASSOU  200  filtro severidade=critico  (2)",
+        "PASSOU  200  filtro severidade=atencao  (7)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (1)",
+        "PASSOU  200  busca por texto/paciente/contexto  (2 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  403  GET /api/alertas/config",
+        "PASSOU  403  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  403  POST /api/alertas/<inexistente>/ignorar  (sem permissão)",
+        "PASSOU  200  alerta técnico [TESTE]: detalhe",
+        "PASSOU  200  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "FALHOU  404  alerta [TESTE] visível para este perfil  (status: ?)",
+        "AVISO  o alerta informado não está 'aberto' — nada foi alterado.",
+        "1 FALHA(S)"
+      ]
+    },
+    {
+      "perfil": "noryos_admin",
+      "code": 0,
+      "linhas": [
+        "PASSOU  200  login",
+        "PASSOU  200  perfil = noryos_admin  (recebido: noryos_admin)",
+        "PASSOU  200  GET /api/alertas/resumo (sino/contador)  (críticos 10, atenção 23, informativos 0, resolvidos hoje 13)",
+        "PASSOU  200  contador do sino = críticos + atenção (informativo/resolvido não contam)",
+        "PASSOU  200  GET /api/alertas (Central)  (33 abertos visíveis)",
+        "PASSOU  200  ordenação: críticos primeiro",
+        "PASSOU  200  nenhum campo interno exposto (dados, chave, stack)",
+        "PASSOU  200  perfil de plataforma: alertas técnicos permitidos (informativo: quantidade)  (4 técnicos)",
+        "PASSOU  200  filtro severidade=critico  (10)",
+        "PASSOU  200  filtro severidade=atencao  (23)",
+        "PASSOU  200  filtro severidade=informativo  (0)",
+        "PASSOU  200  filtro categoria=CANAL",
+        "PASSOU  200  filtro responsável=sem (equipe)",
+        "PASSOU  200  aba Resolvidos  (15)",
+        "PASSOU  200  busca por texto/paciente/contexto  (3 com \"[TESTE]\")",
+        "PASSOU  200  abrir alerta (detalhe + histórico)",
+        "PASSOU  200  alertas com link direto para o contexto  (ex.: /configuracoes/canais?canal=3c3a91ef-d725-4461-b3e9-1a73a02ec442)",
+        "PASSOU  404  alerta inexistente/fora do escopo → 404 (não vaza existência)",
+        "PASSOU  200  GET /api/alertas/config",
+        "PASSOU  400  PUT config com valor inválido (nunca grava)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/assumir  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/resolver  (permitido → alerta não existe)",
+        "PASSOU  404  POST /api/alertas/<inexistente>/ignorar  (permitido → alerta não existe)",
+        "PASSOU  200  alerta técnico [TESTE]: detalhe",
+        "PASSOU  200  alerta técnico [TESTE]: perfil sem alertas.tecnicos não opera",
+        "PASSOU  200  alerta [TESTE] visível para este perfil  (status: aberto)",
+        "PASSOU  200  assumir → 200 e status assumido",
+        "PASSOU  409  assumir de novo → 409 (transição inválida)",
+        "PASSOU  200  resolver → 200 e status resolvido",
+        "PASSOU  409  resolver de novo → 409",
+        "PASSOU  200  histórico registra criado → assumido → resolvido  (criado → assumido → resolvido)",
+        "TUDO PASSOU"
+      ]
+    }
+  ],
+  "verificacoes": [
+    {
+      "nome": "dona: ignorar alerta",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "nome": "dona: histórico de ignorar",
+      "ok": true
+    },
+    {
+      "nome": "gerente: ignorar alerta",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "nome": "gerente: histórico de ignorar",
+      "ok": true
+    },
+    {
+      "nome": "supervisora: ignorar alerta",
+      "ok": true,
+      "status": 403
+    },
+    {
+      "nome": "atendente: ignorar alerta",
+      "ok": true,
+      "status": 403
+    },
+    {
+      "nome": "noryos_suporte: ignorar alerta",
+      "ok": true,
+      "status": 403
+    },
+    {
+      "nome": "noryos_admin: ignorar alerta",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "nome": "noryos_admin: histórico de ignorar",
+      "ok": true
+    },
+    {
+      "nome": "Conta desativada, sem senha, sem privilégio de plataforma e sessões revogadas",
+      "ok": true
+    },
+    {
+      "nome": "Sessão anterior 1 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Sessão anterior 2 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Sessão anterior 3 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Sessão anterior 4 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Sessão anterior 5 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Sessão anterior 6 recusada após desativação",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "nome": "Novo login recusado após desativação",
+      "ok": true,
+      "status": 401
+    }
+  ],
+  "conta": {
+    "id": "f4c76331-fba5-40fa-9eac-60da47515f81",
+    "usuario": "qa_alertas_1789786637716"
+  },
+  "desativada": true,
+  "alertasCriados": [
+    "8250501f-f8d6-4670-847d-a28d05a38a0a",
+    "e24feb59-3ae9-4579-8f75-bee15e54325a",
+    "1989d900-e9af-4d8e-9d47-488ffabca818",
+    "5c193e6d-d45b-4ec8-b138-e4d6dd7b2f93",
+    "1ec3c753-0792-4b0b-9080-084c7f822f5e",
+    "187d2a32-83e6-4f54-b1bd-ad172504db1e",
+    "759fa87a-488d-4587-a068-f7042c47f35d",
+    "fad60b4b-5975-4451-a77c-b641381ddba9",
+    "b9318406-8175-4421-a849-a43278e58225",
+    "36152e00-ebdd-4cce-85d3-b7eb889f680d",
+    "fffcee85-cd6c-48f9-8ed8-30f6f516a117",
+    "716ce434-a3ec-49c0-856f-666d614147dc",
+    "8c2ab462-e9c7-499a-b599-f1fe89683cd5",
+    "8c259b95-5b3e-4e95-917e-8653e8558061",
+    "32504b9f-12ec-417e-82d0-576314c9cc83",
+    "4fb0db42-14cd-4f4c-9eea-afbb8ad5f463",
+    "bbc4ae48-101f-4f45-9be0-022f8fcb6035",
+    "fb39f935-3e68-44e7-9268-6ba2c12e02c1"
+  ],
+  "fim": "2026-09-19T03:00:24.227Z"
+}

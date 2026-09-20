@@ -1,5 +1,13 @@
 # Andamento · OdontoMinas
 
+## Retomada (2026-09-19, Codex) — API autenticada validada; UI visual pendente
+
+- Conta temporária autorizada expressamente por Rafael: seis perfis padrão com login real; matriz final de 190 verificações aprovada, além de ignorar e revogação. Suporte repetido após corrigir fixture fora de seu escopo, sem mudar permissões.
+- Conta `qa_alertas_1789786637716` desativada, senha removida, sessões revogadas, sem privilégio de plataforma; login e cookies antigos recusados (401). Dados originais preservados.
+- Evidências: `crm/docs/ALERTAS-VALIDACAO-TEMPORARIA-2026-09-19.md` e relatórios JSON referenciados. Nenhuma alteração no código de produção, migration, deploy ou envio de WhatsApp.
+- **Falta UI visual real:** sino/dropdown, cards/filtros, ações/histórico pela tela, links abrindo o contexto e celular. Controle de navegador indisponível; Rafael pediu instalar, mas a conexão depende da interface do app. **Não marcar CONCLUÍDA.**
+- Esta atualização substitui a pendência abaixo de senha pessoal/roteiro HTTP ainda não rodado; o roteiro HTTP passou, a validação visual permanece aberta.
+
 ## Onde está (2026-09-19, CENTRAL DE ALERTAS OPERACIONAIS — em produção; SLA real validado; UI logada pendente)
 
 - Migration v35 aplicada (4 tabelas novas), deploy `SUCCESS`, verificador rodando sozinho a cada minuto. Doc completo: `crm/docs/ALERTAS.md`.
