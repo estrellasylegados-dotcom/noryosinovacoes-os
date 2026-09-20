@@ -1,6 +1,13 @@
 ﻿# Andamento · OdontoMinas
 
-## Retomada (2026-09-20, Codex) — Distribuição Automática V1 com migration aplicada; publicação pendente
+## Atualizacao final (2026-09-20) - Distribuicao Automatica V1 aprovada em producao
+
+- Round-robin real validado: `[TESTE] Atendente A` -> `[TESTE] Atendente B` -> `[TESTE] Supervisora`.
+- Retry idempotente, inelegiveis ignorados, conversa atribuida preservada, SLA preservado, transferencia Supervisora -> B e webhook Evolution funcionando.
+- Evidencias: `5cac5bc4-9cc8-4c88-8787-21869e3c2494`, `94a1d602-3583-4c07-97ea-af3df18d12db`, `bf9aa2be-609d-45d3-aec8-a2c7f36f3dee` e `0711f733-83e1-46a4-ac2c-aeddc50ef6d3`.
+- Regressao visual autenticada passou em Chat, Kanban, Alertas, Configuracoes e Noryos Ops. Configuracao final desativada. Sem alteracao de codigo, migration, push ou deploy nesta sessao.
+
+## Retomada (2026-09-20, Codex) — Distribuição Automática V1 validada em produção; configuração desativada
 
 - Distribuição Automática V1 foi implementada para conversas novas sem responsável, com estratégia única de round-robin por clínica e toggle de ativação em `/configuracoes/distribuicao`.
 - Migration aditiva criada: `crm/supabase/migrations/2026-09-20_v38_distribuicao_automatica.sql`. Ela cria `atendimento_config` e a RPC atômica `auto_distribuir_conversa_round_robin`, com lock da configuração/conversa, ponteiro do último atendente e evento `CONVERSATION_ASSIGNED`.
@@ -11,7 +18,7 @@
 - Gates aprovados: `npm run typecheck`, `npm run lint`, `npx vitest run` com 946 testes e `npm run build` com 56 páginas.
 - Testes focados pós-migration: 37/37, incluindo regressão do webhook Evolution.
 - Migration `v38` aplicada em produção pelo SQL Editor, em ordem após a `v37`, e validada com tabelas, colunas e RPC presentes. O histórico oficial do Supabase permanece em `v35`; não reaplicar sem reconciliar esse controle.
-- **Status:** concluído no código e no banco, ainda não publicado. Próximos passos: fazer `railway up`, validar logado em `/configuracoes/distribuicao` e executar teste real controlado de conversa nova. Não houve push nem deploy nesta sessão.
+- **Status:** validação final aprovada em produção; configuração deixada desativada, evidências preservadas e sem alteração de código, migration, push ou deploy nesta sessão.
 
 ## Retomada (2026-09-20, Codex) — Noryos Ops V1 com migration aplicada; publicação pendente
 
