@@ -14,6 +14,7 @@ function IconeCondicao() {
 }
 
 const ROTULO_OPERADOR: Record<NoCondicao["operador"], string> = {
+  maior: "maior que", menor: "menor que", maior_igual: "pelo menos", menor_igual: "no máximo", contem_item: "inclui",
   igual: "igual a",
   diferente: "diferente de",
   contem: "contém",

@@ -21,9 +21,10 @@ const BLOCOS_PESQUISAS: { tipo: NoFluxo["tipo"]; label: string; descricao: strin
 
 /** Não depende de nenhuma capability externa — só escreve em tabelas que o CRM já usa em produção (etiquetas, funil/status, prioridade, atendente). */
 const BLOCOS_ACAO_CRM: { tipo: NoFluxo["tipo"]; label: string; descricao: string }[] = [
+  { tipo: "acao_comercial", label: "Ação na oportunidade", descricao: "Mover etapa, responsável, interesse, nota ou alerta na Central" },
   { tipo: "adicionar_etiqueta", label: "Adicionar etiqueta", descricao: "Marca a conversa com uma etiqueta" },
   { tipo: "remover_etiqueta", label: "Remover etiqueta", descricao: "Tira uma etiqueta da conversa" },
-  { tipo: "mudar_status", label: "Mover no funil", descricao: "Muda o status da conversa" },
+  { tipo: "mudar_status", label: "Alterar status da conversa", descricao: "Muda o status da conversa" },
   { tipo: "marcar_prioridade", label: "Marcar prioridade", descricao: "Define a prioridade da conversa" },
   { tipo: "atribuir_atendente", label: "Atribuir atendente", descricao: "Define quem cuida da conversa" },
 ];
@@ -90,7 +91,7 @@ export function FluxoPaletaBlocos({ controleOdontoConfigurado }: { controleOdont
     : "Indisponível — integração ControleODONTO não configurada.";
 
   return (
-    <aside className="w-56 shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-3">
+    <aside className="max-h-56 w-full shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-3 lg:max-h-none lg:w-56">
       <SecaoBlocos titulo="Blocos" blocos={BLOCOS_BASICOS} onDragStart={handleDragStart} />
       <SecaoBlocos titulo="Ações CRM" blocos={BLOCOS_ACAO_CRM} onDragStart={handleDragStart} />
       <SecaoBlocos titulo="Humano" blocos={BLOCOS_HUMANO} onDragStart={handleDragStart} />

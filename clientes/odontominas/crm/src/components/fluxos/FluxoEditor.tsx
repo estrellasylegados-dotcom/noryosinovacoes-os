@@ -24,6 +24,7 @@ import { FluxoPaletaBlocos } from "@/components/fluxos/FluxoPaletaBlocos";
 import { FluxoPainelPropriedades } from "@/components/fluxos/FluxoPainelPropriedades";
 import { FluxoPainelTeste } from "@/components/fluxos/FluxoPainelTeste";
 import { FluxoPainelValidacao } from "@/components/fluxos/FluxoPainelValidacao";
+import { FluxoHistoricoExecucoes } from "@/components/fluxos/FluxoHistoricoExecucoes";
 
 const LIMITE_HISTORICO = 50;
 const DEBOUNCE_RASCUNHO_MS = 1500;
@@ -46,17 +47,23 @@ function lerGatilho(config: Record<string, unknown>): { tipo: string; palavras: 
 export function FluxoEditor({
   fluxo,
   execucoesTesteIniciais,
+  execucoesReaisIniciais,
   controleOdontoConfigurado,
   etiquetas,
   atendentes,
   agentes,
+  podePublicar,
+  podeVerExecucoes,
 }: {
   fluxo: FluxoParaEditor;
   execucoesTesteIniciais: ExecucaoFluxoResumo[];
+  execucoesReaisIniciais: ExecucaoFluxoResumo[];
   controleOdontoConfigurado: boolean;
   etiquetas: Etiqueta[];
   atendentes: Atendente[];
   agentes: AgenteIA[];
+  podePublicar: boolean;
+  podeVerExecucoes: boolean;
 }) {
   const router = useRouter();
 
@@ -76,6 +83,7 @@ export function FluxoEditor({
   const [ultimoSalvoEm, setUltimoSalvoEm] = useState<string | null>(null);
   const [publicando, setPublicando] = useState(false);
   const [erroPublicar, setErroPublicar] = useState<string | null>(null);
+  const [validacaoServidor, setValidacaoServidor] = useState<string | null>(null);
   const [nome, setNome] = useState(fluxo.nome);
 
   /** Commit = ponto de undo — nunca por keystroke, só em ações discretas (fim de drag, blur, add/remove nó, conectar). */
@@ -151,7 +159,7 @@ export function FluxoEditor({
         const resultado = (await resposta.json()) as { ok: boolean; numero?: number };
         if (!resultado.ok) {
           setErroSalvar(true);
-          return;
+          throw new Error("rascunho_nao_salvo");
         }
         setErroSalvar(false);
         setUltimoSalvoEm(new Date().toISOString());
@@ -159,6 +167,7 @@ export function FluxoEditor({
         setVersaoStatus("rascunho");
       } catch {
         setErroSalvar(true);
+        throw new Error("rascunho_nao_salvo");
       } finally {
         setSalvando(false);
       }
@@ -180,7 +189,7 @@ export function FluxoEditor({
       return;
     }
     if (timeoutRascunhoRef.current) clearTimeout(timeoutRascunhoRef.current);
-    timeoutRascunhoRef.current = setTimeout(() => void salvarRascunhoAgora(definicao), DEBOUNCE_RASCUNHO_MS);
+    timeoutRascunhoRef.current = setTimeout(() => void salvarRascunhoAgora(definicao).catch(() => undefined), DEBOUNCE_RASCUNHO_MS);
     return () => {
       if (timeoutRascunhoRef.current) clearTimeout(timeoutRascunhoRef.current);
     };
@@ -265,12 +274,12 @@ export function FluxoEditor({
   }, [commit]);
 
   const onMudarGatilho = useCallback(
-    (tipo: string, palavrasTexto: string) => {
+    (tipo: string, palavrasTexto: string, comercialConfig?: Record<string, unknown>) => {
       const palavras = palavrasTexto
         .split(",")
         .map((p) => p.trim())
         .filter(Boolean);
-      const gatilhoConfig = tipo === "palavra_chave" ? { palavras } : {};
+      const gatilhoConfig = comercialConfig ?? (tipo === "kanban_stage_changed" ? { modo: "entrada", pipelineId: "", etapaId: "", tempoSegundos: 86400, reentrada: "por_entrada", pararAoSair: true, pararAoResponder: true, respeitarHorario: true } : tipo === "palavra_chave" ? { palavras } : {});
       commit({ ...definicaoRef.current, config: { ...definicaoRef.current.config, gatilho: { tipo, config: gatilhoConfig } } });
     },
     [commit]
@@ -293,13 +302,15 @@ export function FluxoEditor({
       }
       setVersaoStatus("publicada");
       router.refresh();
+    } catch {
+      setErroPublicar("Não foi possível salvar e publicar. Confira a conexão e tente novamente.");
     } finally {
       setPublicando(false);
     }
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex min-h-screen flex-col lg:h-screen">
       <FluxoBarraAcoes
         nome={nome}
         onMudarNome={setNome}
@@ -313,16 +324,16 @@ export function FluxoEditor({
         podeRefazer={futuro.length > 0}
         onDesfazer={desfazer}
         onRefazer={refazer}
-        podePublicar={grafo.erros.length === 0}
+        podePublicar={podePublicar && grafo.erros.length === 0}
         publicando={publicando}
         onPublicar={publicar}
       />
       {erroPublicar && <p className="border-b border-red-100 bg-red-50 px-4 py-1.5 text-xs text-red-700">{erroPublicar}</p>}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <FluxoPaletaBlocos controleOdontoConfigurado={controleOdontoConfigurado} />
 
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-h-[420px] min-w-0 flex-1">
           <button
             type="button"
             onClick={onOrganizarAutomaticamente}
@@ -348,26 +359,35 @@ export function FluxoEditor({
           />
         </div>
 
-        <div className="w-80 shrink-0 overflow-y-auto border-l border-neutral-200 bg-white">
+        <div className="w-full shrink-0 overflow-y-auto border-l border-neutral-200 bg-white lg:w-80">
+          {podeVerExecucoes && <FluxoHistoricoExecucoes execucoes={execucoesReaisIniciais} />}
           <div className="border-b border-neutral-200 p-3">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Validação</p>
             <FluxoPainelValidacao erros={grafo.erros} avisos={grafo.avisos} onSelecionarProblema={onSelecionarProblema} />
+            <button type="button" className="mt-3 rounded-lg border border-teal-700 px-3 py-2 text-sm text-teal-800" onClick={async()=>{
+              setValidacaoServidor("Validando…");
+              try { await flushRascunho(); const r=await fetch(`/api/fluxos/${fluxo.id}/validar`,{method:"POST"}); const j=await r.json();
+                setValidacaoServidor(j.ok ? "Fluxo válido. Nenhuma mensagem foi enviada." : "Revise o gatilho, as referências da clínica e os erros de validação antes de publicar.");
+              } catch { setValidacaoServidor("Não foi possível validar agora. Confira a conexão."); }
+            }}>Validar sem enviar</button>
+            {validacaoServidor && <p role="status" className="mt-2 text-xs text-neutral-600">{validacaoServidor}</p>}
           </div>
           <div className="border-b border-neutral-200 p-3">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Testar</p>
-            <FluxoPainelTeste
+            {gatilhoTipo === "kanban_stage_changed" ? <p className="text-xs text-neutral-600">Valide sem enviar acima. O teste completo usa uma oportunidade identificada como TESTE, pelo Kanban, em ambiente controlado.</p> : podeVerExecucoes && <FluxoPainelTeste
               fluxoId={fluxo.id}
               bloqueadoPorErro={grafo.erros.length > 0}
               historicoInicial={execucoesTesteIniciais}
               onFlushAutosave={flushRascunho}
               onExecucaoNoAtualChange={setNoEmExecucaoId}
-            />
+            />}
           </div>
           <FluxoPainelPropriedades
             noSelecionado={noSelecionado}
             onAtualizarNo={onAtualizarNo}
             gatilhoTipo={gatilhoTipo}
             gatilhoPalavras={gatilhoPalavras}
+            gatilhoConfig={(definicao.config.gatilho as { config?: Record<string, unknown> } | undefined)?.config ?? {}}
             onMudarGatilho={onMudarGatilho}
             etiquetas={etiquetas}
             atendentes={atendentes}

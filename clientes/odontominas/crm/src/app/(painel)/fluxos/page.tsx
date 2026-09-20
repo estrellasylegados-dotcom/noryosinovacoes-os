@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
+
 import { getClinicaId } from "@/lib/clinica";
 import { listarFluxos, isStatusFluxoValido, type StatusFluxo } from "@/lib/fluxo-versoes";
 import { formatDataHora } from "@/lib/tempo";
@@ -26,9 +26,10 @@ const ABAS: { valor: StatusFluxo | "todos"; label: string }[] = [
 
 export default async function FluxosPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const sessao = await getSessaoAtual();
-  if (!isAdminEquivalente(sessao)) redirect("/");
+  if (!sessao?.permissoes.has("automacoes.visualizar")) redirect("/");
 
   const clinicaId = await getClinicaId();
+  if (sessao.clinicaId !== clinicaId) redirect("/");
   if (!clinicaId) {
     return <main className="px-4 py-8 sm:px-8">Não consegui conectar ao banco agora.</main>;
   }
@@ -42,12 +43,12 @@ export default async function FluxosPage({ searchParams }: { searchParams: Promi
     <main className="px-4 py-8 sm:px-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Fluxo de Conversa</h1>
-          <p className="text-sm text-neutral-500">Automação determinística — menus, condições, espera, roteamento.</p>
+          <h1 className="text-xl font-semibold text-neutral-900">Fluxos e automações</h1>
+          <p className="text-sm text-neutral-500">Organize o atendimento e acompanhe oportunidades do Kanban.</p>
         </div>
-        <Link href="/fluxos/nova" className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
+        {sessao.permissoes.has("automacoes.criar") && <Link href="/fluxos/nova" className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
           + Novo fluxo
-        </Link>
+        </Link>}
       </div>
 
       <nav className="mb-4 flex gap-1 border-b border-neutral-200">
@@ -85,9 +86,11 @@ export default async function FluxosPage({ searchParams }: { searchParams: Promi
               {fluxos.map((fluxo) => (
                 <tr key={fluxo.id} className="border-b border-neutral-100 last:border-0">
                   <td className="px-4 py-3">
-                    <Link href={`/fluxos/${fluxo.id}/editar`} className="font-medium text-neutral-900 hover:underline">
-                      {fluxo.nome}
-                    </Link>
+                    {sessao.permissoes.has("automacoes.editar") ? (
+                      <Link href={`/fluxos/${fluxo.id}/editar`} className="font-medium text-neutral-900 hover:underline">
+                        {fluxo.nome}
+                      </Link>
+                    ) : <span className="font-medium text-neutral-900">{fluxo.nome}</span>}
                     {fluxo.descricao && <p className="mt-0.5 text-xs text-neutral-500">{fluxo.descricao}</p>}
                   </td>
                   <td className="px-4 py-3">
@@ -107,10 +110,10 @@ export default async function FluxosPage({ searchParams }: { searchParams: Promi
                       <span className="text-neutral-400">nunca publicado</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-neutral-600">{fluxo.gatilhoTipo ?? <span className="text-neutral-400">sem gatilho</span>}</td>
+                  <td className="px-4 py-3 text-neutral-600">{(fluxo.gatilhoTipo === "kanban_stage_changed" ? "Oportunidade no Kanban" : fluxo.gatilhoTipo?.replaceAll("_", " ")) ?? <span className="text-neutral-400">sem gatilho</span>}</td>
                   <td className="px-4 py-3 text-neutral-500">{formatDataHora(fluxo.updatedAt)}</td>
                   <td className="px-4 py-3">
-                    <FluxoAcoes id={fluxo.id} status={fluxo.status} />
+                    <FluxoAcoes id={fluxo.id} status={fluxo.status} permissoes={[...sessao.permissoes]} />
                   </td>
                 </tr>
               ))}

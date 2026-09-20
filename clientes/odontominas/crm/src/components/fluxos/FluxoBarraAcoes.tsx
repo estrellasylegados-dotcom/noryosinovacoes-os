@@ -52,7 +52,7 @@ export function FluxoBarraAcoes({
   onPublicar: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-white px-4 py-2.5">
       <Link href="/fluxos" className="text-sm text-neutral-400 hover:text-neutral-600">
         ← Fluxos
       </Link>

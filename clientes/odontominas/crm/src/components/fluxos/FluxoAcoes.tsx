@@ -5,17 +5,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { StatusFluxo } from "@/lib/fluxo-versoes";
 
-export function FluxoAcoes({ id, status }: { id: string; status: StatusFluxo }) {
+export function FluxoAcoes({ id, status, permissoes }: { id: string; status: StatusFluxo; permissoes: string[] }) {
   const router = useRouter();
   const [alterando, setAlterando] = useState(false);
+  const podeEditar = permissoes.includes("automacoes.editar");
+  const podeAtivar = permissoes.includes("automacoes.ativar");
+  const podePausar = permissoes.includes("automacoes.pausar");
+  const podeExcluir = permissoes.includes("automacoes.excluir");
 
-  async function mudarStatus(novo: StatusFluxo) {
+  async function mudarStatus(novo: StatusFluxo, interromperExecucoes = false) {
     setAlterando(true);
     try {
       await fetch(`/api/fluxos/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: novo }),
+        body: JSON.stringify({ status: novo, interromperExecucoes }),
       });
       router.refresh();
     } finally {
@@ -25,23 +29,28 @@ export function FluxoAcoes({ id, status }: { id: string; status: StatusFluxo }) 
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Link
+      {podeEditar && <Link
         href={`/fluxos/${id}/editar`}
         className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
       >
         Editar
-      </Link>
-      {status === "ativo" && (
+      </Link>}
+      {status === "ativo" && podePausar && (
         <button
           type="button"
           disabled={alterando}
-          onClick={() => mudarStatus("pausado")}
+          onClick={() => {
+            const interromper = window.confirm(
+              "Também interromper as execuções que já estão em andamento?\n\nOK: interromper agora.\nCancelar: manter as execuções atuais e pausar somente novas entradas."
+            );
+            void mudarStatus("pausado", interromper);
+          }}
           className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-60"
         >
           Pausar
         </button>
       )}
-      {status === "pausado" && (
+      {status === "pausado" && podeAtivar && (
         <button
           type="button"
           disabled={alterando}
@@ -51,7 +60,7 @@ export function FluxoAcoes({ id, status }: { id: string; status: StatusFluxo }) 
           Ativar
         </button>
       )}
-      {status !== "arquivado" ? (
+      {status !== "arquivado" && podeExcluir ? (
         <button
           type="button"
           disabled={alterando}
@@ -62,7 +71,7 @@ export function FluxoAcoes({ id, status }: { id: string; status: StatusFluxo }) 
         >
           Arquivar
         </button>
-      ) : (
+      ) : status === "arquivado" && podeAtivar ? (
         <button
           type="button"
           disabled={alterando}
@@ -71,7 +80,7 @@ export function FluxoAcoes({ id, status }: { id: string; status: StatusFluxo }) 
         >
           Reativar
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

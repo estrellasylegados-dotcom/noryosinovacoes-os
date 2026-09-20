@@ -44,7 +44,10 @@ import type { Etiqueta } from "@/lib/etiquetas";
 import type { Atendente } from "@/lib/atendentes";
 import type { AgenteIA } from "@/lib/agentes";
 
+import { NoAcaoComercialCard } from "@/components/fluxos/nos/NoAcaoComercialCard";
+
 const TIPOS_NO: NodeTypes = {
+  acao_comercial: NoAcaoComercialCard,
   inicio: NoInicioCard,
   mensagem: NoMensagemCard,
   espera: NoEsperaCard,

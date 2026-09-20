@@ -16,6 +16,7 @@ export type ArestaEditor = { id: string; source: string; sourceHandle: string; t
 
 export function criarNoPadrao(tipo: NoFluxo["tipo"], id: string): NoFluxo {
   switch (tipo) {
+    case "acao_comercial": return { id, tipo, acao: "alerta", valor: "Confira esta oportunidade.", proximo: id };
     case "inicio":
       // Auto-referenciado: sintaticamente válido pra validarFormaDefinicao
       // (schema não aceita string vazia), e validarGrafo já sinaliza sozinho
@@ -64,6 +65,7 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
   const arestas: ArestaEditor[] = [];
   for (const no of nodes) {
     switch (no.tipo) {
+      case "acao_comercial":
       case "inicio":
       case "mensagem":
       case "espera":
@@ -110,6 +112,7 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
   return nodes.map((no) => {
     if (no.id !== source) return no;
     switch (no.tipo) {
+      case "acao_comercial":
       case "inicio":
       case "mensagem":
       case "espera":

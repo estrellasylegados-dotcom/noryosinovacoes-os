@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
+
 import { TEMPLATES_ODONTO } from "@/lib/fluxo-templates";
 import { FluxoNovoForm } from "@/components/fluxos/FluxoNovoForm";
 
 export default async function NovoFluxoPage() {
   const sessao = await getSessaoAtual();
-  if (!isAdminEquivalente(sessao)) redirect("/");
+  if (!sessao?.permissoes.has("automacoes.criar")) redirect("/");
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8 sm:px-8">

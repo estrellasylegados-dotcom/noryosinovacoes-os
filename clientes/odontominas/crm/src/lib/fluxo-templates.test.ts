@@ -19,7 +19,10 @@ describe("TEMPLATES_ODONTO", () => {
     const forma = validarFormaDefinicao(definicao);
     expect(forma.ok, forma.ok ? "" : (forma as { erro: string }).erro).toBe(true);
     const grafo = validarGrafo(definicao);
-    expect(grafo.erros).toEqual([]);
+    const errosEsperados = template.id.startsWith("kanban-")
+      ? ["Selecione pipeline, etapa e uma regra comercial válida."]
+      : [];
+    expect(grafo.erros.map((erro) => erro.mensagem)).toEqual(errosEsperados);
   });
 
   it.each(TEMPLATES_ODONTO)("$nome: todo nó tem posição de layout gerada", (template) => {

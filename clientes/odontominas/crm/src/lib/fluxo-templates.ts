@@ -28,6 +28,56 @@ function comLayoutAutomatico(nodes: NoFluxo[]): FluxoDefinicao {
   return { nodes, edges: [], config: escreverLayoutEditor({}, { posicoes: gerarLayoutAutomatico(nodes) }) };
 }
 
+function comLayoutAutomaticoEConfig(nodes: NoFluxo[], config: Record<string, unknown>): FluxoDefinicao {
+  return { nodes, edges: [], config: escreverLayoutEditor(config, { posicoes: gerarLayoutAutomatico(nodes) }) };
+}
+
+function gerarModeloComercial(tipo: "follow-up" | "sem-responsavel" | "qualificado"): FluxoDefinicao {
+  const gatilho = {
+    tipo: "kanban_stage_changed",
+    config: {
+      pipelineId: "",
+      etapaId: "",
+      modo: tipo === "sem-responsavel" ? "permanencia" : "entrada",
+      tempoSegundos: tipo === "sem-responsavel" ? 900 : 0,
+      reentrada: "por_entrada",
+      pararAoSair: true,
+      pararAoResponder: true,
+      respeitarHorario: true,
+      aceitarOrigemAutomacao: false,
+    },
+  };
+
+  if (tipo === "sem-responsavel") {
+    return comLayoutAutomaticoEConfig([
+      { id: "inicio", tipo: "inicio", proximo: "sem_responsavel" },
+      { id: "sem_responsavel", tipo: "condicao", variavel: "responsavel_id", operador: "nao_existe", seVerdadeiro: "alertar", seFalso: "fim" },
+      { id: "alertar", tipo: "acao_comercial", acao: "alerta", valor: "Oportunidade sem responsável há 15 minutos: {nome}.", proximo: "fim" },
+      { id: "fim", tipo: "finalizar", motivo: "verificacao_sem_responsavel_concluida" },
+    ], { gatilho });
+  }
+
+  if (tipo === "qualificado") {
+    return comLayoutAutomaticoEConfig([
+      { id: "inicio", tipo: "inicio", proximo: "alertar" },
+      { id: "alertar", tipo: "acao_comercial", acao: "alerta", valor: "Acompanhar oportunidade qualificada de {nome}.", proximo: "fim" },
+      { id: "fim", tipo: "finalizar", motivo: "acompanhamento_qualificado_criado" },
+    ], { gatilho });
+  }
+
+  return comLayoutAutomaticoEConfig([
+    { id: "inicio", tipo: "inicio", proximo: "espera_1_dia" },
+    { id: "espera_1_dia", tipo: "espera", duracaoSegundos: 86400, proximo: "sem_resposta_1" },
+    { id: "sem_resposta_1", tipo: "condicao", variavel: "paciente_respondeu", operador: "igual", valor: "false", seVerdadeiro: "mensagem_1", seFalso: "fim_respondeu" },
+    { id: "mensagem_1", tipo: "mensagem", texto: "Olá, {primeiro_nome}! Ficou alguma dúvida sobre seu orçamento? Se quiser, posso pedir para nossa equipe falar com você.", proximo: "espera_2_dias" },
+    { id: "espera_2_dias", tipo: "espera", duracaoSegundos: 172800, proximo: "sem_resposta_2" },
+    { id: "sem_resposta_2", tipo: "condicao", variavel: "paciente_respondeu", operador: "igual", valor: "false", seVerdadeiro: "mensagem_2", seFalso: "fim_respondeu" },
+    { id: "mensagem_2", tipo: "mensagem", texto: "Oi, {primeiro_nome}. Estou passando para saber se ainda posso ajudar com seu tratamento. Se preferir, responda quando for melhor para você.", proximo: "fim_sem_resposta" },
+    { id: "fim_respondeu", tipo: "finalizar", motivo: "paciente_respondeu" },
+    { id: "fim_sem_resposta", tipo: "finalizar", motivo: "follow_up_concluido" },
+  ], { gatilho });
+}
+
 export function definicaoPadrao(): FluxoDefinicao {
   return comLayoutAutomatico([
     { id: "inicio", tipo: "inicio", proximo: "fim" },
@@ -179,6 +229,9 @@ function gerarSolicitacaoAvaliacaoGoogle(): FluxoDefinicao {
 }
 
 export const TEMPLATES_ODONTO: TemplateFluxo[] = [
+  { id: "kanban-follow-up", nome: "Follow-up de orçamento", descricao: "Aguarda 1 dia, acompanha o orçamento e verifica novamente após 2 dias. Escolha pipeline e etapa antes de publicar.", gerarDefinicao: () => gerarModeloComercial("follow-up") },
+  { id: "kanban-sem-responsavel", nome: "Lead sem responsável", descricao: "Após 15 minutos, cria alerta na Central se a oportunidade continuar sem responsável.", gerarDefinicao: () => gerarModeloComercial("sem-responsavel") },
+  { id: "kanban-qualificado", nome: "Acompanhamento de qualificado", descricao: "Solicita acompanhamento da equipe pela Central de Alertas. Escolha pipeline e etapa.", gerarDefinicao: () => gerarModeloComercial("qualificado") },
   {
     id: "atendimento-inicial",
     nome: "Atendimento inicial",

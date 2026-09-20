@@ -29,6 +29,9 @@ import type { AgenteIA } from "@/lib/agentes";
 import { STATUS_CONFIG, STATUS_ORDEM } from "@/lib/status";
 import { PRIORIDADE_CONFIG, PRIORIDADE_ORDEM } from "@/lib/prioridade";
 
+import { CampoDuracao, CamposGatilhoComercial, CamposAcaoComercial, useOpcoesComerciais } from "@/components/fluxos/FluxoCamposComerciais";
+import { CAMPOS_COMERCIAIS } from "@/lib/fluxo-comercial-regras";
+
 type Aba = "no" | "gatilho";
 
 const CLASSE_INPUT = "w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm focus:border-teal-600 focus:outline-none";
@@ -59,27 +62,18 @@ function AbaBotao({ label, ativa, onClick }: { label: string; ativa: boolean; on
 
 function PropriedadesMensagem({ no, onAtualizar }: { no: NoMensagem; onAtualizar: (no: NoFluxo) => void }) {
   return (
-    <Campo label="Texto da mensagem" hint="Variáveis: {nome}, {primeiro_nome}, {telefone} e as que você definir em Condição">
+    <Campo label="Texto da mensagem" hint="Variáveis: {nome}, {primeiro_nome}, {clinica_nome}, {responsavel}, {interesse}, {etapa}, {oportunidade}">
       <textarea value={no.texto} onChange={(e) => onAtualizar({ ...no, texto: e.target.value })} rows={6} className={CLASSE_INPUT} />
     </Campo>
   );
 }
 
 function PropriedadesEspera({ no, onAtualizar }: { no: NoEspera; onAtualizar: (no: NoFluxo) => void }) {
-  return (
-    <Campo label="Duração (segundos)">
-      <input
-        type="number"
-        min={1}
-        value={no.duracaoSegundos}
-        onChange={(e) => onAtualizar({ ...no, duracaoSegundos: Math.max(1, Number(e.target.value) || 1) })}
-        className={CLASSE_INPUT}
-      />
-    </Campo>
-  );
+  return <CampoDuracao segundos={no.duracaoSegundos} mudar={duracaoSegundos=>onAtualizar({...no,duracaoSegundos})} />;
 }
 
 const OPERADORES: { valor: OperadorCondicao; label: string }[] = [
+  { valor: "maior", label: "maior que" }, { valor: "menor", label: "menor que" }, { valor: "maior_igual", label: "pelo menos" }, { valor: "menor_igual", label: "no máximo" }, { valor: "contem_item", label: "inclui item" },
   { valor: "igual", label: "igual a" },
   { valor: "diferente", label: "diferente de" },
   { valor: "contem", label: "contém" },
@@ -88,11 +82,12 @@ const OPERADORES: { valor: OperadorCondicao; label: string }[] = [
 ];
 
 function PropriedadesCondicao({ no, onAtualizar }: { no: NoCondicao; onAtualizar: (no: NoFluxo) => void }) {
-  const precisaValor = no.operador === "igual" || no.operador === "diferente" || no.operador === "contem";
+  const precisaValor = !(["existe", "nao_existe"] as string[]).includes(no.operador);
   return (
     <div className="space-y-3">
-      <Campo label="Variável" hint="Nome sem chaves, ex: especialidade">
-        <input value={no.variavel} onChange={(e) => onAtualizar({ ...no, variavel: e.target.value })} className={CLASSE_INPUT} />
+      <Campo label="Condição" hint="Para sim/não, use true ou false. Campos comerciais são atualizados a cada passo.">
+        <input list="campos-condicao-comercial" value={no.variavel} onChange={(e) => onAtualizar({ ...no, variavel: e.target.value })} className={CLASSE_INPUT} />
+        <datalist id="campos-condicao-comercial">{CAMPOS_COMERCIAIS.map(([valor,label])=><option key={valor} value={valor}>{label}</option>)}</datalist>
       </Campo>
       <Campo label="Operador">
         <select
@@ -540,6 +535,7 @@ export function FluxoPainelPropriedades({
   onAtualizarNo,
   gatilhoTipo,
   gatilhoPalavras,
+  gatilhoConfig,
   onMudarGatilho,
   etiquetas,
   atendentes,
@@ -549,11 +545,13 @@ export function FluxoPainelPropriedades({
   onAtualizarNo: (no: NoFluxo) => void;
   gatilhoTipo: string;
   gatilhoPalavras: string;
-  onMudarGatilho: (tipo: string, palavras: string) => void;
+  gatilhoConfig: Record<string, unknown>;
+  onMudarGatilho: (tipo: string, palavras: string, config?: Record<string, unknown>) => void;
   etiquetas: Etiqueta[];
   atendentes: Atendente[];
   agentes: AgenteIA[];
 }) {
+  const { opcoes, erro: erroOpcoes } = useOpcoesComerciais();
   const [aba, setAba] = useState<Aba>("no");
 
   return (
@@ -591,6 +589,7 @@ export function FluxoPainelPropriedades({
             {noSelecionado.tipo === "persistir_resposta_pesquisa" && (
               <PropriedadesPersistirRespostaPesquisa no={noSelecionado} onAtualizar={onAtualizarNo} />
             )}
+            {noSelecionado.tipo === "acao_comercial" && opcoes && <CamposAcaoComercial no={noSelecionado} mudar={onAtualizarNo} opcoes={opcoes} pipelineId={String(gatilhoConfig.pipelineId??"")} atendentes={atendentes} />}
             {noSelecionado.tipo === "inicio" && (
               <p className="text-sm text-neutral-500">O nó de início não tem campos — configure o gatilho na aba ao lado.</p>
             )}
@@ -603,6 +602,7 @@ export function FluxoPainelPropriedades({
         <div className="space-y-3">
           <Campo label="Tipo de gatilho" hint="Define quando este fluxo começa sozinho, ao publicar">
             <select value={gatilhoTipo} onChange={(e) => onMudarGatilho(e.target.value, gatilhoPalavras)} className={CLASSE_INPUT}>
+              <option value="kanban_stage_changed">Oportunidade no Kanban</option>
               <option value="manual">Manual (só por teste, sem gatilho automático)</option>
               <option value="nova_conversa">Nova conversa</option>
               <option value="primeira_mensagem">Primeira mensagem</option>
@@ -610,6 +610,7 @@ export function FluxoPainelPropriedades({
               <option value="solicitacao_avaliacao_google">Solicitação de avaliação Google (evento interno)</option>
             </select>
           </Campo>
+          {gatilhoTipo === "kanban_stage_changed" && (opcoes ? <CamposGatilhoComercial config={gatilhoConfig} opcoes={opcoes} mudar={config=>onMudarGatilho(gatilhoTipo,gatilhoPalavras,config)} /> : <p className="text-xs text-neutral-600">{erroOpcoes ? "Não foi possível carregar as etapas. Reabra o editor para tentar novamente." : "Carregando etapas…"}</p>)}
           {gatilhoTipo === "palavra_chave" && (
             <Campo label="Palavras-chave" hint="separadas por vírgula — o casamento ignora acento e maiúscula/minúscula">
               <input value={gatilhoPalavras} onChange={(e) => onMudarGatilho(gatilhoTipo, e.target.value)} className={CLASSE_INPUT} />

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { DetalheOportunidade, Estagio } from "@/lib/kanban";
 import type { CardKanban } from "@/lib/kanban-regras";
 import { formatDataHora, formatTelefone } from "@/lib/tempo";
+import { mensagemMotivoComercial } from "@/lib/fluxo-comercial-regras";
 
 type Opcao = { id: string; nome: string };
 
@@ -193,6 +194,26 @@ export function KanbanPainel({
             </li>
           ))}
         </ol>
+
+        {(detalhe?.automacoes.length ?? 0) > 0 && <>
+          <h3 className="mt-6 text-sm font-semibold text-neutral-800">Automações</h3>
+          <ol className="mt-2 space-y-3 border-l border-neutral-200 pl-4">
+            {[...(detalhe?.automacoes ?? [])].reverse().map((item) => (
+              <li key={item.id} className="relative text-sm">
+                <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-violet-500" />
+                <p className="text-xs text-neutral-400">{formatDataHora(item.em)} · {item.fluxoNome}</p>
+                <p className="text-neutral-800">
+                  {item.tipo === "iniciada" && "Automação iniciada"}
+                  {item.tipo === "mensagem_enviada" && "Mensagem enviada"}
+                  {item.tipo === "concluida" && "Automação concluída"}
+                  {item.tipo === "interrompida" && "Automação interrompida"}
+                  {item.tipo === "falhou" && "Automação precisa de atenção"}
+                </p>
+                {item.motivo && <p className="text-xs text-neutral-500">{mensagemMotivoComercial(item.motivo)}</p>}
+              </li>
+            ))}
+          </ol>
+        </>}
       </aside>
     </div>
   );
