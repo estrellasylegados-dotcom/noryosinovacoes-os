@@ -20,6 +20,7 @@ import { categoriaDoGatilho } from "@/lib/fluxo-gatilhos";
  */
 
 export type ResultadoEventoAutomacao =
+  | { resultado: "evento_persistido" }
   | { resultado: "execucao_iniciada"; execucaoId: string }
   | { resultado: "idempotencia_existente" }
   | { resultado: "fluxo_nao_encontrado" }
@@ -67,6 +68,9 @@ export async function emitirEventoAutomacao(input: {
 }): Promise<ResultadoEventoAutomacao> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { resultado: "erro", detalhe: "backend_unavailable" };
+  // V36: o histórico grava este evento na mesma transação. O worker consome a outbox;
+  // este caminho pós-commit não pode iniciar uma segunda execução nem escolher outro canal.
+  if (input.tipo === "kanban_stage_changed") return { resultado: "evento_persistido" };
 
   if (categoriaDoGatilho(input.tipo) !== "interno") {
     return { resultado: "erro", detalhe: "tipo_nao_e_evento_interno" };

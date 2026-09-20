@@ -2,18 +2,19 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { assumirControle, liberarControle } from "@/lib/dono-conversa";
 import { enviarPeloCanal, enviarPeloCanalPrincipal, isErroDeCanal } from "@/lib/canais-envio";
 import { abrirAlertaPorEvento } from "@/lib/alertas";
-import { chaves } from "@/lib/alertas-tipos";
-import { buscarCanalDaConversa, type Canal } from "@/lib/canais";
+import { buscarCanalDaConversa } from "@/lib/canais";
 import { atribuirPorAutomacao } from "@/lib/atribuicao";
-import { detectarPedidoOptOut } from "@/lib/opt-out";
 import { encontrarNoInicio, validarFormaDefinicao, type FluxoDefinicao } from "@/lib/fluxo-tipos";
-import { processarNo, type AcaoCrm, type ContadoresNo, type ContextoPaciente, type EntradaProcessamento, type EstadoExecucao } from "@/lib/fluxo-motor";
+import { processarNo, type AcaoCrm, type ContadoresNo, type ContextoPaciente, type EntradaProcessamento } from "@/lib/fluxo-motor";
 import { combinaGatilhoMensagem, dedupeKeyParaGatilho } from "@/lib/fluxo-gatilhos";
 import { adicionarEtiquetaConversa, removerEtiquetaConversa } from "@/lib/etiquetas";
 import { atualizarStatus } from "@/lib/conversas";
 import { isPrioridadeValida } from "@/lib/prioridade";
 import { buscarAgente } from "@/lib/agentes";
-import { buscarClinicaAtual } from "@/lib/clinica";
+import { getClinicaId } from "@/lib/clinica";
+import { automacoesComerciaisHabilitadas, carregarVariaveisComerciais, type ContextoComercial } from "@/lib/fluxo-comercial";
+import { obterOuCriarConversaDoPaciente } from "@/lib/conversas";
+import { avaliarHorarioAtendimento, calcularProximoHorario, buscarConfiguracaoHorario } from "@/lib/horario-atendimento";
 import { classificarNps } from "@/lib/nps";
 import { buscarConfigReputacao } from "@/lib/reputacao-config";
 import { calcularExpiracaoToken, gerarTrackingToken, montarUrlRastreavel } from "@/lib/reputacao-tracking";
@@ -37,22 +38,6 @@ import { calcularExpiracaoToken, gerarTrackingToken, montarUrlRastreavel } from 
  */
 
 type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseServerClient>>;
-
-const TENTATIVAS_ENVIO = 3;
-const CODIGOS_RETRY_ENVIO = new Set(["http_429", "http_500", "http_502", "http_503", "http_504", "request_error"]);
-
-/** Manda uma mensagem com retry curto em falha transiente da Evolution (429/5xx/timeout) — nunca em 4xx de auth. */
-async function enviarComRetry(canal: Canal, telefone: string, texto: string): Promise<{ ok: boolean; error?: string; mensagemId?: string | null }> {
-  let ultimoErro: string | undefined;
-  for (let tentativa = 1; tentativa <= TENTATIVAS_ENVIO; tentativa++) {
-    const resultado = await enviarPeloCanal(canal, telefone, texto);
-    if (resultado.ok) return resultado;
-    ultimoErro = resultado.error;
-    if (!resultado.error || !CODIGOS_RETRY_ENVIO.has(resultado.error) || tentativa === TENTATIVAS_ENVIO) break;
-    await new Promise((resolve) => setTimeout(resolve, 500 * tentativa));
-  }
-  return { ok: false, error: ultimoErro };
-}
 
 /**
  * Aplica o efeito de um bloco de Ações CRM/Humano+IA contra o banco (e, pro
@@ -87,6 +72,7 @@ async function aplicarAcaoCrm(
   acao: AcaoCrm
 ): Promise<{ donoTransferido: boolean; variaveisExtra?: Record<string, string> }> {
   switch (acao.tipo) {
+    case "acao_comercial": throw new Error("acao_comercial_exige_contexto");
     case "adicionar_etiqueta": {
       if (!acao.etiquetaId) return { donoTransferido: false }; // nó publicado sem etiqueta não deveria existir (validarGrafo barra), defesa extra
       const resultado = await adicionarEtiquetaConversa(clinicaId, conversaId, acao.etiquetaId);
@@ -291,7 +277,11 @@ type ContextoExecucao = {
   clinicaId: string;
   fluxoId: string;
   versaoId: string;
-  conversaId: string;
+  conversaId: string | null;
+  oportunidadeId: string | null;
+  comercial: ContextoComercial | null;
+  criadoEm: string;
+  marcoRespostaEm: string;
   pacienteId: string | null;
   noAtualId: string | null;
   variaveis: Record<string, string>;
@@ -310,7 +300,7 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
     // só na validação manual (a query falhava em silêncio, `error` nunca era
     // checado aqui, só `data`).
     .select(
-      "id, fluxo_id, versao_id, conversa_id, paciente_id, no_atual_id, variaveis, passos_executados, is_test, conversas!conversa_id(telefone)"
+      "id, fluxo_id, versao_id, conversa_id, paciente_id, no_atual_id, variaveis, passos_executados, is_test, oportunidade_id, contexto_comercial, created_at, marco_resposta_em, conversas!conversa_id(telefone)"
     )
     .eq("id", execucaoId)
     .eq("clinica_id", clinicaId)
@@ -327,6 +317,8 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
     .from("fluxo_versoes")
     .select("definicao")
     .eq("id", execucao.versao_id as string)
+    .eq("clinica_id", clinicaId)
+    .eq("fluxo_id", execucao.fluxo_id as string)
     .maybeSingle();
   if (erroVersao || !versao) {
     console.error(
@@ -345,7 +337,7 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
   let nomePaciente: string | null = null;
   const pacienteId = (execucao.paciente_id as string | null) ?? null;
   if (pacienteId) {
-    const { data: paciente } = await supabase.from("pacientes").select("nome").eq("id", pacienteId).maybeSingle();
+    const { data: paciente } = await supabase.from("pacientes").select("nome").eq("id", pacienteId).eq("clinica_id", clinicaId).maybeSingle();
     nomePaciente = (paciente?.nome as string | null) ?? null;
   }
 
@@ -353,14 +345,18 @@ async function carregarContextoExecucao(supabase: SupabaseClient, clinicaId: str
   const telefone = (Array.isArray(conversaEmbutida) ? conversaEmbutida[0]?.telefone : conversaEmbutida?.telefone) ?? "";
 
   // Cacheado em processo (buscarClinicaAtual) — custo real só na 1ª chamada.
-  const clinicaAtual = await buscarClinicaAtual();
+  const { data: clinicaAtual } = await supabase.from("clinicas").select("nome").eq("id", clinicaId).maybeSingle();
 
   return {
     execucaoId: execucao.id as string,
     clinicaId,
     fluxoId: execucao.fluxo_id as string,
     versaoId: execucao.versao_id as string,
-    conversaId: execucao.conversa_id as string,
+    conversaId: (execucao.conversa_id as string | null) ?? null,
+    oportunidadeId: (execucao.oportunidade_id as string | null) ?? null,
+    comercial: (execucao.contexto_comercial as ContextoComercial | null) ?? null,
+    criadoEm: execucao.created_at as string,
+    marcoRespostaEm: (execucao.marco_resposta_em as string | null) ?? execucao.created_at as string,
     pacienteId,
     noAtualId: (execucao.no_atual_id as string | null) ?? null,
     variaveis: (execucao.variaveis as Record<string, string> | null) ?? {},
@@ -378,6 +374,7 @@ async function contarNo(supabase: SupabaseClient, execucaoId: string, noId: stri
     .select("tipo_evento")
     .eq("execucao_id", execucaoId)
     .eq("no_id", noId)
+    .eq("status", "concluido")
     .order("sequencia", { ascending: true });
 
   let visitas = 0;
@@ -392,274 +389,155 @@ async function contarNo(supabase: SupabaseClient, execucaoId: string, noId: stri
   return { visitas, tentativasInvalidas };
 }
 
-const ESTADOS_TERMINAIS: EstadoExecucao[] = ["completed", "cancelled", "failed", "transferred"];
 
-/**
- * Processa UM passo de uma execução já reivindicada (estado já virou
- * `running`, `passos_executados` já incrementado por quem chamou). Faz o
- * `INSERT` do evento (`em_andamento` → `concluido`/`falhou`), chama a lógica
- * pura, checa opt-out antes de mandar mensagem, e persiste o resultado.
- * Compartilhada pelas 3 origens: poller, handoff síncrono do webhook, e o 1º
- * passo logo após `iniciarExecucaoFluxo`.
- */
-async function processarPassoReivindicado(clinicaId: string, execucaoId: string, entrada: EntradaProcessamento): Promise<void> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return;
+type Claim = { execucaoId: string; token: string; entrada: EntradaProcessamento };
 
-  const contexto = await carregarContextoExecucao(supabase, clinicaId, execucaoId);
-  if (!contexto || !contexto.noAtualId) {
-    await supabase
-      .from("fluxo_execucoes")
-      .update({ estado: "failed", erro: "contexto_invalido", finalizado_em: new Date().toISOString() })
-      .eq("id", execucaoId);
-    return;
-  }
-
-  const sequencia = contexto.passosExecutados; // já pós-incremento (feito pelo claim)
-  const { error: erroEvento } = await supabase.from("fluxo_execucao_eventos").insert({
-    execucao_id: execucaoId,
-    clinica_id: clinicaId,
-    sequencia,
-    no_id: contexto.noAtualId,
-    tipo_evento: "processando",
-    status: "em_andamento",
-    is_test: contexto.isTest,
-  });
-  if (erroEvento && erroEvento.code !== "23505") {
-    console.error("[fluxo-execucoes] insert_evento_failed", JSON.stringify({ execucaoId, code: erroEvento.code }));
-  }
-
-  const contadores = await contarNo(supabase, execucaoId, contexto.noAtualId);
-  // A visita/tentativa que este passo representa ainda não está no histórico
-  // lido acima (o evento 'em_andamento' desta chamada foi gravado com
-  // tipo_evento='processando', não com o tipo final) — contarNo reflete o
-  // estado ANTES deste passo, que é exatamente o que `processarNo` espera.
-  const resultado = processarNo(contexto.definicao, contexto.noAtualId, contexto.variaveis, entrada, contexto.paciente, contadores);
-
-  if (!resultado.ok) {
-    await supabase
-      .from("fluxo_execucao_eventos")
-      .update({ status: "falhou", erro: resultado.erro, updated_at: new Date().toISOString() })
-      .eq("execucao_id", execucaoId)
-      .eq("sequencia", sequencia);
-    await supabase
-      .from("fluxo_execucoes")
-      .update({ estado: "failed", erro: resultado.erro, finalizado_em: new Date().toISOString() })
-      .eq("id", execucaoId);
-    await liberarControle(clinicaId, contexto.conversaId, { fluxo_execucao_ativa_id: null });
-    return;
-  }
-
-  let donoTransferidoPorAcao = false;
-  let variaveisExtra: Record<string, string> = {};
-  if (resultado.acaoCrm) {
-    const efeito = await aplicarAcaoCrm(
-      supabase,
-      clinicaId,
-      contexto.conversaId,
-      { pacienteId: contexto.pacienteId, fluxoId: contexto.fluxoId, execucaoId: contexto.execucaoId, variaveis: contexto.variaveis },
-      resultado.acaoCrm
-    );
-    donoTransferidoPorAcao = efeito.donoTransferido;
-    variaveisExtra = efeito.variaveisExtra ?? {};
-  }
-
-  // Opt-out checado AQUI, imediatamente antes de qualquer envio — nunca
-  // reimplementa detecção, sempre reusa src/lib/opt-out.ts. Se o paciente já
-  // saiu, a execução cancela em vez de mandar (a visão pede as duas coisas:
-  // nunca enviar E cancelar pendências — o cancelamento no meio de uma espera
-  // longa é coberto à parte, em `aplicarOptOut`, src/lib/opt-out.ts).
-  if (resultado.mensagensParaEnviar.length > 0 && contexto.pacienteId) {
-    const { data: paciente } = await supabase.from("pacientes").select("opt_out_em").eq("id", contexto.pacienteId).maybeSingle();
-    if (paciente?.opt_out_em) {
-      await supabase
-        .from("fluxo_execucao_eventos")
-        .update({ status: "falhou", erro: "opt_out", updated_at: new Date().toISOString() })
-        .eq("execucao_id", execucaoId)
-        .eq("sequencia", sequencia);
-      await supabase
-        .from("fluxo_execucoes")
-        .update({ estado: "cancelled", erro: "opt_out", finalizado_em: new Date().toISOString() })
-        .eq("id", execucaoId);
-      await liberarControle(clinicaId, contexto.conversaId, { fluxo_execucao_ativa_id: null });
-      return;
-    }
-  }
-
-  // Canal da conversa resolvido UMA vez — o Fluxo responde pelo mesmo número por onde o paciente falou.
-  const canalEnvio = resultado.mensagensParaEnviar.length > 0 ? await buscarCanalDaConversa(clinicaId, contexto.conversaId) : null;
-
-  for (const texto of resultado.mensagensParaEnviar) {
-    // Detecção de opt-out também vale pra resposta do PACIENTE que chega
-    // dentro de um menu (entrada.tipo === 'resposta_texto') — mesmo
-    // guard-rail do webhook, nunca reimplementado.
-    if (entrada.tipo === "resposta_texto" && detectarPedidoOptOut(entrada.texto)) break;
-
-    if (!canalEnvio) {
-      console.error("[fluxo-execucoes] envio_falhou", JSON.stringify({ execucaoId, error: "canal_nao_encontrado" }));
-      break;
-    }
-    const envio = await enviarComRetry(canalEnvio, contexto.paciente.telefone, texto);
-    if (!envio.ok) {
-      console.error("[fluxo-execucoes] envio_falhou", JSON.stringify({ execucaoId, error: envio.error ?? null }));
-      // Alerta SÓ na falha definitiva (enviarComRetry já esgotou as tentativas transitórias) e SÓ se a causa não for o
-      // canal fora do ar — esse já tem alerta próprio (canal_desconectado), repetir por mensagem seria ruído.
-      if (!isErroDeCanal(envio.error)) {
-        await abrirAlertaPorEvento(clinicaId, {
-          tipo: "mensagem_falha_definitiva",
-          chave: chaves.mensagemFalha("fluxo", `${execucaoId}:${sequencia}`),
-          severidade: "atencao",
-          titulo: "Mensagem automática não entregue",
-          descricao: "O fluxo tentou enviar uma mensagem ao paciente e não conseguiu, mesmo após novas tentativas. Confira a conversa e, se preciso, envie manualmente.",
-          tipoEntidade: "conversa",
-          entidadeId: contexto.conversaId,
-          responsavelId: null,
-          dados: { origem: "fluxo", execucaoId, erro: (envio.error ?? "envio_falhou").slice(0, 80) },
-        });
+async function processarPassoReivindicado(clinicaId: string, execucaoId: string, entrada: EntradaProcessamento, token: string): Promise<void> {
+  const db = getSupabaseServerClient();
+  if (!db) return;
+  let contexto: ContextoExecucao | null = null;
+  let sequencia: number | null = null;
+  const autorizar = async (contato: boolean) => {
+    const r = await db.rpc("fluxo_autorizar_passo", { p_clinica: clinicaId, p_execucao: execucaoId, p_token: token, p_contato: contato, p_resposta: entrada.tipo === "resposta_texto" });
+    if (r.error) throw new Error("guarda_indisponivel");
+    return r.data as { ok: boolean; error?: string };
+  };
+  const concluir = async (patch: Record<string, unknown>) => {
+    const r = await db.rpc("fluxo_concluir_passo", { p_clinica: clinicaId, p_execucao: execucaoId, p_token: token, p_patch: patch, p_resposta: entrada.tipo === "resposta_texto" });
+    if (r.error) throw new Error("confirmacao_passo_falhou");
+    return r.data === true;
+  };
+  const adiar = async (ate: string, motivo: string) => {
+    if (!contexto) return;
+    await db.from("fluxo_execucao_eventos").insert({ execucao_id: execucaoId, clinica_id: clinicaId, sequencia: contexto.passosExecutados,
+      tipo_evento: motivo, status: "concluido", is_test: contexto.isTest });
+    await concluir({ estado: "waiting_time", no_atual_id: contexto.noAtualId, aguardando_ate: ate });
+    console.log("[fluxo] adiado", JSON.stringify({ execucaoId, motivo, ate }));
+  };
+  try {
+    contexto = await carregarContextoExecucao(db, clinicaId, execucaoId);
+    if (!contexto?.noAtualId) throw new Error("contexto_invalido");
+    sequencia = contexto.passosExecutados;
+    if (!(await autorizar(false)).ok) return;
+    if (contexto.oportunidadeId) contexto.variaveis = { ...contexto.variaveis, ...await carregarVariaveisComerciais(db, clinicaId, contexto.oportunidadeId, contexto.conversaId, contexto.marcoRespostaEm, execucaoId) };
+    const contadores = await contarNo(db, execucaoId, contexto.noAtualId);
+    const resultado = processarNo(contexto.definicao, contexto.noAtualId, contexto.variaveis, entrada, contexto.paciente, contadores);
+    if (!resultado.ok) throw new Error(resultado.erro);
+    const temContato = resultado.mensagensParaEnviar.length > 0;
+    if (contexto.isTest && (temContato || resultado.acaoCrm?.tipo === "criar_alerta_interno") && process.env.FLUXOS_TESTE_ENVIO_REAL !== "true") throw new Error("teste_envio_nao_autorizado");
+    if (contexto.comercial && temContato) {
+      if (contexto.comercial.config.respeitarHorario) {
+        const horario = await buscarConfiguracaoHorario(clinicaId);
+        if (!horario) throw new Error("horario_indisponivel");
+        if (!avaliarHorarioAtendimento(horario, new Date()).dentro) {
+          const proximo = calcularProximoHorario(horario, new Date());
+          if (!proximo) throw new Error("horario_sem_abertura");
+          await adiar(proximo.toISOString(), "aguardando_horario"); return;
+        }
       }
-      continue; // 1 bloco falhando não derruba os outros nem o avanço do fluxo — mesmo critério de agentes.ts:enviarBlocos
+      if (!contexto.conversaId && contexto.pacienteId) {
+        const conversa = await obterOuCriarConversaDoPaciente(clinicaId, contexto.pacienteId);
+        if (!conversa) throw new Error("canal_nao_encontrado");
+        const vinculo = await db.from("fluxo_execucoes").update({ conversa_id: conversa }).eq("id", execucaoId).eq("clinica_id", clinicaId).eq("claim_token", token).eq("estado", "running").select("id").maybeSingle();
+        if (vinculo.error || !vinculo.data) throw new Error("claim_perdido");
+        contexto.conversaId = conversa;
+        const c = await db.from("conversas").select("telefone").eq("id", conversa).eq("clinica_id", clinicaId).maybeSingle();
+        contexto.paciente.telefone = c.data?.telefone ?? "";
+      }
     }
-    const agora = new Date().toISOString();
-    const { error: erroMensagem } = await supabase.from("mensagens").insert({
-      clinica_id: clinicaId,
-      conversa_id: contexto.conversaId,
-      direcao: "enviada",
-      tipo: "texto",
-      conteudo: texto,
-      evolution_message_id: envio.mensagemId ?? null,
-      timestamp_whatsapp: agora,
-    });
-    if (erroMensagem && erroMensagem.code !== "23505") {
-      console.error("[fluxo-execucoes] insert_mensagem_failed", JSON.stringify({ execucaoId, code: erroMensagem.code }));
+    if (temContato) {
+      const guarda = await autorizar(true);
+      if (!guarda.ok) {
+        if (guarda.error === "conversa_ocupada") {
+          if (Date.now() - Date.parse(contexto.criadoEm) > 7 * 86400000) throw new Error("conversa_ocupada");
+          await adiar(new Date(Date.now() + 60000).toISOString(), "aguardando_conversa");
+        }
+        return;
+      }
     }
-    await supabase.from("conversas").update({ ultima_mensagem_em: agora, updated_at: agora }).eq("id", contexto.conversaId);
+    const registro = await db.from("fluxo_execucao_eventos").insert({ execucao_id: execucaoId, clinica_id: clinicaId, sequencia,
+      no_id: contexto.noAtualId, tipo_evento: "processando", status: "em_andamento", is_test: contexto.isTest });
+    if (registro.error) {
+      // Evento existente NUNCA ? licen?a pra reaplicar efeito externo.
+      if (registro.error.code === "23505") return;
+      throw new Error("registro_passo_falhou");
+    }
+    let variaveisExtra: Record<string, string> = {};
+    if (resultado.acaoCrm) {
+      if (!(await autorizar(false)).ok) return;
+      if (resultado.acaoCrm.tipo === "acao_comercial") {
+        if (!contexto.oportunidadeId) throw new Error("acao_exige_oportunidade");
+        if (resultado.acaoCrm.acao === "alerta") {
+          const alerta = await abrirAlertaPorEvento(clinicaId, { tipo: "acompanhamento_comercial", chave: "comercial:" + execucaoId + ":" + sequencia,
+            severidade: "atencao", titulo: "Oportunidade precisa de acompanhamento", descricao: resultado.acaoCrm.valor,
+            tipoEntidade: "oportunidade", entidadeId: contexto.oportunidadeId, responsavelId: contexto.variaveis.responsavel_id || null, dados: { execucaoId } });
+          if (alerta.resultado === "erro") throw new Error("alerta_falhou");
+        } else {
+          const acao = await db.rpc("fluxo_aplicar_acao_comercial", { p_clinica: clinicaId, p_execucao: execucaoId, p_token: token, p_acao: resultado.acaoCrm });
+          if (acao.error || !acao.data?.ok) throw new Error(acao.data?.error ?? "acao_comercial_falhou");
+        }
+      } else {
+        if (!contexto.conversaId) throw new Error("acao_exige_conversa");
+        const efeito = await aplicarAcaoCrm(db, clinicaId, contexto.conversaId, { pacienteId: contexto.pacienteId, fluxoId: contexto.fluxoId, execucaoId, variaveis: contexto.variaveis }, resultado.acaoCrm);
+        variaveisExtra = efeito.variaveisExtra ?? {};
+      }
+    }
+    const canal = temContato && contexto.conversaId ? await buscarCanalDaConversa(clinicaId, contexto.conversaId) : null;
+    for (const texto of resultado.mensagensParaEnviar) {
+      if (!canal || !contexto.conversaId || !contexto.paciente.telefone) throw new Error("canal_nao_encontrado");
+      for (let tentativa = 1; tentativa <= 3; tentativa++) {
+        if (!(await autorizar(true)).ok) return;
+        const intencao = await db.from("fluxo_execucao_eventos").update({ tentativa, payload: { envio: "autorizado", canalId: canal.id }, updated_at: new Date().toISOString() }).eq("execucao_id", execucaoId).eq("clinica_id", clinicaId).eq("sequencia", sequencia);
+        if (intencao.error) throw new Error("intencao_envio_falhou");
+        const envio = await enviarPeloCanal(canal, contexto.paciente.telefone, texto);
+        if (!envio.ok) {
+          // 429 recusou o pedido. Timeout/5xx podem ter ocorrido AP?S aceita??o: n?o repetir.
+          if (envio.error === "http_429" && tentativa < 3) { await new Promise(r => setTimeout(r, tentativa * 500)); continue; }
+          const incerto = envio.error === "request_error" || /^http_5/.test(envio.error ?? "");
+          throw new Error(incerto ? "envio_incerto" : envio.error ?? "envio_falhou");
+        }
+        const agora = new Date().toISOString();
+        const mensagem = await db.from("mensagens").insert({ clinica_id: clinicaId, conversa_id: contexto.conversaId,
+          direcao: "enviada", tipo: "texto", conteudo: texto, evolution_message_id: envio.mensagemId ?? null, timestamp_whatsapp: agora });
+        if (mensagem.error && mensagem.error.code !== "23505") throw new Error("envio_incerto");
+        await db.from("conversas").update({ ultima_mensagem_em: agora, updated_at: agora }).eq("id", contexto.conversaId).eq("clinica_id", clinicaId);
+        const confirmado = await db.from("fluxo_execucao_eventos").update({ payload: { envio: "confirmado", mensagemId: envio.mensagemId, canalId: canal.id } }).eq("execucao_id", execucaoId).eq("sequencia", sequencia).eq("clinica_id", clinicaId);
+        if (confirmado.error) throw new Error("envio_incerto");
+        break;
+      }
+    }
+    const terminou = await concluir({ estado: resultado.novoEstado, no_atual_id: resultado.proximoNoId, aguardando_ate: resultado.aguardandoAte,
+      variaveis: { ...contexto.variaveis, ...resultado.variaveisAtualizadas, ...variaveisExtra }, motivo_finalizacao: resultado.motivoFinalizacao ?? null });
+    const registroFinal = await db.from("fluxo_execucao_eventos").update({ status: "concluido", tipo_evento: resultado.tipoEvento,
+      ...(resultado.payloadEvento ? { payload: resultado.payloadEvento } : {}), updated_at: new Date().toISOString() }).eq("execucao_id", execucaoId).eq("clinica_id", clinicaId).eq("sequencia", sequencia);
+    if (registroFinal.error) throw new Error("confirmacao_evento_falhou");
+    console.log("[fluxo] passo", JSON.stringify({ execucaoId, sequencia, tipo: resultado.tipoEvento, estado: resultado.novoEstado, atualizado: terminou }));
+  } catch (e) {
+    const erro = e instanceof Error ? e.message : "passo_falhou";
+    await concluir({ estado: "failed", no_atual_id: contexto?.noAtualId ?? null, erro, motivo_finalizacao: erro }).catch(() => undefined);
+    if (sequencia !== null) await db.from("fluxo_execucao_eventos").update({ status: "falhou", erro, updated_at: new Date().toISOString() }).eq("execucao_id", execucaoId).eq("clinica_id", clinicaId).eq("sequencia", sequencia);
+    console.error("[fluxo] falhou", JSON.stringify({ execucaoId, sequencia, erro }));
+    if (contexto && !isErroDeCanal(erro) && erro !== "claim_perdido" && erro !== "teste_envio_nao_autorizado") await abrirAlertaPorEvento(clinicaId, {
+      tipo: "fluxo_falhou", chave: "fluxo_falhou:" + execucaoId, severidade: "atencao", titulo: "Acompanhamento autom?tico interrompido",
+      descricao: erro === "envio_incerto" ? "Confira a última mensagem na conversa antes de retomar. A entrega não pôde ser confirmada." : "Não foi possível concluir uma automação. Confira o atendimento e peça apoio à equipe responsável.",
+      tipoEntidade: "fluxo_execucao", entidadeId: execucaoId, responsavelId: null, dados: { execucaoId } });
   }
-
-  const variaveisAtualizadas = { ...contexto.variaveis, ...resultado.variaveisAtualizadas, ...variaveisExtra };
-  const terminou = ESTADOS_TERMINAIS.includes(resultado.novoEstado);
-
-  await supabase
-    .from("fluxo_execucoes")
-    .update({
-      estado: resultado.novoEstado,
-      no_atual_id: resultado.proximoNoId,
-      aguardando_ate: resultado.aguardandoAte,
-      variaveis: variaveisAtualizadas,
-      updated_at: new Date().toISOString(),
-      ...(terminou ? { finalizado_em: new Date().toISOString(), motivo_finalizacao: resultado.motivoFinalizacao ?? null } : {}),
-    })
-    .eq("id", execucaoId);
-
-  await supabase
-    .from("fluxo_execucao_eventos")
-    .update({
-      status: "concluido",
-      tipo_evento: resultado.tipoEvento,
-      payload: resultado.payloadEvento ?? {},
-      updated_at: new Date().toISOString(),
-    })
-    .eq("execucao_id", execucaoId)
-    .eq("sequencia", sequencia);
-
-  if (terminou) {
-    if (donoTransferidoPorAcao) {
-      // iniciar_agente_ia já entregou dono_conversa pro agente (aplicarAcaoCrm,
-      // acima) — chamar liberarControle aqui devolveria pro humano por cima
-      // dessa entrega, um instante depois. Só solta o ponteiro da execução.
-      await supabase
-        .from("conversas")
-        .update({ fluxo_execucao_ativa_id: null })
-        .eq("id", contexto.conversaId)
-        .eq("clinica_id", clinicaId);
-    } else {
-      await liberarControle(clinicaId, contexto.conversaId, { fluxo_execucao_ativa_id: null });
-    }
-  }
 }
 
-/**
- * Reivindica a próxima execução "due" pra esta clínica (poller) — `UPDATE`
- * condicional otimista, não uma CTE (ver nota de topo do arquivo). Se outro
- * processo reivindicou entre o `SELECT` e o `UPDATE`, a condição
- * `estado=<lido>` não bate, 0 linhas afetadas, devolve `null` (o poller
- * segue pro próximo ciclo, mesmo padrão de "lock ocupado" de
- * `disparos-worker.ts`). Decide `entrada` a partir do estado PRÉ-claim: só
- * `waiting_input` chega aqui por timeout vencido (resposta de verdade nunca
- * passa por esta função — usa `resolverRespostaWaitingInput`, sem filtro de
- * tempo).
- */
-export async function reivindicarProximaExecucaoDue(clinicaId: string): Promise<{ execucaoId: string; entrada: EntradaProcessamento } | null> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return null;
-
-  const agora = new Date().toISOString();
-  const { data: candidato } = await supabase
-    .from("fluxo_execucoes")
-    .select("id, estado, passos_executados")
-    .eq("clinica_id", clinicaId)
-    .or(`estado.eq.queued,and(estado.in.(waiting_time,waiting_input),aguardando_ate.lte.${agora})`)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (!candidato) return null;
-
-  const estadoAntigo = candidato.estado as string;
-  const { data: reivindicada, error } = await supabase
-    .from("fluxo_execucoes")
-    .update({ estado: "running", passos_executados: (candidato.passos_executados as number) + 1, updated_at: agora })
-    .eq("id", candidato.id as string)
-    .eq("estado", estadoAntigo)
-    .select("id")
-    .maybeSingle();
-
-  if (error || !reivindicada) return null; // perdeu a corrida ou erro transiente — tenta de novo no próximo ciclo
-
-  const entrada: EntradaProcessamento = estadoAntigo === "waiting_input" ? { tipo: "timeout" } : { tipo: "avancar" };
-  return { execucaoId: candidato.id as string, entrada };
+export async function reivindicarProximaExecucaoDue(clinicaId: string): Promise<Claim | null> {
+  const db = getSupabaseServerClient();
+  if (!db) return null;
+  const { data, error } = await db.rpc("fluxo_reivindicar", { p_clinica: clinicaId, p_comerciais: automacoesComerciaisHabilitadas() });
+  if (error) throw new Error("claim_indisponivel");
+  return data ? { execucaoId: data.id, token: data.token, entrada: { tipo: data.entrada } } : null;
 }
-
-async function tentarReivindicarWaitingInput(clinicaId: string, execucaoId: string): Promise<boolean> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return false;
-
-  const { data: atual } = await supabase
-    .from("fluxo_execucoes")
-    .select("passos_executados")
-    .eq("id", execucaoId)
-    .eq("clinica_id", clinicaId)
-    .eq("estado", "waiting_input")
-    .maybeSingle();
-  if (!atual) return false;
-
-  const { data: reivindicada, error } = await supabase
-    .from("fluxo_execucoes")
-    .update({ estado: "running", passos_executados: (atual.passos_executados as number) + 1, updated_at: new Date().toISOString() })
-    .eq("id", execucaoId)
-    .eq("estado", "waiting_input")
-    .select("id")
-    .maybeSingle();
-  return !error && Boolean(reivindicada);
-}
-
-/**
- * Claim usado pelo webhook quando uma resposta de VERDADE chega — sem
- * filtro de `aguardando_ate` nenhum (a mensagem chegando É o sinal de
- * prontidão, não o tempo; um menu sem timeout tem `aguardando_ate=null`, que
- * nunca bateria num filtro de tempo — ver crm/docs/fluxo-conversa-arquitetura.md).
- * 2 tentativas curtas antes de desistir: sem lock nenhum nesse caminho, uma
- * colisão rara com o worker processando o mesmo passo (ex.: timeout venceu
- * no instante exato em que a resposta chegou) não deveria virar "o bot não
- * respondeu" pro paciente por só alguns milissegundos de diferença.
- */
 export async function resolverRespostaWaitingInput(clinicaId: string, execucaoId: string, texto: string): Promise<boolean> {
-  for (let tentativa = 1; tentativa <= 2; tentativa++) {
-    if (await tentarReivindicarWaitingInput(clinicaId, execucaoId)) {
-      await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "resposta_texto", texto });
-      return true;
-    }
-    if (tentativa < 2) await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  return false;
+  const db = getSupabaseServerClient();
+  if (!db) return false;
+  const { data, error } = await db.rpc("fluxo_reivindicar", { p_clinica: clinicaId, p_execucao: execucaoId, p_resposta: true });
+  if (error || !data) return false;
+  await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "resposta_texto", texto }, data.token);
+  return true;
 }
 
 export type GatilhoExecucao = { tipo: string; refId?: string | null; dedupeKey?: string | null };
@@ -706,6 +584,7 @@ export async function iniciarExecucaoFluxo(
     .eq("id", conversaId)
     .eq("clinica_id", clinicaId)
     .maybeSingle();
+  if (!conversa) return { ok: false, error: "conversa_invalida" };
   const donoAtual = (conversa?.dono_conversa as string | null) ?? "humano";
   // `&& !isTest`: sem isso, o contato de teste do editor fica bloqueado a
   // partir do 2º teste — toda execução termina devolvendo dono_conversa pra
@@ -717,8 +596,8 @@ export async function iniciarExecucaoFluxo(
   if (donoAtual === "agente_ia" && !podeInterromperAgenteIa) return { ok: false, error: "agente_ia_ativo" };
 
   const { data: versao } = await (isTest && versaoIdForcada
-    ? supabase.from("fluxo_versoes").select("id, definicao").eq("id", versaoIdForcada).eq("fluxo_id", fluxoId).maybeSingle()
-    : supabase.from("fluxo_versoes").select("id, definicao").eq("fluxo_id", fluxoId).eq("status", "publicada").maybeSingle());
+    ? supabase.from("fluxo_versoes").select("id, definicao").eq("id", versaoIdForcada).eq("fluxo_id", fluxoId).eq("clinica_id", clinicaId).maybeSingle()
+    : supabase.from("fluxo_versoes").select("id, definicao").eq("fluxo_id", fluxoId).eq("status", "publicada").eq("clinica_id", clinicaId).maybeSingle());
   if (!versao) return { ok: false, error: "sem_versao_publicada" };
 
   const forma = validarFormaDefinicao(versao.definicao);
@@ -759,7 +638,8 @@ export async function iniciarExecucaoFluxo(
   await assumirControle(clinicaId, conversaId, "fluxo", { fluxo_execucao_ativa_id: execucaoId });
 
   // Processa o nó "início" sincronamente — não espera o poller pro 1º passo.
-  await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "avancar" });
+  const claim = await supabase.rpc("fluxo_reivindicar", { p_clinica: clinicaId, p_execucao: execucaoId });
+  if (claim.data && !claim.error) await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "avancar" }, claim.data.token);
 
   return { ok: true, execucaoId };
 }
@@ -815,7 +695,7 @@ export async function tentarIniciarFluxoPorMensagem(
 export async function processarProximoPassoDevido(clinicaId: string): Promise<boolean> {
   const reivindicada = await reivindicarProximaExecucaoDue(clinicaId);
   if (!reivindicada) return false;
-  await processarPassoReivindicado(clinicaId, reivindicada.execucaoId, reivindicada.entrada);
+  await processarPassoReivindicado(clinicaId, reivindicada.execucaoId, reivindicada.entrada, reivindicada.token);
   return true;
 }
 
@@ -837,6 +717,8 @@ export async function recuperarExecucoesTravadas(): Promise<{ recuperadas: numbe
   const supabase = getSupabaseServerClient();
   if (!supabase) return { recuperadas: 0 };
 
+  const clinicaId = await getClinicaId();
+  if (!clinicaId) return { recuperadas: 0 };
   const corte = new Date(Date.now() - JANELA_GRACA_RECOVERY_MS).toISOString();
   let recuperadas = 0;
 
@@ -844,7 +726,8 @@ export async function recuperarExecucoesTravadas(): Promise<{ recuperadas: numbe
     .from("fluxo_execucao_eventos")
     .select("id, execucao_id")
     .eq("status", "em_andamento")
-    .lt("created_at", corte);
+    .eq("clinica_id", clinicaId)
+    .lt("updated_at", corte);
 
   for (const evento of eventosPresos ?? []) {
     await supabase
@@ -858,7 +741,8 @@ export async function recuperarExecucoesTravadas(): Promise<{ recuperadas: numbe
     .from("fluxo_execucoes")
     .select("id")
     .eq("estado", "running")
-    .lt("updated_at", corte);
+    .eq("clinica_id", clinicaId)
+    .lt("claim_ate", new Date().toISOString());
 
   for (const execucao of execucoesPresas ?? []) {
     recuperadas += await falharExecucaoPresa(supabase, execucao.id as string);
@@ -871,7 +755,7 @@ export async function recuperarExecucoesTravadas(): Promise<{ recuperadas: numbe
 async function falharExecucaoPresa(supabase: SupabaseClient, execucaoId: string): Promise<number> {
   const { data: execucao } = await supabase
     .from("fluxo_execucoes")
-    .select("id, clinica_id, conversa_id")
+    .select("id")
     .eq("id", execucaoId)
     .eq("estado", "running")
     .maybeSingle();
@@ -879,9 +763,8 @@ async function falharExecucaoPresa(supabase: SupabaseClient, execucaoId: string)
 
   await supabase
     .from("fluxo_execucoes")
-    .update({ estado: "failed", erro: "recovery_apos_restart", finalizado_em: new Date().toISOString() })
+    .update({ estado: "failed", erro: "recovery_apos_restart", finalizado_em: new Date().toISOString(), claim_token: null, claim_ate: null })
     .eq("id", execucaoId);
-  await liberarControle(execucao.clinica_id as string, execucao.conversa_id as string, { fluxo_execucao_ativa_id: null });
   return 1;
 }
 

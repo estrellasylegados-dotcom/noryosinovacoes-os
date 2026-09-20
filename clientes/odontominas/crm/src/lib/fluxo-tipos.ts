@@ -19,8 +19,11 @@
 import { isStatusValido, type StatusConversa } from "@/lib/status";
 import { isPrioridadeValida, type Prioridade } from "@/lib/prioridade";
 
-export type OperadorCondicao = "igual" | "diferente" | "contem" | "existe" | "nao_existe";
-const OPERADORES_CONDICAO: readonly OperadorCondicao[] = ["igual", "diferente", "contem", "existe", "nao_existe"];
+export type OperadorCondicao = "igual" | "diferente" | "contem" | "existe" | "nao_existe" | "maior" | "menor" | "maior_igual" | "menor_igual" | "contem_item";
+const OPERADORES_CONDICAO: readonly OperadorCondicao[] = ["igual", "diferente", "contem", "existe", "nao_existe", "maior", "menor", "maior_igual", "menor_igual", "contem_item"];
+
+export const ACOES_COMERCIAIS = ["mover_oportunidade", "responsavel", "interesse", "nota", "alerta"] as const;
+export type NoAcaoComercial = { id: string; tipo: "acao_comercial"; acao: (typeof ACOES_COMERCIAIS)[number]; valor: string; motivoPerdaId?: string; proximo: string };
 
 export type NoInicio = { id: string; tipo: "inicio"; proximo: string };
 export type NoMensagem = { id: string; tipo: "mensagem"; texto: string; proximo: string };
@@ -144,6 +147,7 @@ export type NoPersistirRespostaPesquisa = {
 };
 
 export type NoFluxo =
+  | NoAcaoComercial
   | NoInicio
   | NoMensagem
   | NoEspera
@@ -210,6 +214,10 @@ function validarNo(bruto: unknown, indice: number): NoFluxo | string {
   if (!ehString(n.id)) return `nó[${indice}]: id ausente ou vazio`;
 
   switch (n.tipo) {
+    case "acao_comercial":
+      if (!ACOES_COMERCIAIS.includes(n.acao as NoAcaoComercial["acao"]) || typeof n.valor !== "string" || n.valor.length > 2000 || !ehString(n.proximo)) return `nó ${n.id}: ação comercial inválida`;
+      if (n.motivoPerdaId !== undefined && typeof n.motivoPerdaId !== "string") return `nó ${n.id}: motivo inválido`;
+      return { id: n.id, tipo: "acao_comercial", acao: n.acao as NoAcaoComercial["acao"], valor: n.valor, motivoPerdaId: n.motivoPerdaId as string | undefined, proximo: n.proximo };
     case "inicio":
       if (!ehString(n.proximo)) return `nó ${n.id}: "proximo" ausente`;
       return { id: n.id, tipo: "inicio", proximo: n.proximo };

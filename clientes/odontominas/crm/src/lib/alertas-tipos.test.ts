@@ -57,7 +57,7 @@ describe("visibilidade por perfil (mesmas permissões do catálogo)", () => {
   it("atendente: SLA/sem responsável/Kanban só os próprios + fila; nunca canal, fluxo, técnico", () => {
     const a = ator("atendente");
     expect(escopoEquipe(a)).toBe(false);
-    expect(tiposVisiveis(a).sort()).toEqual(["conversa_sem_responsavel", "oportunidade_parada", "sla_limite"]);
+    expect(tiposVisiveis(a).sort()).toEqual(["acompanhamento_comercial", "conversa_sem_responsavel", "oportunidade_parada", "sla_limite"]);
     expect(podeVerAlerta(a, { tipo: "sla_limite", responsavelId: "u-1" })).toBe(true);
     expect(podeVerAlerta(a, { tipo: "sla_limite", responsavelId: null })).toBe(true);
     expect(podeVerAlerta(a, { tipo: "sla_limite", responsavelId: "outra" })).toBe(false);

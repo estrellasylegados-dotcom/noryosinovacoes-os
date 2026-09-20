@@ -1,6 +1,7 @@
 import { getClinicaId } from "@/lib/clinica";
 import { adquirirLock, liberarLock } from "@/lib/fluxo-lock";
 import { processarProximoPassoDevido, recuperarExecucoesTravadas } from "@/lib/fluxo-execucoes";
+import { processarEventoComercial } from "@/lib/fluxo-comercial";
 
 /**
  * Worker do motor de Fluxo de Conversa — Fase 2a (ver
@@ -33,8 +34,9 @@ async function ciclo(): Promise<void> {
     holder = lock.holder;
     clinicaComLock = clinicaId;
 
+    const evento = await processarEventoComercial(clinicaId);
     const processou = await processarProximoPassoDevido(clinicaId);
-    proximoDelayMs = processou ? POLL_IMEDIATO_MS : POLL_OCIOSO_MS;
+    proximoDelayMs = processou || evento ? POLL_IMEDIATO_MS : POLL_OCIOSO_MS;
   } catch (e) {
     console.error("[fluxo-worker] ciclo_falhou", JSON.stringify({ message: (e as Error).message }));
   } finally {

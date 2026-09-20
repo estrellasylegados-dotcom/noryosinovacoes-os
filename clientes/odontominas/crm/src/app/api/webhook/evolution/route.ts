@@ -240,12 +240,6 @@ export async function POST(request: Request) {
     }
   }
 
-  // Kanban: 1ª conversa válida de paciente sem oportunidade aberta -> oportunidade em "Novo" (idempotente,
-  // best-effort: nunca derruba o webhook). Só mensagem RECEBIDA conta como lead.
-  if (!fromMe && pacienteId && conversaId) {
-    await garantirOportunidadeDaConversa(clinicaId, pacienteId, conversaId, { conversaNova: conversaEraNova });
-  }
-
   if (statusAnterior && statusNovo && motivoEvento) {
     await supabase.from("eventos_funil").insert({
       clinica_id: clinicaId,
@@ -275,6 +269,12 @@ export async function POST(request: Request) {
     }
     logErr("insert:mensagens", mensagemError);
     return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 503 });
+  }
+
+  // Kanban: 1ª conversa válida de paciente sem oportunidade aberta -> oportunidade em "Novo" (idempotente,
+  // best-effort: nunca derruba o webhook). Só mensagem RECEBIDA conta como lead.
+  if (!fromMe && pacienteId && conversaId) {
+    await garantirOportunidadeDaConversa(clinicaId, pacienteId, conversaId, { conversaNova: conversaEraNova });
   }
 
   // Opt-out por palavra-chave (LGPD, ver src/lib/opt-out.ts): checado antes

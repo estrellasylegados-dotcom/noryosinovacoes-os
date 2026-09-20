@@ -1,3 +1,4 @@
+import { automacoesComerciaisHabilitadas, validarReferenciasComerciais } from "@/lib/fluxo-comercial";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { validarFormaDefinicao, type FluxoDefinicao } from "@/lib/fluxo-tipos";
 import { validarGrafo, type ProblemaGrafo } from "@/lib/fluxo-validador";
@@ -84,7 +85,7 @@ export async function criarFluxoComRascunhoInicial(
 
   const { data: fluxo, error: erroFluxo } = await supabase
     .from("fluxos")
-    .insert({ clinica_id: clinicaId, nome, descricao: dados.descricao?.trim() || null, status: "ativo", criado_por: criadoPor })
+    .insert({ clinica_id: clinicaId, nome, descricao: dados.descricao?.trim() || null, status: "pausado", criado_por: criadoPor })
     .select("id")
     .single();
 
@@ -273,17 +274,6 @@ export async function salvarRascunho(clinicaId: string, fluxoId: string, definic
   return { ok: true, versaoId: nova.id as string, numero, erros: grafo.erros, avisos: grafo.avisos };
 }
 
-type GatilhoRascunho = { tipo: string; config: Record<string, unknown> } | null;
-
-/** `config.gatilho` é o rascunho pendente do que "Publicar" denormaliza em `fluxos.gatilho_tipo/gatilho_config` — a versão continua sendo a fonte da verdade. */
-function lerGatilhoRascunho(config: Record<string, unknown>): GatilhoRascunho {
-  const bruto = config.gatilho;
-  if (typeof bruto !== "object" || bruto === null) return null;
-  const g = bruto as Record<string, unknown>;
-  if (typeof g.tipo !== "string" || !g.tipo) return null;
-  return { tipo: g.tipo, config: typeof g.config === "object" && g.config !== null ? (g.config as Record<string, unknown>) : {} };
-}
-
 export type ResultadoPublicar = { ok: boolean; versaoId?: string; erros?: ProblemaGrafo[]; error?: string };
 
 export async function publicarFluxo(clinicaId: string, fluxoId: string, atendenteId: string | null): Promise<ResultadoPublicar> {
@@ -307,81 +297,24 @@ export async function publicarFluxo(clinicaId: string, fluxoId: string, atendent
   const grafo = validarGrafo(forma.definicao);
   if (grafo.erros.length > 0) return { ok: false, erros: grafo.erros, error: "grafo_invalido" };
 
-  const agora = new Date().toISOString();
-
-  // Rebaixa a publicada atual (se houver) PRIMEIRO — nunca viola o índice
-  // único parcial "1 publicada por fluxo_id", mesmo que só por um instante.
-  const { error: erroRebaixar } = await supabase
-    .from("fluxo_versoes")
-    .update({ status: "substituida", updated_at: agora })
-    .eq("fluxo_id", fluxoId)
-    .eq("clinica_id", clinicaId)
-    .eq("status", "publicada");
-  if (erroRebaixar) {
-    console.error("[fluxo-versoes] rebaixar_publicada_failed", JSON.stringify({ fluxoId, code: erroRebaixar.code ?? null }));
-    return { ok: false, error: "persist_failed" };
-  }
-
-  const { error: erroPromover } = await supabase
-    .from("fluxo_versoes")
-    .update({ status: "publicada", publicado_por: atendenteId, publicado_em: agora, updated_at: agora })
-    .eq("id", rascunho.id)
-    .eq("clinica_id", clinicaId);
-  if (erroPromover) {
-    console.error("[fluxo-versoes] promover_rascunho_failed", JSON.stringify({ fluxoId, versaoId: rascunho.id, code: erroPromover.code ?? null }));
-    return { ok: false, error: "persist_failed" };
-  }
-
-  const gatilho = lerGatilhoRascunho(forma.definicao.config);
-  const { error: erroDenormalizar } = await supabase
-    .from("fluxos")
-    .update({ gatilho_tipo: gatilho?.tipo ?? null, gatilho_config: gatilho?.config ?? {}, updated_at: agora })
-    .eq("id", fluxoId)
-    .eq("clinica_id", clinicaId);
-  if (erroDenormalizar) {
-    // A versão já publicou com sucesso — gatilho fica pra corrigir no
-    // próximo "Publicar", não é motivo pra reportar falha geral ao admin.
-    console.error("[fluxo-versoes] denormalizar_gatilho_failed", JSON.stringify({ fluxoId, code: erroDenormalizar.code ?? null }));
-  }
+  const erroReferencia = await validarReferenciasComerciais(clinicaId, forma.definicao);
+  if (erroReferencia) return { ok: false, error: erroReferencia };
+  const { data: publicou, error } = await supabase.rpc("fluxo_publicar", { p_clinica: clinicaId, p_fluxo: fluxoId, p_versao: rascunho.id, p_ator: atendenteId, p_definicao: forma.definicao });
+  if (error || !publicou) return { ok: false, error: "publicacao_conflito" };
 
   return { ok: true, versaoId: rascunho.id as string };
 }
 
-export async function atualizarStatusFluxo(
-  clinicaId: string,
-  fluxoId: string,
-  status: StatusFluxo,
-  atendenteId: string | null
-): Promise<ResultadoFluxo> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return { ok: false, error: "backend_unavailable" };
-
-  const agora = new Date().toISOString();
-  const patch: Record<string, unknown> = { status, updated_at: agora };
-  if (status === "pausado") {
-    patch.pausado_por = atendenteId;
-    patch.pausado_em = agora;
-  } else if (status === "arquivado") {
-    patch.arquivado_por = atendenteId;
-    patch.arquivado_em = agora;
-  } else if (status === "ativo") {
-    patch.pausado_por = null;
-    patch.pausado_em = null;
-    patch.arquivado_por = null;
-    patch.arquivado_em = null;
+export async function atualizarStatusFluxo(clinicaId: string, fluxoId: string, status: StatusFluxo, atendenteId: string | null, interromperExecucoes = false): Promise<ResultadoFluxo> {
+  const db = getSupabaseServerClient();
+  if (!db) return { ok: false, error: "backend_unavailable" };
+  if (status === "ativo") {
+    const fluxo = await buscarFluxoParaEditor(clinicaId, fluxoId);
+    if (!fluxo) return { ok: false, error: "not_found" };
+    if (fluxo.gatilhoTipo === "kanban_stage_changed" && !automacoesComerciaisHabilitadas()) return { ok: false, error: "comercial_nao_habilitado" };
   }
-
-  const { data, error } = await supabase
-    .from("fluxos")
-    .update(patch)
-    .eq("id", fluxoId)
-    .eq("clinica_id", clinicaId)
-    .select("id")
-    .maybeSingle();
-
-  if (error) return { ok: false, error: "persist_failed" };
-  if (!data) return { ok: false, error: "not_found" };
-  return { ok: true, id: fluxoId };
+  const { data, error } = await db.rpc("fluxo_alterar_status", { p_clinica: clinicaId, p_fluxo: fluxoId, p_status: status, p_ator: atendenteId, p_interromper: interromperExecucoes });
+  return error ? { ok: false, error: "persist_failed" } : data;
 }
 
 export function isStatusFluxoValido(valor: string): valor is StatusFluxo {

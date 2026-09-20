@@ -18,6 +18,8 @@ export type ExecucaoFluxoResumo = {
   gatilhoTipo: string;
   motivoFinalizacao: string | null;
   erro: string | null;
+  oportunidadeId: string | null;
+  aguardandoAte: string | null;
   createdAt: string;
   finalizadoEm: string | null;
 };
@@ -31,6 +33,8 @@ type LinhaExecucao = {
   gatilho_tipo: string;
   motivo_finalizacao: string | null;
   erro: string | null;
+  oportunidade_id: string | null;
+  aguardando_ate: string | null;
   created_at: string;
   finalizado_em: string | null;
 };
@@ -45,12 +49,14 @@ function mapExecucao(row: LinhaExecucao): ExecucaoFluxoResumo {
     gatilhoTipo: row.gatilho_tipo,
     motivoFinalizacao: row.motivo_finalizacao,
     erro: row.erro,
+    oportunidadeId: row.oportunidade_id,
+    aguardandoAte: row.aguardando_ate,
     createdAt: row.created_at,
     finalizadoEm: row.finalizado_em,
   };
 }
 
-const EXECUCAO_COLUNAS = "id, fluxo_id, estado, no_atual_id, is_test, gatilho_tipo, motivo_finalizacao, erro, created_at, finalizado_em";
+const EXECUCAO_COLUNAS = "id, fluxo_id, estado, no_atual_id, is_test, gatilho_tipo, motivo_finalizacao, erro, oportunidade_id, aguardando_ate, created_at, finalizado_em";
 
 export type FiltroListaExecucoes = { isTest?: boolean; limit?: number };
 

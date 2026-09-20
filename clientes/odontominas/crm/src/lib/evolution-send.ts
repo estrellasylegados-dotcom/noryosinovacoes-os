@@ -21,6 +21,7 @@ export async function enviarTextoEvolution(
   try {
     const res = await fetch(`${apiUrl}/message/sendText/${encodeURIComponent(instancia)}`, {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: { apikey: apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({ number: telefone, text: texto }),
     });

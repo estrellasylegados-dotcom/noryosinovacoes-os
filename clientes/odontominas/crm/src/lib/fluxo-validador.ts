@@ -1,4 +1,5 @@
 import { encontrarNoInicio, type FluxoDefinicao, type NoFluxo } from "@/lib/fluxo-tipos";
+import { lerConfigComercial } from "@/lib/fluxo-comercial-regras";
 
 /**
  * Validação de GRAFO de um Fluxo de Conversa — roda depois que
@@ -22,6 +23,7 @@ export type ResultadoValidacaoGrafo = { erros: ProblemaGrafo[]; avisos: Problema
 /** Ids que este nó pode levar a seguir — usado tanto pra alcançabilidade quanto pra detecção de ciclo. */
 function proximosDe(no: NoFluxo): string[] {
   switch (no.tipo) {
+    case "acao_comercial": return [no.proximo];
     case "inicio":
       return [no.proximo];
     case "mensagem":
@@ -64,6 +66,12 @@ function ehNoTerminal(no: NoFluxo): boolean {
 export function validarGrafo(definicao: FluxoDefinicao): ResultadoValidacaoGrafo {
   const erros: ProblemaGrafo[] = [];
   const avisos: ProblemaGrafo[] = [];
+  const gatilho = definicao.config.gatilho as { tipo?: string; config?: unknown } | undefined;
+  if (gatilho?.tipo === "kanban_stage_changed" && !lerConfigComercial(gatilho.config)) erros.push({ noIds: [], mensagem: "Selecione pipeline, etapa e uma regra comercial válida." });
+  for (const no of definicao.nodes) {
+    if (no.tipo === "acao_comercial" && gatilho?.tipo !== "kanban_stage_changed") erros.push({ noIds: [no.id], mensagem: "Esta ação precisa de um gatilho de oportunidade." });
+    if (no.tipo === "acao_comercial" && no.acao !== "responsavel" && !no.valor.trim()) erros.push({ noIds: [no.id], mensagem: "Complete a ação comercial." });
+  }
 
   const porId = new Map(definicao.nodes.map((n) => [n.id, n] as const));
 

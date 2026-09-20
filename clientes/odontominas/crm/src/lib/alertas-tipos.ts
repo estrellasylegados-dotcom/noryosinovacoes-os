@@ -81,6 +81,11 @@ export type DefinicaoTipo = {
 };
 
 export const TIPOS_ALERTA = {
+  acompanhamento_comercial: {
+    categoria: "KANBAN", natureza: "operacional", permissaoLeitura: "kanban.visualizar", porResponsavel: true,
+    autoResolve: false, tipoEntidade: "oportunidade", rotulo: "Acompanhamento comercial solicitado",
+    descricaoConfig: "Uma automação solicitou atenção a uma oportunidade.",
+  },
   sla_limite: {
     categoria: "SLA",
     natureza: "operacional",

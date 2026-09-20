@@ -234,7 +234,21 @@ export type EntradaHistorico = {
   em: string;
 };
 
-export type DetalheOportunidade = { card: CardKanban; historico: EntradaHistorico[]; estagios: Estagio[]; motivosPerda: MotivoPerda[] };
+export type EntradaAutomacaoOportunidade = {
+  id: string;
+  tipo: "iniciada" | "mensagem_enviada" | "concluida" | "interrompida" | "falhou";
+  fluxoNome: string;
+  motivo: string | null;
+  em: string;
+};
+
+export type DetalheOportunidade = {
+  card: CardKanban;
+  historico: EntradaHistorico[];
+  automacoes: EntradaAutomacaoOportunidade[];
+  estagios: Estagio[];
+  motivosPerda: MotivoPerda[];
+};
 
 async function carregarLinha(supabase: Supabase, clinicaId: string, id: string): Promise<Linha | null> {
   const { data } = await supabase.from("oportunidades").select(SELECT_OPORTUNIDADE).eq("id", id).eq("clinica_id", clinicaId).maybeSingle();
@@ -254,7 +268,7 @@ export async function buscarDetalheOportunidade(
   if (!linha) return { ok: false, error: "not_found" };
   if (!podeVerCard(ator, (linha.responsavel_id as string | null) ?? null)) return { ok: false, error: "forbidden" };
 
-  const [cards, estagios, motivosPerda, hist] = await Promise.all([
+  const [cards, estagios, motivosPerda, hist, execucoes] = await Promise.all([
     montarCards(supabase, clinicaId, [linha], new Date()),
     listarEstagios(supabase, clinicaId, linha.pipeline_id as string),
     listarMotivos(supabase, clinicaId),
@@ -263,6 +277,13 @@ export async function buscarDetalheOportunidade(
       .select("id, tipo, estagio_de, estagio_para, responsavel_de, responsavel_para, observacao, origem, created_at, motivos_perda(nome), ator:atendentes!oportunidade_historico_ator_id_fkey(nome)")
       .eq("oportunidade_id", id)
       .eq("clinica_id", clinicaId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("fluxo_execucoes")
+      .select("id, fluxo_id, estado, motivo_finalizacao, created_at, finalizado_em")
+      .eq("oportunidade_id", id)
+      .eq("clinica_id", clinicaId)
+      .eq("is_test", false)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -290,7 +311,37 @@ export async function buscarDetalheOportunidade(
     em: h.created_at as string,
   }));
 
-  return { ok: true, detalhe: { card: cards[0], historico, estagios, motivosPerda } };
+  const linhasExecucao = (execucoes.data ?? []) as unknown as Linha[];
+  const idsFluxo = [...new Set(linhasExecucao.map((e) => e.fluxo_id as string))];
+  const idsExecucao = linhasExecucao.map((e) => e.id as string);
+  const [fluxos, eventos] = await Promise.all([
+    idsFluxo.length > 0 ? supabase.from("fluxos").select("id, nome").eq("clinica_id", clinicaId).in("id", idsFluxo) : Promise.resolve({ data: [], error: null }),
+    idsExecucao.length > 0 ? supabase.from("fluxo_execucao_eventos").select("id, execucao_id, tipo_evento, created_at").eq("clinica_id", clinicaId).in("execucao_id", idsExecucao).eq("tipo_evento", "mensagem_enviada").eq("status", "concluido") : Promise.resolve({ data: [], error: null }),
+  ]);
+  const nomesFluxo = new Map(((fluxos.data ?? []) as unknown as Linha[]).map((f) => [f.id as string, f.nome as string]));
+  const nomePorExecucao = new Map(linhasExecucao.map((e) => [e.id as string, nomesFluxo.get(e.fluxo_id as string) ?? "Automação"]));
+  const automacoes: EntradaAutomacaoOportunidade[] = linhasExecucao.flatMap((e) => {
+    const estado = e.estado as string;
+    const itens: EntradaAutomacaoOportunidade[] = [{ id: `inicio:${e.id}`, tipo: "iniciada", fluxoNome: nomePorExecucao.get(e.id as string) ?? "Automação", motivo: null, em: e.created_at as string }];
+    if (e.finalizado_em) itens.push({
+      id: `fim:${e.id}`,
+      tipo: estado === "completed" ? "concluida" : estado === "failed" ? "falhou" : "interrompida",
+      fluxoNome: nomePorExecucao.get(e.id as string) ?? "Automação",
+      motivo: (e.motivo_finalizacao as string | null) ?? null,
+      em: e.finalizado_em as string,
+    });
+    return itens;
+  });
+  for (const evento of (eventos.data ?? []) as unknown as Linha[]) automacoes.push({
+    id: evento.id as string,
+    tipo: "mensagem_enviada",
+    fluxoNome: nomePorExecucao.get(evento.execucao_id as string) ?? "Automação",
+    motivo: null,
+    em: evento.created_at as string,
+  });
+  automacoes.sort((a, b) => Date.parse(a.em) - Date.parse(b.em));
+
+  return { ok: true, detalhe: { card: cards[0], historico, automacoes, estagios, motivosPerda } };
 }
 
 // ---------------------------------------------------------------------------

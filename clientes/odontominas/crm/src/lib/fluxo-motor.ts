@@ -1,5 +1,5 @@
 import { resolverVariaveis } from "@/lib/mensagens-salvas";
-import { encontrarNo, type FluxoDefinicao, type NoCapturarResposta, type NoMenu, type OperadorCondicao, type TipoPesquisa } from "@/lib/fluxo-tipos";
+import { encontrarNo, type FluxoDefinicao, type NoCapturarResposta, type NoMenu, type NoAcaoComercial, type OperadorCondicao, type TipoPesquisa } from "@/lib/fluxo-tipos";
 import type { StatusConversa } from "@/lib/status";
 import type { Prioridade } from "@/lib/prioridade";
 
@@ -52,6 +52,7 @@ export type ContadoresNo = {
  * por causa do nome.
  */
 export type AcaoCrm =
+  | { tipo: "acao_comercial"; acao: NoAcaoComercial["acao"]; valor: string; motivoPerdaId?: string }
   | { tipo: "adicionar_etiqueta"; etiquetaId: string }
   | { tipo: "remover_etiqueta"; etiquetaId: string }
   | { tipo: "mudar_status"; status: StatusConversa }
@@ -138,7 +139,15 @@ function casarOpcaoMenu(no: NoMenu, textoRecebido: string): string | null {
 }
 
 function avaliarCondicao(operador: OperadorCondicao, valorVariavel: string | undefined, valorComparado: string | undefined): boolean {
+  if (["maior", "menor", "maior_igual", "menor_igual"].includes(operador)) {
+    if (!valorVariavel?.trim() || !valorComparado?.trim()) return false;
+    const a = Number(valorVariavel), b = Number(valorComparado);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    return operador === "maior" ? a > b : operador === "menor" ? a < b : operador === "maior_igual" ? a >= b : a <= b;
+  }
   switch (operador) {
+    case "maior": case "menor": case "maior_igual": case "menor_igual": return false;
+    case "contem_item": return Boolean(valorComparado) && (valorVariavel ?? "").split(",").includes(valorComparado!);
     case "igual":
       return valorVariavel === valorComparado;
     case "diferente":
@@ -254,6 +263,9 @@ export function processarNo(
   }
 
   switch (no.tipo) {
+    case "acao_comercial":
+      return { ok: true, proximoNoId: no.proximo, novoEstado: "queued", aguardandoAte: agora.toISOString(), mensagensParaEnviar: [], variaveisAtualizadas: {},
+        acaoCrm: { tipo: "acao_comercial", acao: no.acao, valor: ["nota", "alerta", "interesse"].includes(no.acao) ? resolverVariaveisFluxo(no.valor, variaveis, paciente) : no.valor, motivoPerdaId: no.motivoPerdaId }, tipoEvento: `comercial_${no.acao}` };
     case "inicio":
       return {
         ok: true,
