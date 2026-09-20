@@ -51,9 +51,10 @@ export function criarFakeDb(
 }
 
 class Builder implements PromiseLike<{ data: unknown; error: { code: string; message: string } | null; count?: number | null }> {
-  private op: "select" | "insert" | "update" | "delete" = "select";
+  private op: "select" | "insert" | "update" | "delete" | "upsert" = "select";
   private filtros: Filtro[] = [];
   private payload: Linha | Linha[] | null = null;
+  private conflito: string[] = [];
   private retorna = false;
   private limite: number | null = null;
   private soUma = false;
@@ -79,6 +80,12 @@ class Builder implements PromiseLike<{ data: unknown; error: { code: string; mes
   update(p: Linha) {
     this.op = "update";
     this.payload = p;
+    return this;
+  }
+  upsert(p: Linha | Linha[], opcoes?: { onConflict?: string }) {
+    this.op = "upsert";
+    this.payload = p;
+    this.conflito = opcoes?.onConflict?.split(",").map((c) => c.trim()).filter(Boolean) ?? [];
     return this;
   }
   delete() {
@@ -132,6 +139,23 @@ class Builder implements PromiseLike<{ data: unknown; error: { code: string; mes
         linhas.push(novo);
       }
       return { data: this.soUma ? (novos[0] ?? null) : novos, error: null };
+    }
+
+    if (this.op === "upsert") {
+      const novos = (Array.isArray(this.payload) ? this.payload : [this.payload as Linha]).map((p): Linha => ({ id: this.novoId(), ...this.defaults, ...p }));
+      const salvos: Linha[] = [];
+      for (const novo of novos) {
+        const cols = this.conflito.length ? this.conflito : this.unicos[0] ?? [];
+        const existente = cols.length ? linhas.find((l) => cols.every((c) => l[c] === novo[c])) : undefined;
+        if (existente) {
+          Object.assign(existente, novo);
+          salvos.push(existente);
+        } else {
+          linhas.push(novo);
+          salvos.push(novo);
+        }
+      }
+      return { data: this.retorna ? (this.soUma ? (salvos[0] ?? null) : salvos) : null, error: null };
     }
 
     if (this.op === "update") {

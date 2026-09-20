@@ -27,6 +27,13 @@ const ITENS: Item[] = [
   { href: "/configuracoes/alertas", label: "Alertas (regras)", permissao: "alertas.configurar", group: "Configurações" },
 ];
 
+ITENS.splice(ITENS.findIndex((item) => item.href === "/configuracoes/sla"), 0, {
+  href: "/configuracoes/distribuicao",
+  label: "Distribuição automática",
+  permissao: "configuracoes.clinica",
+  group: "Configurações",
+});
+
 function ItemLink({ item, ativo, naoLidas, alertas }: { item: Item; ativo: boolean; naoLidas: number; alertas: number }) {
   const contagem = item.href === "/chat" ? naoLidas : item.href === "/alertas" ? alertas : 0;
   return (

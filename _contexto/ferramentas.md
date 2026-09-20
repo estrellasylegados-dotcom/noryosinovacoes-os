@@ -1,6 +1,8 @@
 ﻿<!-- quem alimenta: o /setup semeia na entrevista; o /atualizar acrescenta ferramenta nova, acesso novo ou "nÃ£o alcanÃ§o"; a /faxina confere e pergunta. Lido antes de dizer "nÃ£o consigo" e ao criar skill. -->
 # Ferramentas
 
+> Checagem em 2026-09-20: no Supabase CRM, o histórico oficial terminou em `v35`; `v36` já estava estruturalmente aplicada, e `v37`/`v38` foram aplicadas em ordem pelo SQL Editor e validadas por schema/RPC. Não reaplicar sem reconciliar o histórico.
+
 > O que o negÃ³cio usa e como o agente alcanÃ§a cada coisa. **"nÃ£o ligada" Ã© resposta vÃ¡lida:** Ã© assim
 > que o agente sabe que aquilo existe e dÃ¡ pra ligar, em vez de achar que Ã© impossÃ­vel.
 > Chave nunca fica aqui. Chave mora no `.env` (fora do git) ou no gerenciador de senha; aqui vai sÃ³ o

@@ -10,6 +10,7 @@ import { deveResponder } from "@/lib/agentes";
 import { processarMensagemRecebida } from "@/lib/agentes-buffer";
 import { detectarPedidoOptOut, aplicarOptOut, MENSAGEM_CONFIRMACAO_OPT_OUT } from "@/lib/opt-out";
 import { enviarPeloCanal } from "@/lib/canais-envio";
+import { distribuirConversaSeElegivel } from "@/lib/distribuicao-automatica";
 import { garantirOportunidadeDaConversa } from "@/lib/kanban";
 import {
   cancelarExecucoesAtivasDoPaciente,
@@ -273,6 +274,13 @@ export async function POST(request: Request) {
 
   // Kanban: 1ª conversa válida de paciente sem oportunidade aberta -> oportunidade em "Novo" (idempotente,
   // best-effort: nunca derruba o webhook). Só mensagem RECEBIDA conta como lead.
+  if (!fromMe && conversaEraNova && conversaId) {
+    const distribuicao = await distribuirConversaSeElegivel(clinicaId, conversaId);
+    if (!distribuicao.ok) {
+      console.error("[webhook/evolution] auto_distribution_failed", JSON.stringify({ conversaId, error: distribuicao.error }));
+    }
+  }
+
   if (!fromMe && pacienteId && conversaId) {
     await garantirOportunidadeDaConversa(clinicaId, pacienteId, conversaId, { conversaNova: conversaEraNova });
   }

@@ -1,15 +1,28 @@
 ﻿# Andamento · OdontoMinas
 
-## Retomada (2026-09-20, Codex) — Noryos Ops V1 implementado localmente; publicação pendente
+## Retomada (2026-09-20, Codex) — Distribuição Automática V1 com migration aplicada; publicação pendente
+
+- Distribuição Automática V1 foi implementada para conversas novas sem responsável, com estratégia única de round-robin por clínica e toggle de ativação em `/configuracoes/distribuicao`.
+- Migration aditiva criada: `crm/supabase/migrations/2026-09-20_v38_distribuicao_automatica.sql`. Ela cria `atendimento_config` e a RPC atômica `auto_distribuir_conversa_round_robin`, com lock da configuração/conversa, ponteiro do último atendente e evento `CONVERSATION_ASSIGNED`.
+- Elegibilidade validada: mesmo `clinica_id`, atendente ativo, perfil operacional ou permissão customizada adequada; perfis de plataforma ficam fora da fila.
+- Webhook Evolution passou a chamar a distribuição só em conversa nova recebida do paciente. Retry/duplicidade não redistribui, conversa já atribuída não é sobrescrita, SLA não é resetado e ownership de IA/Fluxo não é alterado.
+- Configuração protegida por RBAC `configuracoes.clinica` no backend e na UI. Menu lateral ganhou o item "Distribuição automática" dentro de Configurações com a mesma permissão.
+- Testes cobriram round-robin A/B/C/A, inelegíveis ignorados, conversa já atribuída preservada, retry sem redistribuição, concorrência, SLA preservado, RBAC da configuração e continuidade do webhook Evolution.
+- Gates aprovados: `npm run typecheck`, `npm run lint`, `npx vitest run` com 946 testes e `npm run build` com 56 páginas.
+- Testes focados pós-migration: 37/37, incluindo regressão do webhook Evolution.
+- Migration `v38` aplicada em produção pelo SQL Editor, em ordem após a `v37`, e validada com tabelas, colunas e RPC presentes. O histórico oficial do Supabase permanece em `v35`; não reaplicar sem reconciliar esse controle.
+- **Status:** concluído no código e no banco, ainda não publicado. Próximos passos: fazer `railway up`, validar logado em `/configuracoes/distribuicao` e executar teste real controlado de conversa nova. Não houve push nem deploy nesta sessão.
+
+## Retomada (2026-09-20, Codex) — Noryos Ops V1 com migration aplicada; publicação pendente
 
 - Noryos Ops V1 foi implementado no CRM como central interna de operações da plataforma para Noryos Admin/Suporte: `/ops`, `/ops/clinicas`, `/ops/canais`, `/ops/integracoes`, `/ops/workers`, `/ops/erros`, `/ops/incidentes`, `/ops/deploys` e `/ops/auditoria`.
 - Auditoria inicial contra o código real: reutiliza `clinicas`, `canais`, Central de Alertas, `auditoria_eventos`, `automacao_eventos` e `integration_sync_state/log`; cria só o que não existia de forma confiável (`ops_erros`, `ops_incidentes`, `ops_worker_heartbeats`, `ops_deploys`).
-- Migration aditiva criada: `crm/supabase/migrations/2026-09-20_v37_noryos_ops.sql`. Ainda não aplicada no Supabase de produção.
+- Migration aditiva criada: `crm/supabase/migrations/2026-09-20_v37_noryos_ops.sql`. Aplicada em produção pelo SQL Editor antes da v38 e validada com as quatro tabelas presentes.
 - RBAC implementado com permissões `ops.*`: Noryos Admin completo, Noryos Suporte autorizado; perfis da clínica (`dona`, `gerente`, `supervisora`, `atendente`) bloqueados no backend e no menu.
 - Incidentes têm API protegida para criação/resolução (`/api/ops/incidentes` e `/api/ops/incidentes/[id]`). A V1 é majoritariamente leitura/diagnóstico; não tem impersonação, shell, editor de segredo, Datadog/Sentry/Jira interno.
 - Gates aprovados: `npm run typecheck`, `npm run lint`, `npm test` com 76 arquivos/939 testes e `npm run build` com 55 páginas.
 - Validação visual autenticada ficou pendente: a ferramenta de navegador retornou `Browser is not available: iab`; checagem HTTP local das rotas `/ops/*` sem sessão retornou 307 para login, como esperado.
-- **Status:** concluído no código local, ainda não publicado. Próximos passos: aplicar `v37` no Supabase, fazer `railway up`, validar logado como Noryos Admin/Suporte e só então marcar o Noryos Ops como liberado.
+- **Status:** concluído no código e no banco, ainda não publicado. Próximos passos: fazer `railway up`, validar logado como Noryos Admin/Suporte e só então marcar o Noryos Ops como liberado.
 
 ## Retomada (2026-09-20, Codex) â€” motor de automaÃ§Ãµes aprovado; liberaÃ§Ã£o operacional pendente
 
