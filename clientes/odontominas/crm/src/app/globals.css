@@ -76,12 +76,37 @@
 }
 
 :root {
-  --chart-series-a: #2a78d6;
-  --chart-series-b: #eb6834;
+  /* Base clara clínica: as telas continuam usando as utilidades Tailwind já
+     existentes; a identidade muda num único lugar, sem duplicar estilos. */
+  --color-white: #ffffff;
+  --color-neutral-50: #f7faf9;
+  --color-neutral-100: #eff5f4;
+  --color-neutral-200: #dfe9e7;
+  --color-neutral-300: #cad8d5;
+  --color-neutral-400: #8fa19e;
+  --color-neutral-500: #687b78;
+  --color-neutral-600: #4e625f;
+  --color-neutral-700: #354946;
+  --color-neutral-800: #243936;
+  --color-neutral-900: #17302c;
+
+  --color-teal-50: #eef9f8;
+  --color-teal-100: #d8f0ed;
+  --color-teal-200: #b7e2dd;
+  --color-teal-300: #87d0c8;
+  --color-teal-400: #4bb7ad;
+  --color-teal-500: #188f8a;
+  --color-teal-600: #127b78;
+  --color-teal-700: #0f6868;
+  --color-teal-800: #0d5354;
+  --color-teal-900: #083f42;
+
+  --chart-series-a: #168c88;
+  --chart-series-b: #d87a4b;
 }
 
 body {
   background: var(--color-neutral-50);
   color: var(--color-neutral-900);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

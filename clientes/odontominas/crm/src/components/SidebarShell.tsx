@@ -58,7 +58,7 @@ export function SidebarShell({
   return (
     <aside
       data-colapsado={colapsado}
-      className="group flex flex-col gap-4 border-b border-neutral-200 bg-white px-4 py-4 transition-[width] duration-150 sm:sticky sm:top-0 sm:h-screen sm:w-60 sm:shrink-0 sm:border-b-0 sm:border-r sm:px-5 sm:py-6 sm:data-[colapsado=true]:w-16 sm:data-[colapsado=true]:px-3"
+      className="group flex flex-col gap-5 border-b border-neutral-200/80 bg-white/95 px-4 py-4 shadow-sm shadow-teal-950/[0.02] transition-[width] duration-150 sm:sticky sm:top-0 sm:h-screen sm:w-64 sm:shrink-0 sm:border-b-0 sm:border-r sm:px-4 sm:py-5 sm:data-[colapsado=true]:w-16 sm:data-[colapsado=true]:px-3"
     >
       <div className="flex shrink-0 items-start justify-between gap-2 sm:group-data-[colapsado=true]:justify-center">
         <div className="min-w-0 sm:group-data-[colapsado=true]:hidden">{titulo}</div>
@@ -68,7 +68,7 @@ export function SidebarShell({
           aria-expanded={!colapsado}
           aria-label={colapsado ? "Expandir menu" : "Recolher menu"}
           title={colapsado ? "Expandir menu" : "Recolher menu"}
-          className="hidden shrink-0 rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 sm:block"
+          className="hidden shrink-0 rounded-lg p-1.5 text-neutral-400 hover:bg-teal-50 hover:text-teal-700 sm:block"
         >
           <IconeMenu colapsado={colapsado} />
         </button>
@@ -76,7 +76,7 @@ export function SidebarShell({
 
       <div className="min-h-0 sm:flex-1 sm:overflow-y-auto sm:group-data-[colapsado=true]:hidden">{nav}</div>
 
-      <div className="shrink-0 border-t border-neutral-100 pt-4 sm:mt-auto sm:group-data-[colapsado=true]:hidden">{rodape}</div>
+      <div className="shrink-0 border-t border-neutral-200 pt-4 sm:mt-auto sm:group-data-[colapsado=true]:hidden">{rodape}</div>
       <div className="hidden shrink-0 sm:group-data-[colapsado=true]:mt-auto sm:group-data-[colapsado=true]:block">{rodapeCompacto}</div>
     </aside>
   );

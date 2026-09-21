@@ -2063,8 +2063,11 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 ## Onde está
 **Atualizado em:** 2026-09-20
 
-- Estado após execução dos três scripts e logs revisados.
+- Redesign visual do CRM implementado localmente: logo e favicon próprios, tema claro clínico por tokens, sidebar categorizada, status do WhatsApp separado e menu de perfil com recuperação de senha e logout.
+- Branding centralizado por `slug` em `crm/src/lib/branding.ts`; estrutura pronta para assets de novas clínicas sem hardcode espalhado.
+- RBAC, fluxos de sessão, logout e recuperação de senha existentes foram reaproveitados; nenhuma permissão foi ampliada.
+- Validado localmente: typecheck, lint, suíte Vitest serial, teste de RBAC afetado 5/5 e build de produção. Sem commit, push ou deploy.
 
 ## Pendências
-- Decisão: executar Sync e Deploy após Atualizar e conferir logs.
+- Publicar o redesign e validar visualmente logado em desktop e responsividade básica, quando autorizado.
 

@@ -7,6 +7,8 @@ function sessao(perfil: Perfil): SessaoAtual {
   return {
     atendenteId: `at-${perfil}`,
     nome: perfil,
+    usuario: perfil,
+    email: null,
     perfil,
     clinicaId: perfil.startsWith("noryos_") ? null : "clinica-1",
     permissoes: resolverPermissoes(perfil, null),

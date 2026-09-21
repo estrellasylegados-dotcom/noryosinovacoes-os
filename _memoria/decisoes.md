@@ -744,3 +744,5 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
 ## 2026-09-20 - voce - odontominas
 - Ferramentas: Noryos-Atualizar, Noryos-Git-Sync e Noryos-Git-Deploy.
 
+- **2026-09-20** (Rafael; implementação Codex) [odontominas]: branding visual do CRM passa a ter uma fonte única por `slug` em `crm/src/lib/branding.ts`; a OdontoMinas usa `logo-crm.png` e `favicon-crm.png`, com fallback padrão. Por quê: manter o CRM preparado para novas clínicas sem espalhar caminhos de assets pelos componentes.
+

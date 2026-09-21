@@ -16,7 +16,7 @@
 ## Onde paramos
 **Atualizado em:** 2026-09-20
 
-- Estado após execução dos três scripts e logs revisados.
+- Redesign visual do CRM da OdontoMinas implementado e validado localmente; aguarda publicação autorizada.
 
 ## Pendências realmente abertas
 1. Automações por Kanban: ajustar a interface em 768 px, publicar as correções locais, ligar `AUTOMACOES_KANBAN_ENABLED` no Railway e repetir a validação final antes de liberar.
@@ -28,9 +28,10 @@
 7. RBAC: reset de senha real, contas da clínica, E2E por perfil, rotação da chave do Resend e troca/desativação das senhas fracas de teste.
 8. Reputação/Google: informar a URL real de avaliação e ativar quando decidido.
 9. Integrações: ControleODONTO aguarda credencial; Pixel Google Ads aguarda OAuth; Twenty CRM permanece pausado.
+10. Publicar o redesign do CRM da OdontoMinas (logo/favicon, sidebar, perfil e tema) e validar visualmente logado após deploy, quando autorizado.
 
 ## Próximo passo
-Escolher a próxima liberação: finalizar Automações por Kanban (responsividade, publicar, ativar flag e repetir E2E controlado) ou publicar Noryos Ops (deploy e validação visual logada). Não iniciar envio real adicional sem autorização.
+Escolher a próxima liberação: publicar o redesign visual do CRM, finalizar Automações por Kanban ou publicar Noryos Ops. Não iniciar envio real adicional sem autorização.
 
 ## Riscos importantes
 - Migration em produção e envio real de WhatsApp exigem autorização específica do Rafael.
@@ -46,8 +47,5 @@ Escolher a próxima liberação: finalizar Automações por Kanban (responsivida
 - Canais, atendentes, conversas, Kanban, Fluxos das Fases 2a–5, pesquisas e demais evidências `[TESTE]` já registradas no andamento do projeto e em decisões.
 
 ## Quente agora
-- Scripts corrigidos e fluxo operacional validado.
-
-## Pendências
-- Decisão: executar Sync e Deploy após Atualizar e conferir logs.
+- Redesign visual do CRM da OdontoMinas validado localmente e aguardando publicação autorizada.
 

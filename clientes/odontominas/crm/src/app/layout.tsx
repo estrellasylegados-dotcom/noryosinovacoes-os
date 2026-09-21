@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { buscarClinicaAtual } from "@/lib/clinica";
+import { obterBranding } from "@/lib/branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,9 +24,14 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const clinica = await buscarClinicaAtual();
   const nome = clinica?.nome ?? "clínica";
+  const branding = obterBranding(clinica);
   return {
     title: `CRM ${nome}`,
     description: `Captação e relacionamento — ${nome}`,
+    icons: {
+      icon: branding.faviconSrc,
+      apple: branding.faviconSrc,
+    },
   };
 }
 

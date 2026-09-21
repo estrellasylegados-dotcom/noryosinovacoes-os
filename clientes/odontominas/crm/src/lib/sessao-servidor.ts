@@ -6,6 +6,8 @@ import { resolverPermissoes, type Perfil, type Permissao } from "@/lib/permissoe
 export type SessaoAtual = {
   atendenteId: string;
   nome: string;
+  usuario: string;
+  email: string | null;
   perfil: Perfil;
   clinicaId: string | null;
   permissoes: ReadonlySet<Permissao>;
@@ -31,6 +33,8 @@ export async function getSessaoAtual(): Promise<SessaoAtual | null> {
   return {
     atendenteId: atendente.id,
     nome: atendente.nome,
+    usuario: atendente.usuario,
+    email: atendente.email,
     perfil: atendente.perfil,
     clinicaId: atendente.clinicaId,
     permissoes: resolverPermissoes(atendente.perfil, atendente.permissoesCustomizadas),
