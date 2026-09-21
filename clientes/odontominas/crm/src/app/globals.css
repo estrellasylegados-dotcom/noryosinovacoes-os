@@ -19,7 +19,9 @@
  * flash). Confirmado o nome exato de cada variável no CSS compilado antes
  * de escrever isto (não foi chute).
  */
-.dark {
+:root.dark {
+  color-scheme: dark;
+
   /* Escuro sereno com base verde-azulada, não cinza puro. */
   --color-white: #132321;
   --color-black: #000000;
@@ -82,6 +84,8 @@
 }
 
 :root {
+  color-scheme: light;
+
   /* Base clara clínica: as telas continuam usando as utilidades Tailwind já
      existentes; a identidade muda num único lugar, sem duplicar estilos. */
   --color-white: #ffffff;

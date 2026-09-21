@@ -14,9 +14,9 @@
 - “Noryos Odonto”: Fases 3–5 aprovadas. Aniversário e dashboard executivo só com sinal do Rafael. ControleODONTO segue bloqueado por falta de credencial.
 
 ## Onde paramos
-**Atualizado em:** 2026-09-20
+**Atualizado em:** 2026-09-21
 
-- O redesign-base do CRM da OdontoMinas (branding, sidebar e perfil) foi publicado diretamente no Railway em 2026-09-20 e teve login e assets validados. A revisão final de paleta, tema e centralização da logo está local, aprovada pelos gates e não foi publicada por instrução do Rafael.
+- pronto
 
 ## Pendências realmente abertas
 1. Automações por Kanban: ajustar a interface em 768 px, publicar as correções locais, ligar `AUTOMACOES_KANBAN_ENABLED` no Railway e repetir a validação final antes de liberar.
@@ -48,4 +48,7 @@ Escolher a próxima liberação: publicar a revisão visual final do CRM, finali
 
 ## Quente agora
 - Revisão visual final do CRM da OdontoMinas validada localmente e aguardando publicação autorizada; a base do redesign já está em produção.
+
+## Pendências
+- não
 
