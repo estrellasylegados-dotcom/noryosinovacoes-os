@@ -16,7 +16,7 @@
 ## Onde paramos
 **Atualizado em:** 2026-09-20
 
-- teste concluido
+- Estado após execução dos três scripts e logs revisados.
 
 ## Pendências realmente abertas
 1. Automações por Kanban: ajustar a interface em 768 px, publicar as correções locais, ligar `AUTOMACOES_KANBAN_ENABLED` no Railway e repetir a validação final antes de liberar.
@@ -44,3 +44,10 @@ Escolher a próxima liberação: finalizar Automações por Kanban (responsivida
 - Automação Kanban: fluxo `ba51dbe3-93c1-4ead-aa8c-0ef3b823407b`, versão `6e510b69-ac9a-4e56-81c3-2f6ec7ae80e7`, execução `91d2734a-a95c-41c8-93f0-94a0d1c8482a`, evento `29802eb2-aa0e-4474-9c97-f4e9f9ce84f6`, oportunidade `530a25a7-6f88-4b93-bc70-dfc1bbf66089`, paciente `63cd3fa3-624c-46f5-a58c-3a0ad94292b8` e conversa `0ee7964f-d8b3-421b-a4d2-1a8083058b97`.
 - Alertas: todos os alertas e históricos `[TESTE UI …]`, incluindo os cenários sem responsável e SLA.
 - Canais, atendentes, conversas, Kanban, Fluxos das Fases 2a–5, pesquisas e demais evidências `[TESTE]` já registradas no andamento do projeto e em decisões.
+
+## Quente agora
+- Scripts corrigidos e fluxo operacional validado.
+
+## Pendências
+- Decisão: executar Sync e Deploy após Atualizar e conferir logs.
+

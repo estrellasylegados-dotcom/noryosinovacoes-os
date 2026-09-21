@@ -2063,5 +2063,8 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 ## Onde está
 **Atualizado em:** 2026-09-20
 
-- teste concluido
+- Estado após execução dos três scripts e logs revisados.
+
+## Pendências
+- Decisão: executar Sync e Deploy após Atualizar e conferir logs.
 
