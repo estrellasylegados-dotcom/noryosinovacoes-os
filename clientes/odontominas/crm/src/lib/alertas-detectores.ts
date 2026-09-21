@@ -105,7 +105,7 @@ export function condicoesDaConversa(e: EntradaConversa): CondicoesConversa {
       chave: chaves.semResponsavel(e.conversaId, e.ciclo.mensagemId),
       severidade: "atencao",
       titulo: "Conversa sem responsável",
-      descricao: `Paciente aguardando há ${e.minutosSemResponsavel} min e ninguém assumiu a conversa.`,
+      descricao: `Paciente aguardando há ${formatarMinutos(e.minutosSemResponsavel)} e ninguém assumiu a conversa.`,
       tipoEntidade: "conversa",
       entidadeId: e.conversaId,
       responsavelId: null,

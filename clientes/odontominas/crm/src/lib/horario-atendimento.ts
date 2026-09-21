@@ -1,10 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 
 /**
- * Fundação reutilizável pro SLA futuro (tempo de primeira resposta, alertas
- * de atraso, filas, automações, Agente de IA, indicadores — ver andamento.md
- * da fatia "Horário de Atendimento"). Esta lib NÃO conecta em nada disso
- * ainda, só define a configuração e as duas funções de domínio pedidas.
+ * Fundação reutilizável de horário comercial para SLA, alertas, filas,
+ * automações e indicadores. A configuração é a fonte única de verdade para
+ * o cálculo de tempo útil; cada módulo decide se aplica essa regra ao fluxo.
  *
  * Núcleo puro (avaliarHorarioAtendimento/calcularProximoHorario/validação) é
  * testado direto, sem Supabase — mesmo critério do resto do projeto

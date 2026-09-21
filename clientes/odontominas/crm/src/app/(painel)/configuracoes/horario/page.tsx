@@ -36,7 +36,7 @@ export default async function HorarioAtendimentoPage() {
         <header>
           <h1 className="text-xl font-semibold text-neutral-900">Horário de Atendimento</h1>
           <p className="text-sm text-neutral-500">
-            Base pra SLA, filas e automações futuras — ainda não conectada em nada disso, é só a configuração.
+            Base para SLA, fila e automações: fora do expediente, os tempos úteis ficam pausados.
           </p>
         </header>
 

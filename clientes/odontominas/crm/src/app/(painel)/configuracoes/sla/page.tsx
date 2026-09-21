@@ -8,7 +8,7 @@ import { SlaConfigForm } from "@/components/SlaConfigForm";
 
 export const dynamic = "force-dynamic";
 
-/** Configuração de SLA + resumo do dia — fundação, ainda não conectada em automação (ver andamento.md). Ver quem enxerga o quê na seção 48 do pedido; a tela toda pede ao menos `sla.visualizar`, o formulário de configuração (`SlaConfigForm`) confere `sla.configurar` de novo no PUT (src/app/api/clinica/sla/route.ts). */
+/** Configuração de SLA + resumo do dia. A tela toda pede ao menos `sla.visualizar`; o formulário de configuração (`SlaConfigForm`) confere `sla.configurar` de novo no PUT (src/app/api/clinica/sla/route.ts). */
 export default async function SlaPage() {
   const [sessao, clinicaId] = await Promise.all([getSessaoAtual(), getClinicaId()]);
 

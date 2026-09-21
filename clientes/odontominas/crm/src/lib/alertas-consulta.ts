@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { mapearAlerta, type AlertaLinha } from "@/lib/alertas";
 import { carregarContextoSla, minutosEntre } from "@/lib/sla";
 import { formatTelefone } from "@/lib/tempo";
+import { normalizarNomePessoa } from "@/lib/nome-pessoa";
 import {
   destinoDoAlerta,
   definicaoDoTipo,
@@ -129,7 +130,7 @@ async function idsPorBusca(supabase: Cliente, clinicaId: string, termoBruto: str
 
 function nomeEmbutido(v: unknown): string | null {
   const o = Array.isArray(v) ? v[0] : v;
-  return (o as { nome?: string } | null | undefined)?.nome ?? null;
+  return normalizarNomePessoa((o as { nome?: string } | null | undefined)?.nome);
 }
 
 async function enriquecer(supabase: Cliente, clinicaId: string, alertas: AlertaLinha[], ator: AtorAlerta): Promise<AlertaView[]> {

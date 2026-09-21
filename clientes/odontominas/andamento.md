@@ -2063,9 +2063,15 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 ## Onde está
 **Atualizado em:** 2026-09-21
 
-- pronto
+- Auditoria pré-ControleODONTO realizou validação logada em produção como `[TESTE] Noryos Admin`; typecheck, lint, build e 958 testes locais passaram.
+- Horário oficial ativo em produção: segunda a sexta 08:00–18:00, sábado 08:00–12:00, domingo fechado, timezone America/Sao_Paulo. Os indicadores passaram para hora útil; a fila mostra 18 SLAs estourados para triagem, sem alteração automática de dados de paciente.
+- Correções locais ainda não publicadas: duração humanizada nos alertas, nomes numéricos não exibidos como pacientes e textos corretos sobre o papel do horário. Sem push ou deploy nesta sessão.
+- ControleODONTO: Fase 0 (adapter, painel, RBAC, logs e lock) está pronta; capabilities seguem desligadas. Ainda não há credencial de homologação nem contrato oficial de API/autenticação.
 
 ## Pendências
+- Para iniciar ControleODONTO: receber credencial de homologação e documentação oficial de autenticação, endpoints, payloads/status e webhook; Rafael configura o segredo diretamente no Railway e então se executa teste somente-leitura.
+- Publicar as correções locais e validar visualmente o texto final, quando autorizado.
+- Triar os 18 SLAs estourados; não assumir, responder ou encerrar conversas reais sem autorização específica.
 - Publicar somente a revisão visual final e validar visualmente logado em desktop e responsividade básica, quando autorizado.
 - Para concluir a revisão local autenticada das demais telas, usar uma credencial de teste válida; sessões e cookies não são forjados.
 

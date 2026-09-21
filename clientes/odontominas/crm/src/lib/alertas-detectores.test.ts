@@ -67,6 +67,12 @@ describe("conversa sem responsável", () => {
     expect(condicoesDaConversa(conversa({ atribuidoA: null, minutosSemResponsavel: 10 })).semResponsavel).toMatchObject({ tipo: "conversa_sem_responsavel", severidade: "atencao", responsavelId: null, chave: "sem_resp:c1:m1" });
   });
 
+  it("descreve a espera em formato humano, sem minuto bruto", () => {
+    const alerta = condicoesDaConversa(conversa({ atribuidoA: null, minutosSemResponsavel: 4875 })).semResponsavel;
+    expect(alerta?.descricao).toContain("3 dias");
+    expect(alerta?.descricao).not.toContain("4875 min");
+  });
+
   it("com responsável não alerta (atendente assumiu → condição some → resolve)", () => {
     expect(condicoesDaConversa(conversa({ atribuidoA: "juliana", minutosSemResponsavel: 60 })).semResponsavel).toBeNull();
   });

@@ -4,6 +4,7 @@ import { isStatusValido, STATUS_RESOLVIDOS, type StatusConversa } from "@/lib/st
 import { buscarAgente } from "@/lib/agentes";
 import { dispararPixelSeConfigurado } from "@/lib/agentes-pixel";
 import { registrarEventoCampanha } from "@/lib/campanha-eventos";
+import { normalizarNomePessoa } from "@/lib/nome-pessoa";
 
 export type ConversaPainel = {
   id: string;
@@ -42,7 +43,7 @@ export type NomeEmbutido = { nome: string | null } | { nome: string | null }[] |
 
 export function extrairNomeEmbutido(embutido: NomeEmbutido): string | null {
   if (!embutido) return null;
-  return Array.isArray(embutido) ? (embutido[0]?.nome ?? null) : embutido.nome;
+  return normalizarNomePessoa(Array.isArray(embutido) ? embutido[0]?.nome : embutido.nome);
 }
 
 export async function contarPorStatus(clinicaId: string): Promise<Record<StatusConversa, number>> {
