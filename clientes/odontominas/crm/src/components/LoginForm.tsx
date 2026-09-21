@@ -40,7 +40,9 @@ function FormularioLogin({ clinicaNome, logoSrc }: { clinicaNome: string; logoSr
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl shadow-teal-950/[0.06] sm:p-8">
       <div className="space-y-3">
-        <Image src={logoSrc} alt={clinicaNome} width={168} height={64} priority unoptimized className="h-auto max-h-14 w-auto max-w-[168px] object-contain object-left" />
+        <div className="flex justify-center">
+          <Image src={logoSrc} alt={clinicaNome} width={168} height={64} priority unoptimized className="h-auto max-h-14 w-auto max-w-[168px] object-contain" />
+        </div>
         <div><h1 className="text-lg font-semibold text-neutral-900">Acesse o CRM</h1><p className="text-sm text-neutral-500">Entre com sua conta para continuar.</p></div>
       </div>
       <input

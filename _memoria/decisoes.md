@@ -748,3 +748,7 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
 
 - **2026-09-20** (Rafael; implementação Codex) [odontominas]: o CRM declara `darkreader-lock` e mantém `crm-tema` como única fonte de tema claro/escuro; o toggle usa a classe `dark` do documento como estado efetivo. Por quê: a extensão Dark Reader estava reescrevendo os tokens de cor e mascarando a paleta clínica, sem que fosse necessário criar um segundo mecanismo de tema.
 
+
+## 2026-09-21 - voce - odontominas
+- n
+
