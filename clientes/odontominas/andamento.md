@@ -2066,8 +2066,10 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 - Redesign visual do CRM implementado localmente: logo e favicon próprios, tema claro clínico por tokens, sidebar categorizada, status do WhatsApp separado e menu de perfil com recuperação de senha e logout.
 - Branding centralizado por `slug` em `crm/src/lib/branding.ts`; estrutura pronta para assets de novas clínicas sem hardcode espalhado.
 - RBAC, fluxos de sessão, logout e recuperação de senha existentes foram reaproveitados; nenhuma permissão foi ampliada.
-- Validado localmente: typecheck, lint, suíte Vitest serial, teste de RBAC afetado 5/5 e build de produção. Sem commit, push ou deploy.
+- O redesign-base foi publicado diretamente no Railway em 2026-09-20; login, logo e favicon foram verificados em produção. A revisão visual final local centraliza a logo estruturalmente, aplica paleta clínica mais clara, refina os tokens escuros e impede que Dark Reader sobrescreva o tema nativo.
+- Validações aprovadas: typecheck, lint, Vitest completo (79 arquivos/954 testes), build de produção e login local em `localhost:3001`. A revisão final ainda não foi publicada.
 
 ## Pendências
-- Publicar o redesign e validar visualmente logado em desktop e responsividade básica, quando autorizado.
+- Publicar somente a revisão visual final e validar visualmente logado em desktop e responsividade básica, quando autorizado.
+- Para concluir a revisão local autenticada das demais telas, usar uma credencial de teste válida; sessões e cookies não são forjados.
 

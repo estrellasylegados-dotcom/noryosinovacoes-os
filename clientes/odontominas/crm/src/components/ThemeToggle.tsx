@@ -5,20 +5,25 @@ import { useEffect, useState } from "react";
 const CHAVE_TEMA = "crm-tema";
 
 export function ThemeToggle() {
-  // null até o efeito rodar no cliente — evita mostrar o ícone errado por
-  // uma fração de segundo antes de saber a preferência real (ver o script
-  // em src/app/layout.tsx, que já aplicou a classe antes disto montar).
-  const [escuro, setEscuro] = useState<boolean | null>(null);
+  // O script do layout já aplica a classe antes da primeira pintura; o efeito
+  // apenas sincroniza o ícone com essa preferência inicial.
+  const [escuro, setEscuro] = useState(false);
 
   useEffect(() => {
     setEscuro(document.documentElement.classList.contains("dark"));
   }, []);
 
   function alternar() {
-    const novo = !escuro;
+    // A classe é aplicada pelo layout antes da hidratação; ela é a fonte de
+    // verdade para que um clique nunca use estado React defasado.
+    const novo = !document.documentElement.classList.contains("dark");
     setEscuro(novo);
     document.documentElement.classList.toggle("dark", novo);
-    localStorage.setItem(CHAVE_TEMA, novo ? "dark" : "light");
+    try {
+      localStorage.setItem(CHAVE_TEMA, novo ? "dark" : "light");
+    } catch {
+      // O tema ainda funciona nesta sessão se o storage estiver indisponível.
+    }
   }
 
   return (
@@ -26,6 +31,7 @@ export function ThemeToggle() {
       type="button"
       onClick={alternar}
       title={escuro ? "Mudar pra tema claro" : "Mudar pra tema escuro"}
+      aria-label={escuro ? "Mudar pra tema claro" : "Mudar pra tema escuro"}
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
     >
       {escuro ? (

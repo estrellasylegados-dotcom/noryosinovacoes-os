@@ -746,3 +746,5 @@ regra de trabalho. O que não entra: tarefa feita (isso é o diário).
 
 - **2026-09-20** (Rafael; implementação Codex) [odontominas]: branding visual do CRM passa a ter uma fonte única por `slug` em `crm/src/lib/branding.ts`; a OdontoMinas usa `logo-crm.png` e `favicon-crm.png`, com fallback padrão. Por quê: manter o CRM preparado para novas clínicas sem espalhar caminhos de assets pelos componentes.
 
+- **2026-09-20** (Rafael; implementação Codex) [odontominas]: o CRM declara `darkreader-lock` e mantém `crm-tema` como única fonte de tema claro/escuro; o toggle usa a classe `dark` do documento como estado efetivo. Por quê: a extensão Dark Reader estava reescrevendo os tokens de cor e mascarando a paleta clínica, sem que fosse necessário criar um segundo mecanismo de tema.
+

@@ -47,7 +47,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
     <div className="min-h-screen bg-neutral-50 sm:flex">
       <AutoRefresh />
       <SidebarShell
-        titulo={<div className="sm:mb-1"><Image src={branding.logoSrc} alt={clinicaAtual?.nome ?? "Clínica"} width={150} height={56} priority unoptimized className="h-auto max-h-12 w-auto max-w-[150px] object-contain object-left" /><p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-400">CRM · Atendimento</p></div>}
+        titulo={<div className="sm:mb-1"><Image src={branding.logoSrc} alt={clinicaAtual?.nome ?? "Clínica"} width={150} height={56} priority unoptimized className="mx-auto h-auto max-h-12 w-auto max-w-[150px] object-contain" /><p className="mt-1 text-center text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-400">CRM · Atendimento</p></div>}
         nav={<SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} alertas={resumoAlertas?.relevantes ?? 0} />}
         rodape={
           <div className="space-y-3">
@@ -63,7 +63,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
         rodapeCompacto={<div className="flex flex-col items-center gap-3 border-t border-neutral-100 pt-4"><span className={`h-2 w-2 rounded-full ${corConexao}`} title={textoConexao} /><span className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-800" title={sessao.nome}>{iniciais}</span></div>}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-end gap-1 border-b border-neutral-200/80 bg-white/90 px-4 backdrop-blur sm:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-end gap-1 border-b border-neutral-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
           <ThemeToggle />
           {resumoAlertas && <AlertasSino inicial={resumoAlertas} />}
           <Notificacoes inicial={notificacoes} />

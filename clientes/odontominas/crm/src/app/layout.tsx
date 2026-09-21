@@ -61,6 +61,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/* Evita que extensões de inversão de cor sobrescrevam os tokens do
+            CRM; o tema nativo controlado por crm-tema permanece a fonte de
+            verdade para claro e escuro. */}
+        <meta name="darkreader-lock" />
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
       <body

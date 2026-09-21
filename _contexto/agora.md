@@ -16,7 +16,7 @@
 ## Onde paramos
 **Atualizado em:** 2026-09-20
 
-- Redesign visual do CRM da OdontoMinas implementado e validado localmente; aguarda publicação autorizada.
+- O redesign-base do CRM da OdontoMinas (branding, sidebar e perfil) foi publicado diretamente no Railway em 2026-09-20 e teve login e assets validados. A revisão final de paleta, tema e centralização da logo está local, aprovada pelos gates e não foi publicada por instrução do Rafael.
 
 ## Pendências realmente abertas
 1. Automações por Kanban: ajustar a interface em 768 px, publicar as correções locais, ligar `AUTOMACOES_KANBAN_ENABLED` no Railway e repetir a validação final antes de liberar.
@@ -28,10 +28,10 @@
 7. RBAC: reset de senha real, contas da clínica, E2E por perfil, rotação da chave do Resend e troca/desativação das senhas fracas de teste.
 8. Reputação/Google: informar a URL real de avaliação e ativar quando decidido.
 9. Integrações: ControleODONTO aguarda credencial; Pixel Google Ads aguarda OAuth; Twenty CRM permanece pausado.
-10. Publicar o redesign do CRM da OdontoMinas (logo/favicon, sidebar, perfil e tema) e validar visualmente logado após deploy, quando autorizado.
+10. Publicar somente a revisão visual final do CRM da OdontoMinas (paleta, centralização da logo e proteção contra Dark Reader) e validar visualmente logado após autorização; a base do redesign já está em produção.
 
 ## Próximo passo
-Escolher a próxima liberação: publicar o redesign visual do CRM, finalizar Automações por Kanban ou publicar Noryos Ops. Não iniciar envio real adicional sem autorização.
+Escolher a próxima liberação: publicar a revisão visual final do CRM, finalizar Automações por Kanban ou publicar Noryos Ops. Não iniciar envio real adicional sem autorização.
 
 ## Riscos importantes
 - Migration em produção e envio real de WhatsApp exigem autorização específica do Rafael.
@@ -47,5 +47,5 @@ Escolher a próxima liberação: publicar o redesign visual do CRM, finalizar Au
 - Canais, atendentes, conversas, Kanban, Fluxos das Fases 2a–5, pesquisas e demais evidências `[TESTE]` já registradas no andamento do projeto e em decisões.
 
 ## Quente agora
-- Redesign visual do CRM da OdontoMinas validado localmente e aguardando publicação autorizada.
+- Revisão visual final do CRM da OdontoMinas validada localmente e aguardando publicação autorizada; a base do redesign já está em produção.
 
