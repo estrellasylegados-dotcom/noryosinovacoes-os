@@ -1,10 +1,11 @@
 import type { ClinicaAtual } from "@/lib/clinica";
+import faviconCrm from "@/app/favicon-crm.png";
 
 type Branding = { logoSrc: string; faviconSrc: string };
 
 const BRANDING_PADRAO: Branding = {
   logoSrc: "/logo-crm.png",
-  faviconSrc: "/favicon-crm.png",
+  faviconSrc: faviconCrm.src,
 };
 
 /** Ponto único de extensão para os assets de cada instância white-label. */
