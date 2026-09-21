@@ -47,7 +47,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
     <div className="min-h-screen bg-neutral-50 sm:flex">
       <AutoRefresh />
       <SidebarShell
-        titulo={<div className="sm:mb-1"><Image src={branding.logoSrc} alt={clinicaAtual?.nome ?? "Clínica"} width={150} height={56} priority className="h-auto max-h-12 w-auto max-w-[150px] object-contain object-left" /><p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-400">CRM · Atendimento</p></div>}
+        titulo={<div className="sm:mb-1"><Image src={branding.logoSrc} alt={clinicaAtual?.nome ?? "Clínica"} width={150} height={56} priority unoptimized className="h-auto max-h-12 w-auto max-w-[150px] object-contain object-left" /><p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-400">CRM · Atendimento</p></div>}
         nav={<SidebarNav permissoes={Array.from(sessao.permissoes)} naoLidas={naoLidas} alertas={resumoAlertas?.relevantes ?? 0} />}
         rodape={
           <div className="space-y-3">

@@ -65,5 +65,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Assets de branding são públicos: o navegador e o otimizador do Next não
+  // enviam cookie para buscá-los, então não podem passar pelo gate do painel.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|logo-crm.png|favicon-crm.png).*)"],
 };
