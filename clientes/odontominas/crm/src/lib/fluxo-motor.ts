@@ -2,6 +2,7 @@ import { resolverVariaveis } from "@/lib/mensagens-salvas";
 import { encontrarNo, type FluxoDefinicao, type NoCapturarResposta, type NoMenu, type NoAcaoComercial, type OperadorCondicao, type TipoPesquisa } from "@/lib/fluxo-tipos";
 import type { StatusConversa } from "@/lib/status";
 import type { Prioridade } from "@/lib/prioridade";
+import { classificarRespostaExperiencia } from "@/lib/reputacao-experiencia";
 
 /**
  * Interpretador PURO do motor de Fluxo de Conversa — Fase 2a (ver
@@ -67,7 +68,8 @@ export type AcaoCrm =
   // variáveis (não os valores resolvidos) — quem tem o valor mais recente de
   // `variaveis` no momento de aplicar é a camada de I/O, não o motor.
   | { tipo: "criar_pesquisa"; tipoPesquisa: TipoPesquisa; referenciaId: string | null; variavelDestino: string }
-  | { tipo: "persistir_resposta_pesquisa"; variavelPesquisaId: string; variavelValor: string; variavelComentario: string | null };
+  | { tipo: "persistir_resposta_pesquisa"; variavelPesquisaId: string; variavelValor: string; variavelComentario: string | null }
+  | { tipo: "registrar_experiencia"; variavelPesquisaId: string; resposta: string; classificacao: "muito_boa" | "boa" | "poderia_melhorar" | "ambiguo" };
 
 export type ResultadoPasso =
   | {
@@ -589,5 +591,12 @@ export function processarNo(
         },
         tipoEvento: "resposta_pesquisa_persistida",
       };
+
+    case "classificar_experiencia": {
+      const resposta = variaveis[no.variavelResposta] ?? "";
+      const classificacao = classificarRespostaExperiencia(resposta);
+      const proximoNoId = classificacao === "poderia_melhorar" ? no.proximoNegativo : classificacao === "ambiguo" ? no.proximoAmbiguo : no.proximoPositivo;
+      return { ok: true, proximoNoId, novoEstado: "queued", aguardandoAte: agora.toISOString(), mensagensParaEnviar: [], variaveisAtualizadas: { [no.variavelClassificacao]: classificacao }, acaoCrm: { tipo: "registrar_experiencia", variavelPesquisaId: no.variavelPesquisaId, resposta, classificacao }, tipoEvento: "experiencia_classificada", payloadEvento: { respostaBruta: resposta, classificacao } };
+    }
   }
 }

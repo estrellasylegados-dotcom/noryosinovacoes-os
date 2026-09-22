@@ -146,6 +146,22 @@ export type NoPersistirRespostaPesquisa = {
   proximo: string;
 };
 
+/**
+ * Reputação usa o MESMO waiting_input genérico: este nó apenas classifica a
+ * resposta já capturada, persiste a pesquisa e escolhe o próximo caminho.
+ * Não é um motor nem um worker próprio.
+ */
+export type NoClassificarExperiencia = {
+  id: string;
+  tipo: "classificar_experiencia";
+  variavelPesquisaId: string;
+  variavelResposta: string;
+  variavelClassificacao: string;
+  proximoPositivo: string;
+  proximoNegativo: string;
+  proximoAmbiguo: string;
+};
+
 export type NoFluxo =
   | NoAcaoComercial
   | NoInicio
@@ -165,7 +181,8 @@ export type NoFluxo =
   | NoIniciarAgenteIA
   | NoCapturarResposta
   | NoCriarPesquisa
-  | NoPersistirRespostaPesquisa;
+  | NoPersistirRespostaPesquisa
+  | NoClassificarExperiencia;
 
 export type FluxoDefinicao = {
   nodes: NoFluxo[];
@@ -389,6 +406,10 @@ function validarNo(bruto: unknown, indice: number): NoFluxo | string {
         variavelComentario: n.variavelComentario as string | undefined,
         proximo: n.proximo,
       };
+
+    case "classificar_experiencia":
+      if (!ehString(n.variavelPesquisaId) || !ehString(n.variavelResposta) || !ehString(n.variavelClassificacao) || !ehString(n.proximoPositivo) || !ehString(n.proximoNegativo) || !ehString(n.proximoAmbiguo)) return `nó ${n.id}: classificação de experiência inválida`;
+      return { id: n.id, tipo: "classificar_experiencia", variavelPesquisaId: n.variavelPesquisaId, variavelResposta: n.variavelResposta, variavelClassificacao: n.variavelClassificacao, proximoPositivo: n.proximoPositivo, proximoNegativo: n.proximoNegativo, proximoAmbiguo: n.proximoAmbiguo };
 
     default:
       return `nó ${n.id}: tipo desconhecido "${String(n.tipo)}"`;

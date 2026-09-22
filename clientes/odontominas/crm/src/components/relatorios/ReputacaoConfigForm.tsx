@@ -19,6 +19,11 @@ export function ReputacaoConfigForm({ configInicial }: { configInicial: Reputaca
   const [url, setUrl] = useState(configInicial.googleReviewUrl ?? "");
   const [rastrearCliques, setRastrearCliques] = useState(configInicial.rastrearCliques);
   const [delay, setDelay] = useState(configInicial.delayHorasPadrao?.toString() ?? "");
+  const [pesquisaAtiva, setPesquisaAtiva] = useState(configInicial.pesquisaAtiva);
+  const [pesquisaDelay, setPesquisaDelay] = useState(String(configInicial.pesquisaDelayMinutos));
+  const [googleAtivo, setGoogleAtivo] = useState(configInicial.googleAtivo || configInicial.ativo);
+  const [googleDelay, setGoogleDelay] = useState(String(configInicial.googleDelayMinutos));
+  const [alertaRecuperacaoAtivo, setAlertaRecuperacaoAtivo] = useState(configInicial.alertaRecuperacaoAtivo);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
@@ -37,6 +42,11 @@ export function ReputacaoConfigForm({ configInicial }: { configInicial: Reputaca
           rastrearCliques,
           delayHorasPadrao: delay.trim() === "" ? null : Number(delay),
           automacaoAtendimentoConcluidoAtiva: false,
+          pesquisaAtiva,
+          pesquisaDelayMinutos: Number(pesquisaDelay),
+          googleAtivo,
+          googleDelayMinutos: Number(googleDelay),
+          alertaRecuperacaoAtivo,
         }),
       });
       const resultado = (await resposta.json()) as { ok: boolean; error?: string };
@@ -53,10 +63,17 @@ export function ReputacaoConfigForm({ configInicial }: { configInicial: Reputaca
 
   return (
     <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4">
-      <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
-        <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
-        Módulo ativo
-      </label>
+      <section className="space-y-2 border-b border-neutral-100 pb-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Experiência do paciente</p>
+        <label className="flex items-center gap-2 text-sm font-medium text-neutral-800"><input type="checkbox" checked={pesquisaAtiva} onChange={(e) => setPesquisaAtiva(e.target.checked)} /> Ativar pesquisa pós-atendimento</label>
+        <label className="block text-xs text-neutral-600">Enviar após (minutos)<input type="number" min={0} value={pesquisaDelay} onChange={(e) => setPesquisaDelay(e.target.value)} className={`${CLASSE_INPUT} mt-1 max-w-[160px]`} /></label>
+      </section>
+
+      <section className="space-y-2 border-b border-neutral-100 pb-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Avaliações Google</p>
+        <label className="flex items-center gap-2 text-sm font-medium text-neutral-800"><input type="checkbox" checked={googleAtivo} onChange={(e) => { setGoogleAtivo(e.target.checked); setAtivo(e.target.checked); }} /> Ativar solicitação Google</label>
+        <label className="block text-xs text-neutral-600">Enviar após (minutos)<input type="number" min={0} value={googleDelay} onChange={(e) => setGoogleDelay(e.target.value)} className={`${CLASSE_INPUT} mt-1 max-w-[160px]`} /></label>
+      </section>
 
       <div>
         <label className="mb-1 block text-xs font-medium text-neutral-600">Link de avaliação (Google)</label>
@@ -68,6 +85,8 @@ export function ReputacaoConfigForm({ configInicial }: { configInicial: Reputaca
           className={CLASSE_INPUT}
         />
       </div>
+
+      {url && <button type="button" onClick={() => window.open(url, "_blank", "noopener,noreferrer")} className="text-left text-xs font-medium text-teal-700 hover:underline">Testar link em nova aba</button>}
 
       <label className="flex items-center gap-2 text-sm text-neutral-700">
         <input type="checkbox" checked={rastrearCliques} onChange={(e) => setRastrearCliques(e.target.checked)} />
@@ -88,10 +107,7 @@ export function ReputacaoConfigForm({ configInicial }: { configInicial: Reputaca
         />
       </div>
 
-      <div>
-        <p className="text-xs font-medium text-neutral-600">Automação a partir de atendimento concluído</p>
-        <p className="mt-1 text-sm text-neutral-400">Desativada — aguardando origem confiável de atendimento concluído.</p>
-      </div>
+      <label className="flex items-center gap-2 text-sm text-neutral-700"><input type="checkbox" checked={alertaRecuperacaoAtivo} onChange={(e) => setAlertaRecuperacaoAtivo(e.target.checked)} /> Criar alerta automático para insatisfação</label>
 
       <div className="flex items-center gap-3">
         <button

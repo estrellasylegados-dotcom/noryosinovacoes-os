@@ -57,6 +57,8 @@ export function criarNoPadrao(tipo: NoFluxo["tipo"], id: string): NoFluxo {
       return { id, tipo: "criar_pesquisa", tipoPesquisa: "nps", variavelDestino: "pesquisa_id", proximo: id };
     case "persistir_resposta_pesquisa":
       return { id, tipo: "persistir_resposta_pesquisa", variavelPesquisaId: "pesquisa_id", variavelValor: "resposta", proximo: id };
+    case "classificar_experiencia":
+      return { id, tipo, variavelPesquisaId: "pesquisa_id", variavelResposta: "resposta", variavelClassificacao: "classificacao", proximoPositivo: id, proximoNegativo: id, proximoAmbiguo: id };
   }
 }
 
@@ -79,6 +81,11 @@ export function derivarArestasXyflow(nodes: NoFluxo[]): ArestaEditor[] {
       case "criar_pesquisa":
       case "persistir_resposta_pesquisa":
         arestas.push({ id: `${no.id}::default`, source: no.id, sourceHandle: "default", target: no.proximo });
+        break;
+      case "classificar_experiencia":
+        arestas.push({ id: `${no.id}::positivo`, source: no.id, sourceHandle: "positivo", target: no.proximoPositivo });
+        arestas.push({ id: `${no.id}::negativo`, source: no.id, sourceHandle: "negativo", target: no.proximoNegativo });
+        arestas.push({ id: `${no.id}::ambiguo`, source: no.id, sourceHandle: "ambiguo", target: no.proximoAmbiguo });
         break;
       case "condicao":
         arestas.push({ id: `${no.id}::verdadeiro`, source: no.id, sourceHandle: "verdadeiro", target: no.seVerdadeiro });
@@ -126,6 +133,11 @@ export function aplicarConexao(nodes: NoFluxo[], source: string, sourceHandle: s
       case "criar_pesquisa":
       case "persistir_resposta_pesquisa":
         return sourceHandle === "default" ? { ...no, proximo: target } : no;
+      case "classificar_experiencia":
+        if (sourceHandle === "positivo") return { ...no, proximoPositivo: target };
+        if (sourceHandle === "negativo") return { ...no, proximoNegativo: target };
+        if (sourceHandle === "ambiguo") return { ...no, proximoAmbiguo: target };
+        return no;
       case "condicao":
         if (sourceHandle === "verdadeiro") return { ...no, seVerdadeiro: target };
         if (sourceHandle === "falso") return { ...no, seFalso: target };

@@ -16,6 +16,11 @@ export type ReputacaoConfig = {
   rastrearCliques: boolean;
   delayHorasPadrao: number | null;
   automacaoAtendimentoConcluidoAtiva: boolean;
+  pesquisaAtiva?: boolean;
+  pesquisaDelayMinutos?: number;
+  googleAtivo?: boolean;
+  googleDelayMinutos?: number;
+  alertaRecuperacaoAtivo?: boolean;
 };
 
 function linhaParaConfig(clinicaId: string, linha: Record<string, unknown> | null): ReputacaoConfig {
@@ -27,6 +32,7 @@ function linhaParaConfig(clinicaId: string, linha: Record<string, unknown> | nul
       rastrearCliques: true,
       delayHorasPadrao: null,
       automacaoAtendimentoConcluidoAtiva: false,
+      pesquisaAtiva: false, pesquisaDelayMinutos: 30, googleAtivo: false, googleDelayMinutos: 120, alertaRecuperacaoAtivo: true,
     };
   }
   return {
@@ -36,6 +42,11 @@ function linhaParaConfig(clinicaId: string, linha: Record<string, unknown> | nul
     rastrearCliques: Boolean(linha.rastrear_cliques),
     delayHorasPadrao: (linha.delay_horas_padrao as number | null) ?? null,
     automacaoAtendimentoConcluidoAtiva: Boolean(linha.automacao_atendimento_concluido_ativa),
+    pesquisaAtiva: Boolean(linha.pesquisa_ativa),
+    pesquisaDelayMinutos: (linha.pesquisa_delay_minutos as number | null) ?? 30,
+    googleAtivo: Boolean(linha.google_ativo),
+    googleDelayMinutos: (linha.google_delay_minutos as number | null) ?? 120,
+    alertaRecuperacaoAtivo: linha.alerta_recuperacao_ativo !== false,
   };
 }
 
@@ -63,6 +74,11 @@ export type SalvarConfigReputacaoInput = {
   rastrearCliques: boolean;
   delayHorasPadrao: number | null;
   automacaoAtendimentoConcluidoAtiva: boolean;
+  pesquisaAtiva?: boolean;
+  pesquisaDelayMinutos?: number;
+  googleAtivo?: boolean;
+  googleDelayMinutos?: number;
+  alertaRecuperacaoAtivo?: boolean;
 };
 
 /**
@@ -82,6 +98,9 @@ export async function salvarConfigReputacao(
   if (input.delayHorasPadrao !== null && (!Number.isInteger(input.delayHorasPadrao) || input.delayHorasPadrao < 0)) {
     return { ok: false, error: "delay_invalido" };
   }
+  const pesquisaDelayMinutos = input.pesquisaDelayMinutos ?? 30;
+  const googleDelayMinutos = input.googleDelayMinutos ?? 120;
+  if (![pesquisaDelayMinutos, googleDelayMinutos].every((v) => Number.isInteger(v) && v >= 0)) return { ok: false, error: "delay_invalido" };
 
   const supabase = getSupabaseServerClient();
   if (!supabase) return { ok: false, error: "backend_unavailable" };
@@ -94,6 +113,11 @@ export async function salvarConfigReputacao(
       rastrear_cliques: input.rastrearCliques,
       delay_horas_padrao: input.delayHorasPadrao,
       automacao_atendimento_concluido_ativa: input.automacaoAtendimentoConcluidoAtiva,
+      pesquisa_ativa: input.pesquisaAtiva ?? false,
+      pesquisa_delay_minutos: pesquisaDelayMinutos,
+      google_ativo: input.googleAtivo ?? input.ativo,
+      google_delay_minutos: googleDelayMinutos,
+      alerta_recuperacao_ativo: input.alertaRecuperacaoAtivo ?? true,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "clinica_id" }

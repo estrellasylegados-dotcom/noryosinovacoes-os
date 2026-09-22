@@ -228,6 +228,22 @@ function gerarSolicitacaoAvaliacaoGoogle(): FluxoDefinicao {
   ]);
 }
 
+/** Fluxo-base de pós-atendimento. A ocorrência/espera vem do gatilho central; a resposta continua no waiting_input do motor. */
+function gerarPesquisaExperiencia(): FluxoDefinicao {
+  return comLayoutAutomatico([
+    { id: "inicio", tipo: "inicio", proximo: "criar_pesquisa" },
+    { id: "criar_pesquisa", tipo: "criar_pesquisa", tipoPesquisa: "satisfacao", referenciaId: "{atendimento_id}", variavelDestino: "pesquisa_id", proximo: "pergunta" },
+    { id: "pergunta", tipo: "capturar_resposta", variavel: "resposta_experiencia", tipoValor: "texto", timeoutSegundos: 172800, proximoTimeout: "fim_sem_resposta", proximo: "classificar",
+      texto: "Olá, {primeiro_nome}! 😊\n\nPassando rapidinho para saber como foi sua experiência hoje na {clinica_nome}.\n\nSua opinião é muito importante para continuarmos cuidando cada vez melhor de cada atendimento.\n\nComo foi para você?\n\n😊 Muito boa\n🙂 Boa\n😕 Poderia melhorar" },
+    { id: "classificar", tipo: "classificar_experiencia", variavelPesquisaId: "pesquisa_id", variavelResposta: "resposta_experiencia", variavelClassificacao: "classificacao_experiencia", proximoPositivo: "agradecer", proximoNegativo: "recuperar", proximoAmbiguo: "esclarecer" },
+    { id: "agradecer", tipo: "mensagem", texto: "Que bom saber disso, {primeiro_nome}! 💚\n\nFicamos muito felizes em saber que sua experiência foi boa. Obrigado por dedicar um momento para nos contar e por confiar na nossa equipe.", proximo: "fim_positivo" },
+    { id: "recuperar", tipo: "transferir_humano", motivo: "recuperacao_experiencia", mensagem: "Obrigado por nos contar, {primeiro_nome}. 💚\n\nSua experiência é muito importante para nós e queremos entender melhor o que aconteceu. Nossa equipe vai entrar em contato por aqui para ouvir você com atenção e buscar a melhor forma de ajudar." },
+    { id: "esclarecer", tipo: "transferir_humano", motivo: "experiencia_ambigua", mensagem: "Obrigado por compartilhar, {primeiro_nome}. Para entendermos melhor sua experiência, nossa equipe vai falar com você por aqui." },
+    { id: "fim_positivo", tipo: "finalizar", motivo: "experiencia_positiva_registrada" },
+    { id: "fim_sem_resposta", tipo: "finalizar", motivo: "pesquisa_experiencia_sem_resposta" },
+  ]);
+}
+
 export const TEMPLATES_ODONTO: TemplateFluxo[] = [
   { id: "kanban-follow-up", nome: "Follow-up de orçamento", descricao: "Aguarda 1 dia, acompanha o orçamento e verifica novamente após 2 dias. Escolha pipeline e etapa antes de publicar.", gerarDefinicao: () => gerarModeloComercial("follow-up") },
   { id: "kanban-sem-responsavel", nome: "Lead sem responsável", descricao: "Após 15 minutos, cria alerta na Central se a oportunidade continuar sem responsável.", gerarDefinicao: () => gerarModeloComercial("sem-responsavel") },
@@ -261,6 +277,12 @@ export const TEMPLATES_ODONTO: TemplateFluxo[] = [
       "Cria a solicitação e manda o link de avaliação pelo WhatsApp. Depois de aplicar, escolha o gatilho " +
       "\"Solicitação de avaliação Google\" na aba Gatilho, e configure a URL do Google em Configurações → Reputação.",
     gerarDefinicao: gerarSolicitacaoAvaliacaoGoogle,
+  },
+  {
+    id: "pesquisa-experiencia-paciente",
+    nome: "Pesquisa de Experiência do Paciente",
+    descricao: "Pós-atendimento com resposta livre, classificação conservadora e recuperação humana em caso de insatisfação. Escolha o gatilho Atendimento concluído.",
+    gerarDefinicao: gerarPesquisaExperiencia,
   },
 ];
 

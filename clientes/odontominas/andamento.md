@@ -2063,14 +2063,16 @@ principal do projeto agora; site (jÃ¡ no ar) e trÃ¡fego pago ficam em segund
 ## Onde está
 **Atualizado em:** 2026-09-21
 
-- Auditoria pré-ControleODONTO realizou validação logada em produção como `[TESTE] Noryos Admin`; typecheck, lint, build e 958 testes locais passaram.
-- Horário oficial ativo em produção: segunda a sexta 08:00–18:00, sábado 08:00–12:00, domingo fechado, timezone America/Sao_Paulo. Os indicadores passaram para hora útil; a fila mostra 18 SLAs estourados para triagem, sem alteração automática de dados de paciente.
-- Correções locais ainda não publicadas: duração humanizada nos alertas, nomes numéricos não exibidos como pacientes e textos corretos sobre o papel do horário. Sem push ou deploy nesta sessão.
+- **Reputação: 100% aprovada em produção.** Migration `2026-09-21_v39_reputacao_experiencia.sql` aplicada e deploy Railway concluído. O painel `/reputacao`, permissões, configurações, histórico, recuperação de experiência e URL Google foram conferidos logado.
+- E2E controlado executado somente para `Rafael (teste Disparos)` (`5561981925241`): três mensagens `[TESTE]` enviadas e registradas pelo provedor (pesquisa, retorno de recuperação e convite Google). A resposta `Poderia melhorar: demorou muito.` foi classificada como `poderia_melhorar`; a recuperação `79b8c3a9-3821-4335-883f-9fdf6e845601` percorreu aberto → em_tratativa → resolvido; alerta automático e deduplicação foram confirmados.
+- O convite Google gerou a pesquisa `8b0ded19-4450-4d58-869d-ff8c7a06d981` como `enviada`; a execução `b0c3c36f-e609-4b77-9e13-08ba02a6a21e` terminou `completed`. Fluxos de teste pausados, agendas de teste canceladas e configuração anterior restaurada; nenhuma automação de teste ficou ativa.
+- Gates finais da Reputação: `npm run typecheck`, `npm run lint`, `npm test` (82 arquivos/966 testes) e `npm run build` aprovados. Relatório: `crm/docs/REPUTACAO-VALIDACAO-PRODUCAO-2026-09-21.md`; roteiro reproduzível: `crm/scripts/e2e-reputacao-prod.ts`.
+- Auditoria pré-ControleODONTO realizou validação logada em produção como `[TESTE] Noryos Admin`; horário oficial segue ativo (segunda a sexta 08:00–18:00, sábado 08:00–12:00, domingo fechado, timezone America/Sao_Paulo). A fila mostra 18 SLAs estourados para triagem manual.
 - ControleODONTO: Fase 0 (adapter, painel, RBAC, logs e lock) está pronta; capabilities seguem desligadas. Ainda não há credencial de homologação nem contrato oficial de API/autenticação.
 
 ## Pendências
 - Para iniciar ControleODONTO: receber credencial de homologação e documentação oficial de autenticação, endpoints, payloads/status e webhook; Rafael configura o segredo diretamente no Railway e então se executa teste somente-leitura.
-- Publicar as correções locais e validar visualmente o texto final, quando autorizado.
+- Publicar as correções locais de alertas/horário e validar visualmente o texto final, quando autorizado.
 - Triar os 18 SLAs estourados; não assumir, responder ou encerrar conversas reais sem autorização específica.
 - Publicar somente a revisão visual final e validar visualmente logado em desktop e responsividade básica, quando autorizado.
 - Para concluir a revisão local autenticada das demais telas, usar uma credencial de teste válida; sessões e cookies não são forjados.

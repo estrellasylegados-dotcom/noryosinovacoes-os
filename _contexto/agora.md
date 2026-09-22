@@ -5,10 +5,12 @@
 - Auditoria pré-ControleODONTO concluída: gates locais do CRM passaram (typecheck, lint, build e 958 testes) e a produção foi validada logada como `[TESTE] Noryos Admin`.
 - Horário oficial salvo em produção: segunda a sexta, 08:00–18:00; sábado, 08:00–12:00; domingo fechado; timezone America/Sao_Paulo. Os indicadores agora usam hora útil.
 - Três correções locais de qualidade foram preparadas, mas não receberam push ou deploy: duração de alerta legível, identificação numérica não exibida como paciente e textos corretos sobre o papel do horário.
+- Reputação publicada e validada em produção: migration V39, painel, fluxos, classificação, alerta, recuperação e convite Google aprovados. E2E controlado enviou três mensagens `[TESTE]` somente ao número autorizado `5561981925241`; fluxos pausados e configuração restaurada.
 
 ## Estado atual (2026-09-21)
 - Cliente-piloto #1: OdontoMinas (`clientes/odontominas/`, Ariadna Pires). Site no ar (Cloudflare Pages). CRM em produção no Railway (`odontominas-crm`) + Supabase. **Deploy = `railway up`**; `git push` não publica.
 - Em produção: painel, Chat ao Vivo, Relatórios, Agentes de IA, Disparos, Campanhas, Fluxo de Conversa, Identidade/RBAC, Equipe, Notas, Horário, SLA, Canais, Kanban comercial e Central de Alertas.
+- Reputação: publicada e aprovada em produção; relatório em `clientes/odontominas/crm/docs/REPUTACAO-VALIDACAO-PRODUCAO-2026-09-21.md`.
 - Migration `v36` das Automações Comerciais por Kanban aplicada e validada em produção sem perda de dados.
 - Localmente implementado e validado por gates: **Noryos Ops V1**, central interna de operações da plataforma. Migration `v37` aplicada e validada em produção; ainda não publicado no Railway nem validado visualmente logado.
 - **Distribuição Automática V1** validada funcional e visualmente em produção, com round-robin real, idempotência, preservação de SLA, transferência, RBAC e regressão do webhook Evolution. Migration `v38` aplicada e validada; configuração final desativada.
@@ -28,9 +30,8 @@
 5. Rafael validar o Kanban logado, campo de resposta do Chat e menu recolhível; decidir se Supervisora pode mover cards.
 6. Triar os 18 SLAs estourados que apareceram após ativar o horário operacional; não assumir, responder ou encerrar conversas reais sem autorização específica.
 7. RBAC: reset de senha real, contas da clínica, E2E por perfil, rotação da chave do Resend e troca/desativação das senhas fracas de teste.
-8. Reputação/Google: informar a URL real de avaliação e ativar quando decidido.
-9. Integrações: ControleODONTO aguarda credencial de homologação e documentação oficial de autenticação, endpoints, payloads/status e webhook; Pixel Google Ads aguarda OAuth; Twenty CRM permanece pausado.
-10. Publicar somente a revisão visual final do CRM da OdontoMinas (paleta, centralização da logo e proteção contra Dark Reader) e validar visualmente logado após autorização; a base do redesign já está em produção.
+8. Integrações: ControleODONTO aguarda credencial de homologação e documentação oficial de autenticação, endpoints, payloads/status e webhook; Pixel Google Ads aguarda OAuth; Twenty CRM permanece pausado.
+9. Publicar somente a revisão visual final do CRM da OdontoMinas (paleta, centralização da logo e proteção contra Dark Reader) e validar visualmente logado após autorização; a base do redesign já está em produção.
 
 ## Próximo passo
 Obter a credencial de homologação e a documentação oficial do ControleODONTO; Rafael configura o segredo diretamente no Railway e, então, executar apenas o teste de conexão/leitura. Em paralelo, escolher a próxima liberação local. Não iniciar envio real adicional sem autorização.
@@ -40,6 +41,7 @@ Obter a credencial de homologação e a documentação oficial do ControleODONTO
 - O histórico oficial de migrations do Supabase ainda aponta `v35_alertas_operacionais`; a `v36` já estava estruturalmente aplicada, e `v37`/`v38` foram aplicadas manualmente em ordem pelo SQL Editor. Não reaplicar sem reconciliar o histórico.
 - As migrations `v37` e `v38` são aditivas e foram validadas no banco sem perda de dados.
 - O único envio da validação de Kanban foi para o número autorizado `5561981925241`; o fluxo está pausado.
+- A evidência de Reputação (pesquisa, recuperação, convite Google e três mensagens `[TESTE]`) foi preservada em produção; os fluxos do teste estão pausados e não há automação de teste ativa.
 - Segredos nunca entram no repositório ou nos registros de contexto.
 - Integração real com ControleODONTO não deve inferir contrato nem habilitar capabilities sem validação explícita.
 - Alertas e outras telas ainda contêm dados de teste/demo preservados para evidência.

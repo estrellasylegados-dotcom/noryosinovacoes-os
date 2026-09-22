@@ -18,6 +18,7 @@ import { avaliarHorarioAtendimento, calcularProximoHorario, buscarConfiguracaoHo
 import { classificarNps } from "@/lib/nps";
 import { buscarConfigReputacao } from "@/lib/reputacao-config";
 import { calcularExpiracaoToken, gerarTrackingToken, montarUrlRastreavel } from "@/lib/reputacao-tracking";
+import { chaves } from "@/lib/alertas-tipos";
 
 /**
  * Camada de I/O do motor de Fluxo de Conversa (Fase 2a — ver
@@ -267,6 +268,31 @@ async function aplicarAcaoCrm(
       // etc.) — sem trigger de banco, todo UPDATE seta o campo explicitamente.
       const agoraResposta = new Date().toISOString();
       await supabase.from("pesquisas").update({ status: "respondida", respondido_em: agoraResposta, updated_at: agoraResposta }).eq("id", pesquisaId);
+      return { donoTransferido: false };
+    }
+    case "registrar_experiencia": {
+      const pesquisaId = contexto.variaveis[acao.variavelPesquisaId];
+      if (!pesquisaId || !contexto.pacienteId) return { donoTransferido: false };
+      const { data: pesquisa } = await supabase.from("pesquisas").select("id, tipo, referencia_id, clinica_id").eq("id", pesquisaId).maybeSingle();
+      if (!pesquisa || pesquisa.clinica_id !== clinicaId || pesquisa.tipo !== "satisfacao") return { donoTransferido: false };
+      const agora = new Date().toISOString();
+      const { error: erroResposta } = await supabase.from("pesquisa_respostas").insert({
+        pesquisa_id: pesquisaId, valor_texto: acao.resposta, classificacao: acao.classificacao, metadata: { origem: "reputacao_experiencia" },
+      });
+      if (erroResposta) return { donoTransferido: false };
+      await supabase.from("pesquisas").update({ status: "respondida", respondido_em: agora, updated_at: agora, metadata: { classificacao_experiencia: acao.classificacao } }).eq("id", pesquisaId);
+      if (acao.classificacao !== "poderia_melhorar") return { donoTransferido: false };
+      const { data: recuperacao, error: erroRecuperacao } = await supabase.from("recuperacao_experiencias").upsert({
+        clinica_id: clinicaId, paciente_id: contexto.pacienteId, conversa_id: conversaId,
+        atendimento_id: pesquisa.referencia_id || null, pesquisa_id: pesquisaId, resposta_original: acao.resposta,
+      }, { onConflict: "pesquisa_id" }).select("id").single();
+      if (erroRecuperacao || !recuperacao) return { donoTransferido: false };
+      const config = await buscarConfigReputacao(clinicaId);
+      if (config.alertaRecuperacaoAtivo) await abrirAlertaPorEvento(clinicaId, {
+        tipo: "experiencia_insatisfatoria", chave: chaves.experienciaInsatisfatoria(recuperacao.id as string), severidade: "critico",
+        titulo: "Experiência do paciente precisa de atenção", descricao: "O paciente informou que a experiência poderia melhorar.",
+        tipoEntidade: "conversa", entidadeId: conversaId, responsavelId: null, dados: { recuperacaoId: recuperacao.id, pesquisaId },
+      });
       return { donoTransferido: false };
     }
   }
@@ -540,7 +566,7 @@ export async function resolverRespostaWaitingInput(clinicaId: string, execucaoId
   return true;
 }
 
-export type GatilhoExecucao = { tipo: string; refId?: string | null; dedupeKey?: string | null };
+export type GatilhoExecucao = { tipo: string; refId?: string | null; dedupeKey?: string | null; variaveisIniciais?: Record<string, string>; aguardarAte?: string | null };
 
 /**
  * Ponto único de entrada pra começar uma execução — webhook, campanha, cron
@@ -606,6 +632,7 @@ export async function iniciarExecucaoFluxo(
   if (!inicio) return { ok: false, error: "sem_no_inicio" };
 
   const agora = new Date().toISOString();
+  const aguardarAte = gatilho.aguardarAte && new Date(gatilho.aguardarAte).getTime() > Date.now() ? gatilho.aguardarAte : agora;
   const { data: execucao, error } = await supabase
     .from("fluxo_execucoes")
     .insert({
@@ -616,7 +643,8 @@ export async function iniciarExecucaoFluxo(
       paciente_id: pacienteId,
       estado: "queued",
       no_atual_id: inicio.id,
-      aguardando_ate: agora,
+      aguardando_ate: aguardarAte,
+      variaveis: gatilho.variaveisIniciais ?? {},
       passos_executados: 0,
       gatilho_tipo: gatilho.tipo,
       gatilho_ref_id: gatilho.refId ?? null,
@@ -638,8 +666,10 @@ export async function iniciarExecucaoFluxo(
   await assumirControle(clinicaId, conversaId, "fluxo", { fluxo_execucao_ativa_id: execucaoId });
 
   // Processa o nó "início" sincronamente — não espera o poller pro 1º passo.
-  const claim = await supabase.rpc("fluxo_reivindicar", { p_clinica: clinicaId, p_execucao: execucaoId });
-  if (claim.data && !claim.error) await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "avancar" }, claim.data.token);
+  if (aguardarAte === agora) {
+    const claim = await supabase.rpc("fluxo_reivindicar", { p_clinica: clinicaId, p_execucao: execucaoId });
+    if (claim.data && !claim.error) await processarPassoReivindicado(clinicaId, execucaoId, { tipo: "avancar" }, claim.data.token);
+  }
 
   return { ok: true, execucaoId };
 }

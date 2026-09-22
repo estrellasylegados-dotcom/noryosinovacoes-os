@@ -44,6 +44,8 @@ function proximosDe(no: NoFluxo): string[] {
     case "criar_pesquisa":
     case "persistir_resposta_pesquisa":
       return [no.proximo];
+    case "classificar_experiencia":
+      return [no.proximoPositivo, no.proximoNegativo, no.proximoAmbiguo];
     case "capturar_resposta":
       return [no.proximo, ...(no.proximoTimeout ? [no.proximoTimeout] : [])];
     case "finalizar":

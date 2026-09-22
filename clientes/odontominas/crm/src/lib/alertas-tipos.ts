@@ -23,7 +23,7 @@ export const STATUS_ENCERRADOS: readonly StatusAlerta[] = ["resolvido", "ignorad
 /** Operacional = atendimento da clínica. Técnico = funcionamento da plataforma (base do futuro Noryos Ops). */
 export type Natureza = "operacional" | "tecnico";
 
-export const CATEGORIAS = ["SLA", "CONVERSA", "KANBAN", "CANAL", "MENSAGEM", "FLUXO", "INTEGRACAO", "SISTEMA"] as const;
+export const CATEGORIAS = ["SLA", "CONVERSA", "KANBAN", "CANAL", "MENSAGEM", "FLUXO", "REPUTACAO", "INTEGRACAO", "SISTEMA"] as const;
 export type Categoria = (typeof CATEGORIAS)[number];
 
 export const CATEGORIA_ROTULO: Record<Categoria, string> = {
@@ -33,6 +33,7 @@ export const CATEGORIA_ROTULO: Record<Categoria, string> = {
   CANAL: "Canal",
   MENSAGEM: "Mensagem",
   FLUXO: "Fluxo",
+  REPUTACAO: "Reputação",
   INTEGRACAO: "Integração",
   SISTEMA: "Sistema",
 };
@@ -166,6 +167,11 @@ export const TIPOS_ALERTA = {
     rotulo: "Automações temporariamente indisponíveis",
     descricaoConfig: "Aviso em linguagem simples quando um problema técnico afeta as automações (sem expor detalhes internos).",
   },
+  experiencia_insatisfatoria: {
+    categoria: "REPUTACAO", natureza: "operacional", permissaoLeitura: "alertas.visualizar", porResponsavel: true,
+    autoResolve: false, tipoEntidade: "conversa", rotulo: "Experiência do paciente precisa de atenção",
+    descricaoConfig: "Paciente informou que a experiência poderia melhorar.",
+  },
   fluxo_preso: {
     categoria: "FLUXO",
     natureza: "tecnico",
@@ -205,6 +211,7 @@ export const chaves = {
   fluxoFalhou: (execucaoId: string) => `fluxo_falhou:${execucaoId}`,
   fluxoPreso: (execucaoId: string) => `fluxo_preso:${execucaoId}`,
   automacaoIndisponivel: (clinicaId: string) => `automacao_indisponivel:${clinicaId}`,
+  experienciaInsatisfatoria: (recuperacaoId: string) => `experiencia:${recuperacaoId}`,
 };
 
 // ---------------------------------------------------------------------------

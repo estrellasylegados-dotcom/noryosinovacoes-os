@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { decidirAtivarAgentePorEtiqueta, listarAgentes } from "@/lib/agentes";
 import { assumirControle } from "@/lib/dono-conversa";
+import { ehEtiquetaAtendimentoFinalizado, registrarAtendimentoFinalizadoPorEtiqueta } from "@/lib/reputacao-atendimentos";
 
 /**
  * Etiquetas (tags) livres do Chat ao Vivo — infraestrutura pedida pelo
@@ -134,7 +135,7 @@ export async function adicionarEtiquetaConversa(
 
   const [{ data: conversa }, { data: etiqueta }] = await Promise.all([
     supabase.from("conversas").select("id").eq("id", conversaId).eq("clinica_id", clinicaId).maybeSingle(),
-    supabase.from("etiquetas").select("id").eq("id", etiquetaId).eq("clinica_id", clinicaId).maybeSingle(),
+    supabase.from("etiquetas").select("id, nome").eq("id", etiquetaId).eq("clinica_id", clinicaId).maybeSingle(),
   ]);
   if (!conversa || !etiqueta) return { ok: false, error: "not_found" };
 
@@ -146,6 +147,12 @@ export async function adicionarEtiquetaConversa(
   if (error && error.code !== "23505") {
     console.error("[etiquetas] adicionar_failed", JSON.stringify({ code: error.code ?? null }));
     return { ok: false, error: "persist_failed" };
+  }
+
+  // Só uma aplicação nova da etiqueta gera uma ocorrência. Retry de API
+  // (23505) não reprograma pesquisa nem convite.
+  if (!error && ehEtiquetaAtendimentoFinalizado(etiqueta.nome as string)) {
+    await registrarAtendimentoFinalizadoPorEtiqueta(clinicaId, conversaId, etiquetaId);
   }
 
   await ativarAgentePorEtiqueta(clinicaId, conversaId, etiquetaId);

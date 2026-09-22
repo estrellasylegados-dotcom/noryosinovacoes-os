@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
+import { requirePermission } from "@/lib/autorizacao";
 import { getClinicaId } from "@/lib/clinica";
 import { buscarConfigReputacao, salvarConfigReputacao, type SalvarConfigReputacaoInput } from "@/lib/reputacao-config";
 
@@ -8,8 +7,8 @@ export const runtime = "nodejs";
 
 /** Ver e editar a config de Reputação — só admin edita (link oficial da clínica), mesmo gate de "Ferramentas". */
 export async function GET() {
-  const sessao = await getSessaoAtual();
-  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("configuracoes.reputacao");
+  if ("erro" in auth) return auth.erro;
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -19,8 +18,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const sessao = await getSessaoAtual();
-  if (!isAdminEquivalente(sessao)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const auth = await requirePermission("configuracoes.reputacao");
+  if ("erro" in auth) return auth.erro;
 
   const clinicaId = await getClinicaId();
   if (!clinicaId) return NextResponse.json({ ok: false, error: "backend_unavailable" }, { status: 503 });
@@ -34,6 +33,11 @@ export async function PUT(request: Request) {
     rastrearCliques: body.rastrearCliques ?? true,
     delayHorasPadrao: body.delayHorasPadrao ?? null,
     automacaoAtendimentoConcluidoAtiva: Boolean(body.automacaoAtendimentoConcluidoAtiva),
+    pesquisaAtiva: Boolean(body.pesquisaAtiva),
+    pesquisaDelayMinutos: body.pesquisaDelayMinutos ?? 30,
+    googleAtivo: Boolean(body.googleAtivo),
+    googleDelayMinutos: body.googleDelayMinutos ?? 120,
+    alertaRecuperacaoAtivo: body.alertaRecuperacaoAtivo !== false,
   });
   return NextResponse.json(resultado, { status: resultado.ok ? 200 : 400 });
 }

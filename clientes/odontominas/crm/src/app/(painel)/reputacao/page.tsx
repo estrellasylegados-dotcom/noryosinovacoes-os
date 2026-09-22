@@ -2,10 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getClinicaId } from "@/lib/clinica";
 import { getSessaoAtual } from "@/lib/sessao-servidor";
-import { isAdminEquivalente } from "@/lib/autorizacao";
+import { can } from "@/lib/autorizacao";
 import { buscarConfigReputacao } from "@/lib/reputacao-config";
 import {
   buscarPainelReputacao,
+  buscarPainelExperiencia,
   LABEL_STATUS_REPUTACAO,
   listarSolicitacoesReputacao,
   ORIGEM_REPUTACAO_ATUAL,
@@ -15,6 +16,9 @@ import { formatDataHora } from "@/lib/tempo";
 import { FiltroPeriodo } from "@/components/FiltroPeriodo";
 import { RelatorioReputacao } from "@/components/relatorios/RelatorioReputacao";
 import { ReputacaoConfigForm } from "@/components/relatorios/ReputacaoConfigForm";
+import { RelatorioExperiencia } from "@/components/relatorios/RelatorioExperiencia";
+import { RecuperacoesExperiencia } from "@/components/relatorios/RecuperacoesExperiencia";
+import { listarRecuperacoes } from "@/lib/reputacao-recuperacoes";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +36,7 @@ export default async function ReputacaoPage({
     searchParams,
   ]);
 
-  if (!isAdminEquivalente(sessao)) redirect("/");
+  if (!sessao || !can(sessao, "alertas.visualizar")) redirect("/");
 
   if (!clinicaId) {
     return (
@@ -48,10 +52,12 @@ export default async function ReputacaoPage({
   const agora = new Date();
   const intervalo = { inicio: inicioPeriodo(periodo, agora), fim: agora };
 
-  const [config, painel, solicitacoes] = await Promise.all([
+  const [config, painel, experiencia, solicitacoes, recuperacoes] = await Promise.all([
     buscarConfigReputacao(clinicaId),
     buscarPainelReputacao(clinicaId, intervalo),
+    buscarPainelExperiencia(clinicaId, intervalo),
     listarSolicitacoesReputacao(clinicaId, intervalo, status),
+    listarRecuperacoes(clinicaId, { atendenteId: sessao.atendenteId, equipe: can(sessao, "conversas.visualizar_todas") }),
   ]);
 
   return (
@@ -59,10 +65,10 @@ export default async function ReputacaoPage({
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
           <h1 className="text-xl font-semibold text-neutral-900">Reputação</h1>
-          <p className="text-sm text-neutral-500">Solicitações de avaliação no Google — link, envio e clique.</p>
+          <p className="text-sm text-neutral-500">Acompanhe a experiência após o atendimento, recupere insatisfações e fortaleça sua presença online.</p>
         </header>
 
-        <ReputacaoConfigForm configInicial={config} />
+        {can(sessao, "configuracoes.reputacao") && <ReputacaoConfigForm configInicial={config} />}
 
         {!config.ativo && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -75,6 +81,8 @@ export default async function ReputacaoPage({
         <FiltroPeriodo ativo={periodo} basePath="/reputacao" paramsExtras={{ status: status ?? "" }} />
 
         <RelatorioReputacao painel={painel} />
+        <RelatorioExperiencia painel={experiencia} />
+        <RecuperacoesExperiencia iniciais={recuperacoes} />
 
         <section>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

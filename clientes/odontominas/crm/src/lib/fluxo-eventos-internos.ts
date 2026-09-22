@@ -65,6 +65,7 @@ export async function emitirEventoAutomacao(input: {
   tipo: string;
   referenciaId?: string | null;
   metadata?: Record<string, unknown>;
+  aguardarAte?: string | null;
 }): Promise<ResultadoEventoAutomacao> {
   const supabase = getSupabaseServerClient();
   if (!supabase) return { resultado: "erro", detalhe: "backend_unavailable" };
@@ -106,7 +107,7 @@ export async function emitirEventoAutomacao(input: {
     fluxoAtivo.id as string,
     conversaId,
     input.pacienteId,
-    { tipo: input.tipo, refId: input.pacienteId, dedupeKey },
+    { tipo: input.tipo, refId: input.referenciaId, dedupeKey, aguardarAte: input.aguardarAte, variaveisIniciais: Object.fromEntries(Object.entries(input.metadata ?? {}).filter(([, valor]) => typeof valor === "string") as [string, string][]) },
     Boolean(fluxoAtivo.pode_interromper_agente_ia),
     false,
     // conversaEraNova=true: a guarda "recusa se humano" (iniciarExecucaoFluxo)
